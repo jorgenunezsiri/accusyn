@@ -17,7 +17,7 @@
 <body>
   <div id="config" style="display: none; float: left">
     <p>
-      <label for="nAngle" style="display: inline-block; text-align: left">
+      <label for="nAngle" style="display: inline-block; text-align: left; width: 85px">
        rotate = <span id="nAngle-value">…</span>
       </label>
       <input type="range" min="0" max="360" id="nAngle">
@@ -33,6 +33,7 @@
     var showAllChromosomes = true;
     var gffPositionDictionary = {};
     var geneDictionary = {};
+    var blockDictionary = {};
     var gffKeys = [];
     var gffFile;
     var collinearityFile;
@@ -103,6 +104,22 @@
           return 1;
         return 0;
       });
+
+      for (var i = 0; i < collinearityFile.length; i++) {
+        var currentBlock = collinearityFile[i].block;
+
+        if (!(currentBlock in blockDictionary)) {
+          blockDictionary[currentBlock] = [];
+        }
+
+        blockDictionary[currentBlock].push({
+          connection: collinearityFile[i].connection,
+          source: collinearityFile[i].source,
+          target: collinearityFile[i].target
+        });
+      }
+
+      console.log("Block dictionary: ", blockDictionary["45"]);
 
       d3.select("#config")
         .style("display", "block")
@@ -210,7 +227,7 @@
         innerRadius: 300,
         outerRadius: 350,
         cornerRadius: 1,
-        gap: 0.04, // in radian
+        gap: data.length === 1 ? 0 : 0.04, // in radian
         labels: {
           display: true,
           position: 'center',
@@ -256,18 +273,67 @@
         return str;
       }
 
+      /**
+       *
+       **/
+      function fixSourceTargetCollinearity(collinearityFile) {
+        var sourceID = collinearityFile[i].source.split("g")[0].split("Bna")[1];
+        var targetID = collinearityFile[i].target.split("g")[0].split("Bna")[1];
+        if (sourceID[1] == '0') {
+          sourceID = sourceID.slice(0, 1) + sourceID.slice(2);
+        }
+        if (targetID[1] == '0') {
+          targetID = targetID.slice(0, 1) + targetID.slice(2);
+        }
+
+        return {
+          source: sourceID,
+          target: targetID
+        }
+      }
+
+      function lookForBlocksPositions (block) {
+        var blockArray = blockDictionary[block];
+        // TODO: Another way to declare these?
+        var maxSource = 0;
+        var minSource = 100000000;
+        var maxTarget = 0;
+        var minTarget = 100000000;
+        for (var i = 0; i < blockArray.length; i++) {
+          var currentSource = geneDictionary[blockArray[i].source];
+          var currentTarget = geneDictionary[blockArray[i].target];
+
+          if (currentSource.start < minSource) minSource = currentSource.start;
+          if (currentSource.end > maxSource) maxSource = currentSource.end;
+
+          if (currentTarget.start < minTarget) minTarget = currentTarget.start;
+          if (currentTarget.end > maxTarget) maxTarget = currentTarget.end;
+        }
+
+        return {
+          blockLength: blockArray.length,
+          minSource: minSource,
+          maxSource: maxSource,
+          minTarget: minTarget,
+          maxTarget: maxTarget
+        }
+      }
+
+      console.log(lookForBlocksPositions(45));
+
       console.log(selectedCheckbox);
+      var visited = []; // TODO: Fix this
+      for (var i = 0; i < 1500; i++) {
+        visited.push(false);
+      }
+
       var oneToMany = selectedCheckbox.length == 1;
       for (var i = 0; i < collinearityFile.length; i++) {
         if (collinearityFile[i].source.includes('N') && collinearityFile[i].target.includes('N')) {
-          var sourceID = collinearityFile[i].source.split("g")[0].split("Bna")[1];
-          var targetID = collinearityFile[i].target.split("g")[0].split("Bna")[1];
-          if (sourceID[1] == '0') {
-            sourceID = sourceID.slice(0, 1) + sourceID.slice(2);
-          }
-          if (targetID[1] == '0') {
-            targetID = targetID.slice(0, 1) + targetID.slice(2);
-          }
+
+          var IDs = fixSourceTargetCollinearity(collinearityFile);
+          var sourceID = IDs.source;
+          var targetID = IDs.target;
 
           //console.log('SOURCE: ', sourceID);
           //console.log('TARGET: ', targetID);
@@ -298,6 +364,7 @@
               lookID.push(selectedCheckbox[j]);
             }
             // Working now ... clean everything ... take things outside loop
+
             /*if (sourceID == "N1" && targetID == "N3" || targetID == "N1" && sourceID == "N3") {
                console.log ('HERE I AM !!!', lookID, sourceID, targetID);
             } */
@@ -305,7 +372,30 @@
             //console.log ('HERE I AM !!!', shouldAddDataChord);
           }
 
-          if (shouldAddDataChord) {
+          var currentBlock = collinearityFile[i].block;
+          if (!visited[currentBlock]) {
+            var blockPositions = lookForBlocksPositions(currentBlock);
+
+            visited[currentBlock] = true;
+            if (shouldAddDataChord) {
+              dataChords.push({
+                source: {
+                  id: sourceID,
+                  start: blockPositions.minSource,
+                  end: blockPositions.maxSource,
+                  value: blockPositions.blockLength
+                },
+                target: {
+                  id: targetID,
+                  start: blockPositions.minTarget,
+                  end: blockPositions.maxTarget,
+                  value: blockPositions.blockLength
+                }
+              });
+            }
+          }
+
+          /*if (shouldAddDataChord) {
             dataChords.push({
               source: {
                 id: sourceID,
@@ -318,7 +408,8 @@
                 end: geneDictionary[collinearityFile[i].target].end
               }
             });
-          }
+          }*/
+
         }
       }
 
@@ -347,12 +438,13 @@
         logScale: false,
         opacity: 0.7,
         color: function(d) {
-          if (d.source.value) {
+          /*if (d.source.value) {
             return d.source.value;
-          } else return '#ff5722';
+          } else*/
+          return '#ff5722';
         },
         tooltipContent: function(d) {
-          return '<h3>' + d.source.id + ' ➤ ' + d.target.id + '</h3>';
+          return '<h3>' + d.source.id + ' ➤ ' + d.target.id + '</h3><br /><h2>Block length: ' + d.source.value + '</h2>';
         },
         events: {
           'mouseover.demo': function(d, i, nodes, event) {
