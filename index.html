@@ -30,6 +30,7 @@
     // TODO: clean everything and add comments
 
     var selectedCheckbox = []; // array that will store the value of selected checkboxes
+    var showAllChromosomes = true;
     var gffPositionDictionary = {};
     var geneDictionary = {};
     var gffKeys = [];
@@ -45,17 +46,22 @@
 
     function checkForm(form) {
       selectedCheckbox = [];
-      // gets all the input tags in frm, and their number
+      showAllChromosomes = false;
+      // gets all the input tags in form
       var inputFields = form.getElementsByTagName('input');
-      // traverse the inpfields elements, and adds the value of selected (checked) checkbox in selchbox
+      // traverse the input fields elements, and adds the value of each selected checkbox
       for (var i = 0; i < inputFields.length; i++) {
         if (inputFields[i].type == 'checkbox' && inputFields[i].checked == true) {
           inputFields[i].checked = false;
-          selectedCheckbox.push(inputFields[i].value);
+          if (inputFields[i].name == 'show-all') {
+            showAllChromosomes = true;
+          } else {
+            selectedCheckbox.push(inputFields[i].value);
+          }
         }
       }
 
-      generateVisualization(selectedCheckbox);
+      generateVisualization();
     }
 
     function generateData(error, gff, collinearity) {
@@ -84,8 +90,11 @@
         }
       }
 
+      width = 850;
+      height = 850;
+
       gffKeys = Object.keys(gffPositionDictionary);
-      gffKeys.sort(function(a, b) {
+      gffKeys.sort(function compare(a, b) {
         a = parseInt(a.split('N')[1]);
         b = parseInt(b.split('N')[1]);
         if (a < b)
@@ -96,9 +105,25 @@
       });
 
       d3.select("#config")
-        .style("display", "block");
+        .style("display", "block")
+        .style("width", width / 2 + 'px');
 
-      d3.select("#form-config").selectAll('p')
+      d3.select("#form-config")
+        .append('p')
+        .attr('class', 'show-all')
+        .append('input')
+        .attr('type', 'checkbox')
+        .attr('name', "show-all")
+        .attr('value', "Show All")
+        .attr('checked', "true");
+
+      d3.select("#form-config").select('p.show-all')
+        .append('span')
+        .text(function() {
+          return "Show All"
+        });
+
+      d3.select("#form-config").selectAll('p:not(.show-all)')
         .data(gffKeys).enter()
         .append('p')
         .append('input')
@@ -110,10 +135,12 @@
           return d;
         });
 
-      d3.select("#form-config").selectAll('p')
+      d3.select("#form-config").selectAll('p:not(.show-all)')
         .append('span')
         .text(function(d) {
-          return d.toString();
+          if (d) {
+            return d.toString();
+          }
         });
 
       d3.select("#form-config")
@@ -124,15 +151,12 @@
       console.log('DICTIONARY gff: ', gffPositionDictionary);
       console.log('gene: ', geneDictionary['BnaN01g00190.1']);
 
-      width = 1000;
-      height = 850;
-
       svg = d3.select("body")
         .append("div")
         .attr('id', 'chart')
         .attr("width", width)
         .attr("height", height)
-        .style("float", "right");
+        .style("float", "left");
 
       svg.select("svg > .all")
         .call(d3.zoom().on("zoom", function() {
@@ -147,30 +171,36 @@
       });
 
 
-      generateVisualization(selectedCheckbox);
+      generateVisualization();
     }
 
-    function generateVisualization(selectedCheckbox) {
+    function generateVisualization() {
       if (selectedCheckbox.length < 1) {
         selectedCheckbox = ["N1"];
       }
       // selectedCheckbox = selectedCheckbox == [] ? ["N1"] :;
 
-
       var data = [];
       var colors = d3.scaleOrdinal(d3.schemeCategory10);
 
       gffKeys.forEach(function(key, i) {
+        // TODO: Only add the chromosomes selected
+        // TODO: Add select all button
         if (gffPositionDictionary.hasOwnProperty(key)) {
-
-          console.log('KEY: ', key);
-          data.push({
+          var currentObj = {
             len: gffPositionDictionary[key].end,
             color: colors(i),
             label: key,
             id: key
-          });
+          };
 
+          if (showAllChromosomes) {
+            data.push(currentObj);
+          } else {
+            if (selectedCheckbox.indexOf(key) > -1) {
+              data.push(currentObj);
+            }
+          }
         }
       });
 
@@ -217,8 +247,17 @@
       myCircos.layout(data, configuration);
 
       dataChords = [];
-      console.log(selectedCheckbox[0]);
 
+      /**
+       * e.g. Fixes N1 to N01
+       **/
+      function fixStringNumbersLessThan10(str) {
+        if (str.length == 2) return str[0] + "0" + str[1];
+        return str;
+      }
+
+      console.log(selectedCheckbox);
+      var oneToMany = selectedCheckbox.length == 1;
       for (var i = 0; i < collinearityFile.length; i++) {
         if (collinearityFile[i].source.includes('N') && collinearityFile[i].target.includes('N')) {
           var sourceID = collinearityFile[i].source.split("g")[0].split("Bna")[1];
@@ -233,14 +272,40 @@
           //console.log('SOURCE: ', sourceID);
           //console.log('TARGET: ', targetID);
 
-          var lookID = "";
-          if (selectedCheckbox[0].length == 2) {
-            lookID = selectedCheckbox[0][0] + "0" + selectedCheckbox[0][1];
+          var lookID = [];
+          var shouldAddDataChord = false;
+          if (oneToMany) {
+            lookID.push(selectedCheckbox[0]);
+            //console.log('lookID: ', lookID);
+            lookID[0] = fixStringNumbersLessThan10(lookID[0]);
+            // I'm adding the extra 0 here with the function above
+            shouldAddDataChord = collinearityFile[i].source.includes(lookID[0]);
+            if (shouldAddDataChord) {
+              // console.log(collinearityFile[i].source);
+            }
+
+            /*if (sourceID == "N1" && targetID == "N3" || targetID == "N1" && sourceID == "N3") {
+              console.log ('HERE I AM !!!', lookID, sourceID, targetID);
+            }*/
+
+
+            // I'm looking the exact match here !!
+            // shouldAddDataChord = lookID.indexOf(sourceID) > -1;
+            // UNDERSTAND BETTER THE LOGIC HERE !!!
           } else {
-            lookID = selectedCheckbox[0];
+
+            for (var j = 0; j < selectedCheckbox.length; j++) {
+              lookID.push(selectedCheckbox[j]);
+            }
+            // Working now ... clean everything ... take things outside loop
+            /*if (sourceID == "N1" && targetID == "N3" || targetID == "N1" && sourceID == "N3") {
+               console.log ('HERE I AM !!!', lookID, sourceID, targetID);
+            } */
+            shouldAddDataChord = lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1;
+            //console.log ('HERE I AM !!!', shouldAddDataChord);
           }
 
-          if (collinearityFile[i].source.includes(lookID)) {
+          if (shouldAddDataChord) {
             dataChords.push({
               source: {
                 id: sourceID,
