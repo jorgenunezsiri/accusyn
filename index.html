@@ -56,6 +56,7 @@
       d3.selectAll(".chr-box").each(function(d) {
         d3.select(this).attr("disabled", null);
         d3.select(this.parentNode).classed("disabled", false);
+        d3.select(this.parentNode).select('span').text(d);
       });
 
       selectedCheckbox = [];
@@ -96,6 +97,39 @@
       }
     }
 
+    /**
+     * [findBlockConnection description]
+     * @param  {[type]} dictionary [description]
+     * @param  {[type]} source     [description]
+     * @param  {[type]} target     [description]
+     * @return {[type]}            [description]
+     */
+    function findBlockConnection(dictionary, source, target) {
+      return dictionary[source].find(function(element) {
+        return element.connection == target;
+      });
+    }
+
+    /**
+     * [findIndexConnection description]
+     * @param  {[type]} dictionary [description]
+     * @param  {[type]} source     [description]
+     * @param  {[type]} target     [description]
+     * @return {[type]}            [description]
+     */
+    function findIndexConnection(dictionary, source, target) {
+      return dictionary[source].findIndex(function(element) {
+        return element.connection == target;
+      });
+    }
+
+    /**
+     * [generateData description]
+     * @param  {[type]} error        [description]
+     * @param  {[type]} gff          [description]
+     * @param  {[type]} collinearity [description]
+     * @return {[type]}              [description]
+     */
     function generateData(error, gff, collinearity) {
       if (error) return console.error(error);
       gffFile = gff;
@@ -140,6 +174,17 @@
       connectionDictionary = {};
       for (var i = 0; i < collinearityFile.length; i++) {
         if (collinearityFile[i].source.includes('N') && collinearityFile[i].target.includes('N')) {
+          var currentBlock = collinearityFile[i].block;
+
+          if (!(currentBlock in blockDictionary)) {
+            blockDictionary[currentBlock] = [];
+          }
+
+          blockDictionary[currentBlock].push({
+            connection: collinearityFile[i].connection,
+            source: collinearityFile[i].source,
+            target: collinearityFile[i].target
+          });
 
           var IDs = fixSourceTargetCollinearity(collinearityFile, i);
           var sourceID = IDs.source;
@@ -153,25 +198,40 @@
             connectionDictionary[targetID] = [];
           }
 
-          if (connectionDictionary[sourceID].indexOf(targetID) === (-1)) {
-            connectionDictionary[sourceID].push(targetID);
+          var indexConnection = 0;
+          if (!findBlockConnection(connectionDictionary, sourceID, targetID)) {
+            connectionDictionary[sourceID].push({
+              blockIDs: [currentBlock],
+              connection: targetID,
+              connectionAmount: 1
+            });
+          } else {
+            indexConnection = findIndexConnection(connectionDictionary, sourceID, targetID);
+            connectionDictionary[sourceID][indexConnection].connectionAmount++;
+
+            if (connectionDictionary[sourceID][indexConnection].blockIDs.indexOf(currentBlock) === (-1)) {
+              connectionDictionary[sourceID][indexConnection].blockIDs.push(currentBlock);
+            }
           }
 
-          if (connectionDictionary[targetID].indexOf(sourceID) === (-1)) {
-            connectionDictionary[targetID].push(sourceID);
+          if (!findBlockConnection(connectionDictionary, targetID, sourceID)) {
+            connectionDictionary[targetID].push({
+              blockIDs: [currentBlock],
+              connection: sourceID,
+              connectionAmount: 1
+            });
+          } else {
+            var indexConnection = findIndexConnection(connectionDictionary, targetID, sourceID);
+
+            if (targetID != connectionDictionary[targetID][indexConnection].connection) {
+              connectionDictionary[targetID][indexConnection].connectionAmount++;
+              // connectionDictionary[targetID][indexConnection].blockAmount = blockDictionary[currentBlock].length;
+            }
+
+            if (connectionDictionary[targetID][indexConnection].blockIDs.indexOf(currentBlock) === (-1)) {
+              connectionDictionary[targetID][indexConnection].blockIDs.push(currentBlock);
+            }
           }
-
-          var currentBlock = collinearityFile[i].block;
-
-          if (!(currentBlock in blockDictionary)) {
-            blockDictionary[currentBlock] = [];
-          }
-
-          blockDictionary[currentBlock].push({
-            connection: collinearityFile[i].connection,
-            source: collinearityFile[i].source,
-            target: collinearityFile[i].target
-          });
         }
       }
 
@@ -227,6 +287,7 @@
 
           d3.selectAll(".chr-box").each(function(d) {
             d3.select(this.parentNode).classed("disabled", false);
+            d3.select(this.parentNode).select('span').text(d);
 
             var cb = d3.select(this);
             cb.attr("disabled", null);
@@ -240,12 +301,30 @@
             console.log('selectedChromosomes: ', selectedChromosomes);
 
             for (var j = 0; j < gffKeys.length; j++) {
-              if (connectionDictionary[selectedChromosomes[0]].indexOf(gffKeys[j]) > -1) {
+              if (findBlockConnection(connectionDictionary, selectedChromosomes[0], gffKeys[j])) {
                 visitedChr[gffKeys[j]] = true;
               }
             }
 
             d3.selectAll(".chr-box").each(function(d) {
+              d3.select(this.parentNode).select('span').html(function() {
+                var indexConnection = findIndexConnection(connectionDictionary, selectedChromosomes[0], d);
+                var connectionAmount = 0;
+                var textToShow = d;
+                if (indexConnection === (-1)) {
+                  textToShow += ' <em>&emsp;' + '0 blocks' + ' </em>';
+                } else {
+                  connectionAmount = connectionDictionary[selectedChromosomes[0]][indexConnection].blockIDs.length;
+                  if (connectionAmount === 1) {
+                    textToShow += ' <em>&emsp;' + connectionAmount + ' block' + ' </em>';
+                  } else {
+                    textToShow += ' <em>&emsp;' + connectionAmount + ' blocks' + ' </em>';
+                  }
+                }
+
+                return textToShow;
+              });
+
               if (visitedChr[d]) {
                 d3.select(this).attr("disabled", null);
                 d3.select(this.parentNode).classed("disabled", false);
