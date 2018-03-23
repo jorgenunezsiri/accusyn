@@ -10,7 +10,13 @@
 
   <script type="text/javascript" src="lodash.js"></script>
   <style type="text/css">
-    /* No style rules here yet */
+    #form-config p {
+      color: black;
+    }
+
+    #form-config p.disabled {
+      color: gainsboro;
+    }
   </style>
 </head>
 
@@ -33,6 +39,7 @@
     var showAllChromosomes = true;
     var gffPositionDictionary = {};
     var geneDictionary = {};
+    var connectionDictionary = {};
     var blockDictionary = {};
     var gffKeys = [];
     var gffFile;
@@ -46,6 +53,11 @@
 
 
     function checkForm(form) {
+      d3.selectAll(".chr-box").each(function(d) {
+        d3.select(this).attr("disabled", null);
+        d3.select(this.parentNode).classed("disabled", false);
+      });
+
       selectedCheckbox = [];
       showAllChromosomes = false;
       // gets all the input tags in form
@@ -63,6 +75,25 @@
       }
 
       generateVisualization();
+    }
+
+    /**
+     *  fixSourceTargetCollinearity
+     **/
+    function fixSourceTargetCollinearity(collinearityFile, index) {
+      var sourceID = collinearityFile[index].source.split("g")[0].split("Bna")[1];
+      var targetID = collinearityFile[index].target.split("g")[0].split("Bna")[1];
+      if (sourceID[1] == '0') {
+        sourceID = sourceID.slice(0, 1) + sourceID.slice(2);
+      }
+      if (targetID[1] == '0') {
+        targetID = targetID.slice(0, 1) + targetID.slice(2);
+      }
+
+      return {
+        source: sourceID,
+        target: targetID
+      }
     }
 
     function generateData(error, gff, collinearity) {
@@ -105,19 +136,46 @@
         return 0;
       });
 
+      blockDictionary = {};
+      connectionDictionary = {};
       for (var i = 0; i < collinearityFile.length; i++) {
-        var currentBlock = collinearityFile[i].block;
+        if (collinearityFile[i].source.includes('N') && collinearityFile[i].target.includes('N')) {
 
-        if (!(currentBlock in blockDictionary)) {
-          blockDictionary[currentBlock] = [];
+          var IDs = fixSourceTargetCollinearity(collinearityFile, i);
+          var sourceID = IDs.source;
+          var targetID = IDs.target;
+
+          if (!(sourceID in connectionDictionary)) {
+            connectionDictionary[sourceID] = [];
+          }
+
+          if (!(targetID in connectionDictionary)) {
+            connectionDictionary[targetID] = [];
+          }
+
+          if (connectionDictionary[sourceID].indexOf(targetID) === (-1)) {
+            connectionDictionary[sourceID].push(targetID);
+          }
+
+          if (connectionDictionary[targetID].indexOf(sourceID) === (-1)) {
+            connectionDictionary[targetID].push(sourceID);
+          }
+
+          var currentBlock = collinearityFile[i].block;
+
+          if (!(currentBlock in blockDictionary)) {
+            blockDictionary[currentBlock] = [];
+          }
+
+          blockDictionary[currentBlock].push({
+            connection: collinearityFile[i].connection,
+            source: collinearityFile[i].source,
+            target: collinearityFile[i].target
+          });
         }
-
-        blockDictionary[currentBlock].push({
-          connection: collinearityFile[i].connection,
-          source: collinearityFile[i].source,
-          target: collinearityFile[i].target
-        });
       }
+
+      console.log('Connection dictionary: ', connectionDictionary);
 
       console.log("Block dictionary: ", blockDictionary["45"]);
 
@@ -137,19 +195,68 @@
       d3.select("#form-config").select('p.show-all')
         .append('span')
         .text(function() {
-          return "Show All"
+          return "Show All";
         });
 
       d3.select("#form-config").selectAll('p:not(.show-all)')
         .data(gffKeys).enter()
         .append('p')
         .append('input')
+        .attr('class', 'chr-box')
         .attr('type', 'checkbox')
         .attr('name', function(d) {
           return d;
         })
         .attr('value', function(d) {
           return d;
+        });
+
+      /*d3.select("#form-config").select('p.show-all > input')
+        .on("change", function(input) {
+
+        });*/
+
+      d3.select("#form-config").selectAll('.chr-box')
+        .data(gffKeys)
+        .on("change", function(input) {
+          var selectedChromosomes = [];
+          var visitedChr = {};
+          for (var i = 0; i < gffKeys.length; i++) {
+            visitedChr[gffKeys[i]] = false;
+          }
+
+          d3.selectAll(".chr-box").each(function(d) {
+            d3.select(this.parentNode).classed("disabled", false);
+
+            var cb = d3.select(this);
+            cb.attr("disabled", null);
+            if (cb.property("checked")) {
+              visitedChr[d] = true; // Assume this
+              selectedChromosomes.push(cb.property("value"));
+            }
+          });
+
+          if (selectedChromosomes.length == 1) {
+            console.log('selectedChromosomes: ', selectedChromosomes);
+
+            for (var j = 0; j < gffKeys.length; j++) {
+              if (connectionDictionary[selectedChromosomes[0]].indexOf(gffKeys[j]) > -1) {
+                visitedChr[gffKeys[j]] = true;
+              }
+            }
+
+            d3.selectAll(".chr-box").each(function(d) {
+              if (visitedChr[d]) {
+                d3.select(this).attr("disabled", null);
+                d3.select(this.parentNode).classed("disabled", false);
+              } else {
+                d3.select(this).attr("disabled", "true");
+                d3.select(this.parentNode).classed("disabled", true);
+              }
+            });
+
+            console.log('VISITED CHR: ', visitedChr);
+          }
         });
 
       d3.select("#form-config").selectAll('p:not(.show-all)')
@@ -239,8 +346,13 @@
           display: false
         },
         events: {
-          'click': function(d, i, nodes, event) {
-            d3.select(nodes[i]).attr("opacity", 0.5);
+          'click.chromosome': function(d, i, nodes, event) {
+            if (d3.select(nodes[i]).attr("opacity") == 0.5) {
+              d3.select(nodes[i]).attr("opacity", 1);
+            } else {
+              d3.selectAll(nodes).attr("opacity", 1);
+              d3.select(nodes[i]).attr("opacity", 0.5);
+            }
 
             var trackContainers = myCircos.svg.selectAll('.all > g');
 
@@ -273,26 +385,7 @@
         return str;
       }
 
-      /**
-       *
-       **/
-      function fixSourceTargetCollinearity(collinearityFile) {
-        var sourceID = collinearityFile[i].source.split("g")[0].split("Bna")[1];
-        var targetID = collinearityFile[i].target.split("g")[0].split("Bna")[1];
-        if (sourceID[1] == '0') {
-          sourceID = sourceID.slice(0, 1) + sourceID.slice(2);
-        }
-        if (targetID[1] == '0') {
-          targetID = targetID.slice(0, 1) + targetID.slice(2);
-        }
-
-        return {
-          source: sourceID,
-          target: targetID
-        }
-      }
-
-      function lookForBlocksPositions (block) {
+      function lookForBlocksPositions(block) {
         var blockArray = blockDictionary[block];
         // TODO: Another way to declare these?
         var maxSource = 0;
@@ -331,7 +424,7 @@
       for (var i = 0; i < collinearityFile.length; i++) {
         if (collinearityFile[i].source.includes('N') && collinearityFile[i].target.includes('N')) {
 
-          var IDs = fixSourceTargetCollinearity(collinearityFile);
+          var IDs = fixSourceTargetCollinearity(collinearityFile, i);
           var sourceID = IDs.source;
           var targetID = IDs.target;
 
@@ -345,7 +438,9 @@
             //console.log('lookID: ', lookID);
             lookID[0] = fixStringNumbersLessThan10(lookID[0]);
             // I'm adding the extra 0 here with the function above
-            shouldAddDataChord = collinearityFile[i].source.includes(lookID[0]);
+            shouldAddDataChord = showAllChromosomes ?
+              (collinearityFile[i].source.includes(lookID[0]) || collinearityFile[i].target.includes(lookID[0])) :
+              (collinearityFile[i].source.includes(lookID[0]) && collinearityFile[i].target.includes(lookID[0]));
             if (shouldAddDataChord) {
               // console.log(collinearityFile[i].source);
             }
@@ -383,13 +478,15 @@
                   id: sourceID,
                   start: blockPositions.minSource,
                   end: blockPositions.maxSource,
-                  value: blockPositions.blockLength
+                  value: {
+                    id: currentBlock,
+                    length: blockPositions.blockLength,
+                  }
                 },
                 target: {
                   id: targetID,
                   start: blockPositions.minTarget,
-                  end: blockPositions.maxTarget,
-                  value: blockPositions.blockLength
+                  end: blockPositions.maxTarget
                 }
               });
             }
@@ -444,11 +541,22 @@
           return '#ff5722';
         },
         tooltipContent: function(d) {
-          return '<h3>' + d.source.id + ' ➤ ' + d.target.id + '</h3><br /><h2>Block length: ' + d.source.value + '</h2>';
+          return '<h4>' + d.source.id + ' ➤ ' + d.target.id + '</h4>' +
+            '<h4><u>Block information</u></h4>' +
+            '<h4>ID: ' + d.source.value.id + '</h4>' +
+            '<h4>Length: ' + d.source.value.length + '</h4>';
         },
         events: {
-          'mouseover.demo': function(d, i, nodes, event) {
-            console.log(d, i, nodes, event.pageX)
+          'mouseover.block': function(d, i, nodes, event) {
+            console.log(d, i, nodes, event);
+          },
+          'click.block': function(d, i, nodes, event) {
+            if (d3.select(nodes[i]).attr("opacity") == 0.4) {
+              d3.select(nodes[i]).attr("opacity", 0.7);
+            } else {
+              d3.selectAll(nodes).attr("opacity", 0.7);
+              d3.select(nodes[i]).attr("opacity", 0.4);
+            }
           }
         }
       });
@@ -476,7 +584,7 @@
 
         // rotate the text
         svg.select(".all")
-          .attr("transform", "translate(" + width / 2 + "," + height / 2.33 + ") rotate(" + -nAngle + ")");
+          .attr("transform", "translate(" + width / 2 + "," + height / 2 + ") rotate(" + -nAngle + ")");
       }
     }
 
