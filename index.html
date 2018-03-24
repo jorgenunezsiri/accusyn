@@ -66,10 +66,10 @@
       // traverse the input fields elements, and adds the value of each selected checkbox
       for (var i = 0; i < inputFields.length; i++) {
         if (inputFields[i].type == 'checkbox' && inputFields[i].checked == true) {
-          inputFields[i].checked = false;
           if (inputFields[i].name == 'show-all') {
             showAllChromosomes = true;
           } else {
+            inputFields[i].checked = false;
             selectedCheckbox.push(inputFields[i].value);
           }
         }
@@ -138,7 +138,6 @@
       console.log('GFF: ', gff);
       console.log('collinearity: ', collinearity);
 
-
       for (var i = 0; i < gff.length; i++) {
         if (gff[i].chrom.startsWith('Scaffold')) continue;
         var start = parseInt(gff[i].start);
@@ -156,8 +155,8 @@
         }
       }
 
-      width = 850;
-      height = 850;
+      width = 800;
+      height = 800;
 
       gffKeys = Object.keys(gffPositionDictionary);
       gffKeys.sort(function compare(a, b) {
@@ -241,7 +240,8 @@
 
       d3.select("#config")
         .style("display", "block")
-        .style("width", width / 2 + 'px');
+        .style("margin-left", '10px')
+        .style("width", width / 3.33 + 'px');
 
       d3.select("#form-config")
         .append('p')
@@ -250,7 +250,7 @@
         .attr('type', 'checkbox')
         .attr('name', "show-all")
         .attr('value', "Show All")
-        .attr('checked', "true");
+        .attr('checked', true);
 
       d3.select("#form-config").select('p.show-all')
         .append('span')
@@ -270,11 +270,6 @@
         .attr('value', function(d) {
           return d;
         });
-
-      /*d3.select("#form-config").select('p.show-all > input')
-        .on("change", function(input) {
-
-        });*/
 
       d3.select("#form-config").selectAll('.chr-box')
         .data(gffKeys)
@@ -311,14 +306,15 @@
                 var indexConnection = findIndexConnection(connectionDictionary, selectedChromosomes[0], d);
                 var connectionAmount = 0;
                 var textToShow = d;
+                var style = '<em style="display: inline-block; text-align: right; width: 65px; margin-left: 10px">';
                 if (indexConnection === (-1)) {
-                  textToShow += ' <em>&emsp;' + '0 blocks' + ' </em>';
+                  textToShow += style + '0 blocks' + ' </em>';
                 } else {
                   connectionAmount = connectionDictionary[selectedChromosomes[0]][indexConnection].blockIDs.length;
                   if (connectionAmount === 1) {
-                    textToShow += ' <em>&emsp;' + connectionAmount + ' block' + ' </em>';
+                    textToShow += style + connectionAmount + ' block' + ' </em>';
                   } else {
-                    textToShow += ' <em>&emsp;' + connectionAmount + ' blocks' + ' </em>';
+                    textToShow += style + connectionAmount + ' blocks' + ' </em>';
                   }
                 }
 
@@ -335,6 +331,8 @@
             });
 
             console.log('VISITED CHR: ', visitedChr);
+          } else if (selectedChromosomes.length > 1) {
+            d3.select('p.show-all > input').property("checked", false);
           }
         });
 
