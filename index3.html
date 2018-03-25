@@ -80,16 +80,16 @@
       return y[0](d.close);
     });*/
 
-    // append the svg obgect to the body of the page
+    // append the svg object to the body of the page
     // appends a 'group' element to 'svg'
     // moves the 'group' element to the top left margin
-    var svg = d3.select("body").append("svg")
+    var svgBlock = d3.select("body").append("svg")
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom)
       .append("g")
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    var view = svg.append("g")
+    var zoomView = svgBlock.append("g")
       .attr("class", "zoom")
       .attr("width", width)
       .attr("height", height);
@@ -98,13 +98,14 @@
 
     var zoom = d3.zoom()
       .scaleExtent([1, 5])
+      //.extent([100, 100], [width-100, height-100])
       .on("zoom", function(d) {
 
         //Log out d3.event.transform, so you can see all the goodies inside
         console.log(d3.event.transform);
         //console.log('RESCALE: ', d3.event.transform.rescaleY(y[1]));
 
-        view.attr("transform", d3.event.transform);
+        zoomView.attr("transform", d3.event.transform);
         // d3.selectAll('.line').style("stroke-width", 2/d3.event.transform.k);
         // d3.event.transform.rescaleX(x);
         //
@@ -112,14 +113,14 @@
         if (gY1) gY1.call(y1axis.scale(d3.event.transform.rescaleY(y[1])));
 
         if (gY0 && gY1) {
-          //svg.selectAll("path")
+          //svgBlock.selectAll("path")
           //  .data(data)
           //  .attr("d", path);
         }
 
       });
 
-    svg.call(zoom)
+    svgBlock.call(zoom)
       .call(zoom.transform, d3.zoomIdentity
         .translate(margin.left, margin.top)
       );
@@ -128,7 +129,7 @@
       .on("click", resetted);
 
     function resetted() {
-      svg.transition()
+      svgBlock.transition()
         .duration(750)
         .call(zoom.transform, d3.zoomIdentity
           .translate(margin.left, margin.top));
@@ -198,7 +199,7 @@
     // var data = [58.13, 9.92];
 
     // Add the valueline path.
-    svg.selectAll("path")
+    svgBlock.selectAll("path")
       .data(data).enter()
       .append("g")
       .append("path")
@@ -206,7 +207,7 @@
       .attr("d", path)
       .attr("stroke-width", 2); // set based on gene length (maybe use scaleQuantize)
 
-    svg.selectAll("path")
+    svgBlock.selectAll("path")
       .on("mouseover", function(d, i, nodes) {
         if (d3.select(nodes[i]).attr("opacity") != 0.5) {
           d3.select(nodes[i]).attr("opacity", 0.5);
@@ -221,11 +222,11 @@
 
     // Add the Y0 Axis
     y0axis = d3.axisLeft(y[0]); //.ticks(5)
-    gY0 = svg.append("g")
+    gY0 = svgBlock.append("g")
       .attr("class", "axisSteelBlue")
       .call(y0axis);
 
-    svg.append("text")
+    svgBlock.append("text")
       .attr("transform", "rotate(-90)")
       .attr("y", 0 - margin.left)
       .attr("x", 0 - (height / 2))
@@ -235,12 +236,12 @@
 
     y1axis = d3.axisRight(y[1]);
     // Add the Y1 Axis
-    gY1 = svg.append("g")
+    gY1 = svgBlock.append("g")
       .attr("class", "axisGreen")
       .attr("transform", "translate( " + width + ", 0 )")
       .call(y1axis);
 
-    svg.append("text")
+    svgBlock.append("text")
       .attr("transform", "rotate(90)")
       .attr("y", 0 - width - margin.right)
       .attr("x", (height / 2))
