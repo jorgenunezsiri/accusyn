@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Example parallel axes</title>
+  <!-- load the d3.js library -->
+  <script src="d3.js"></script>
+  <style type="text/css">
+    /* set the CSS */
+
+    .line {
+      fill: none;
+      stroke: peru;
+      /* stroke-width: 2px; */
+    }
+
+    .axisSteelBlue {
+      fill: steelblue;
+    }
+
+    .axisGreen {
+      fill: green;
+    }
+
+    .zoom {
+      fill: none;
+    }
+
+    button {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Button not working properly -->
+  <!-- <button>Reset</button> -->
+
+  <script>
+    // set the dimensions and margins of the graph
+    var margin = {
+        top: 30,
+        right: 50,
+        bottom: 30,
+        left: 50
+      },
+      width = 600 - margin.left - margin.right,
+      height = 500 - margin.top - margin.bottom;
+
+    // set the ranges
+    //var x = d3.scaleLinear().range([0, width]);
+    var y = [];
+    y.push(d3.scaleLinear().range([height, 0]));
+    y.push(d3.scaleLinear().range([height, 0]));
+
+    var x = d3.scalePoint().rangeRound([0, width]);
+    var dimensions = [0, 1];
+    x.domain(dimensions);
+
+    var line = d3.line();
+
+    // console.log(y[0](130.28));
+
+    // define the path
+    function path(d) {
+      return line(dimensions.map(function(p) {
+        console.log('DP: ', x(p), p, d[p], y[p](d[p]));
+        // console.log('P: ', p, position(p), y[p](d[p]));
+        return [x(p), y[p](d[p])];
+      }));
+    }
+    //var valueline =
+    /*.x(function(d, i) {
+      console.log('I: ', i, x(i));
+      return x(i);
+    })
+    .y(function(d) {
+      return y[0](d.close);
+    });*/
+
+    // append the svg obgect to the body of the page
+    // appends a 'group' element to 'svg'
+    // moves the 'group' element to the top left margin
+    var svg = d3.select("body").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    var view = svg.append("g")
+      .attr("class", "zoom")
+      .attr("width", width)
+      .attr("height", height);
+
+    var gY0, gY1, y0axis, y1axis;
+
+    var zoom = d3.zoom()
+      .scaleExtent([1, 5])
+      .on("zoom", function(d) {
+
+        //Log out d3.event.transform, so you can see all the goodies inside
+        console.log(d3.event.transform);
+        //console.log('RESCALE: ', d3.event.transform.rescaleY(y[1]));
+
+        view.attr("transform", d3.event.transform);
+        // d3.selectAll('.line').style("stroke-width", 2/d3.event.transform.k);
+        // d3.event.transform.rescaleX(x);
+        //
+        if (gY0) gY0.call(y0axis.scale(d3.event.transform.rescaleY(y[0])));
+        if (gY1) gY1.call(y1axis.scale(d3.event.transform.rescaleY(y[1])));
+
+        if (gY0 && gY1) {
+          //svg.selectAll("path")
+          //  .data(data)
+          //  .attr("d", path);
+        }
+
+      });
+
+    svg.call(zoom)
+      .call(zoom.transform, d3.zoomIdentity
+        .translate(margin.left, margin.top)
+      );
+
+    d3.select("button")
+      .on("click", resetted);
+
+    function resetted() {
+      svg.transition()
+        .duration(750)
+        .call(zoom.transform, d3.zoomIdentity
+          .translate(margin.left, margin.top));
+    }
+
+    /*
+    Zoom problem:
+      - Zoom not working as expected for the path
+     */
+
+    // Get the data
+    // var data = [{
+    //     0: 58.13,
+    //     1: 3.41
+    //   },
+    //   {
+    //     0: 130.28,
+    //     1: 9.92
+    //   }
+    // ];
+
+    var data = [
+      [58.13, 9.8],
+      [130.28, 3.41],
+      [40, 5],
+      [31.5, 17.7],
+      [31.5, 20]
+    ];
+
+    // var data = [
+    //   [110, 14],
+    //   [120, 1],
+    //   [90, 13],
+    //   [11, 19]
+    //
+    // ];
+
+    // Scale the range of the data
+    /*x.domain(d3.extent(data, function(d) {
+      return +d.date;
+    }));*/
+    //y[0].domain([50, 140]);
+    //y[1].domain([0, 10]);
+    //
+    function minData(d) {
+      var minValue = 100000000;
+      for (var i = 0; i < data.length; i++) {
+        minValue = Math.min(minValue, data[i][d]);
+      }
+      return minValue;
+    }
+
+    function maxData(d) {
+      var maxValue = 0;
+      for (var i = 0; i < data.length; i++) {
+        maxValue = Math.max(maxValue, data[i][d]);
+      }
+      return maxValue;
+    }
+
+    var offset = 5;
+    console.log('VALUES: ', minData(0), maxData(0), minData(1), maxData(1));
+    y[0].domain([minData(0) - offset, maxData(0) + offset]);
+    y[1].domain([minData(1) - offset, maxData(1) + offset]);
+
+
+    // var data = [58.13, 9.92];
+
+    // Add the valueline path.
+    svg.selectAll("path")
+      .data(data).enter()
+      .append("g")
+      .append("path")
+      .attr("class", "line")
+      .attr("d", path)
+      .attr("stroke-width", 2); // set based on gene length (maybe use scaleQuantize)
+
+    svg.selectAll("path")
+      .on("mouseover", function(d, i, nodes) {
+        if (d3.select(nodes[i]).attr("opacity") != 0.5) {
+          d3.select(nodes[i]).attr("opacity", 0.5);
+        }
+        console.log("CLICK: ", d, i, nodes);
+      })
+      .on("mouseout", function(d, i, nodes) {
+        if (d3.select(nodes[i]).attr("opacity") != 1) {
+          d3.select(nodes[i]).attr("opacity", 1);
+        }
+      });
+
+    // Add the Y0 Axis
+    y0axis = d3.axisLeft(y[0]); //.ticks(5)
+    gY0 = svg.append("g")
+      .attr("class", "axisSteelBlue")
+      .call(y0axis);
+
+    svg.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 0 - margin.left)
+      .attr("x", 0 - (height / 2))
+      .attr("dy", "1em")
+      .style("text-anchor", "middle")
+      .text("N1");
+
+    y1axis = d3.axisRight(y[1]);
+    // Add the Y1 Axis
+    gY1 = svg.append("g")
+      .attr("class", "axisGreen")
+      .attr("transform", "translate( " + width + ", 0 )")
+      .call(y1axis);
+
+    svg.append("text")
+      .attr("transform", "rotate(90)")
+      .attr("y", 0 - width - margin.right)
+      .attr("x", (height / 2))
+      .attr("dy", "1em")
+      .style("text-anchor", "middle")
+      .text("N2");
+  </script>
+</body>

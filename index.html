@@ -1,4 +1,13 @@
 <!DOCTYPE html>
+
+<!--
+A web-based genome synteny browser
+
+Name: Jorge Nunez Siri
+NSID: jdn766
+Student ID: 11239727
+-->
+
 <html lang="en">
 
 <head>
@@ -51,7 +60,11 @@
     var width;
     var height;
 
-
+    /**
+     * [checkForm description]
+     * @param  {[type]} form [description]
+     * @return {[type]}      [description]
+     */
     function checkForm(form) {
       d3.selectAll(".chr-box").each(function(d) {
         d3.select(this).attr("disabled", null);
@@ -79,8 +92,11 @@
     }
 
     /**
-     *  fixSourceTargetCollinearity
-     **/
+     * [fixSourceTargetCollinearity description]
+     * @param  {[type]} collinearityFile [description]
+     * @param  {[type]} index            [description]
+     * @return {[type]}                  [description]
+     */
     function fixSourceTargetCollinearity(collinearityFile, index) {
       var sourceID = collinearityFile[index].source.split("g")[0].split("Bna")[1];
       var targetID = collinearityFile[index].target.split("g")[0].split("Bna")[1];
@@ -162,10 +178,8 @@
       gffKeys.sort(function compare(a, b) {
         a = parseInt(a.split('N')[1]);
         b = parseInt(b.split('N')[1]);
-        if (a < b)
-          return -1;
-        if (a > b)
-          return 1;
+        if (a < b) return -1;
+        if (a > b) return 1;
         return 0;
       });
 
@@ -371,21 +385,22 @@
         height: height
       });
 
-
       generateVisualization();
     }
 
+    /**
+     * [generateVisualization description]
+     * @return {[type]} [description]
+     */
     function generateVisualization() {
       if (selectedCheckbox.length < 1) {
-        selectedCheckbox = ["N1"];
+        selectedCheckbox = ["N1"]; // Including N1 as default here
       }
-      // selectedCheckbox = selectedCheckbox == [] ? ["N1"] :;
 
       var data = [];
       var colors = d3.scaleOrdinal(d3.schemeCategory10);
 
       gffKeys.forEach(function(key, i) {
-        // TODO: Only add the chromosomes selected
         // TODO: Add select all button
         if (gffPositionDictionary.hasOwnProperty(key)) {
           var currentObj = {
@@ -454,14 +469,6 @@
 
       dataChords = [];
 
-      /**
-       * e.g. Fixes N1 to N01
-       **/
-      function fixStringNumbersLessThan10(str) {
-        if (str.length == 2) return str[0] + "0" + str[1];
-        return str;
-      }
-
       function lookForBlocksPositions(block) {
         var blockArray = blockDictionary[block];
         // TODO: Another way to declare these?
@@ -473,11 +480,11 @@
           var currentSource = geneDictionary[blockArray[i].source];
           var currentTarget = geneDictionary[blockArray[i].target];
 
-          if (currentSource.start < minSource) minSource = currentSource.start;
-          if (currentSource.end > maxSource) maxSource = currentSource.end;
+          minSource = Math.min(minSource, currentSource.start);
+          maxSource = Math.max(maxSource, currentSource.end);
 
-          if (currentTarget.start < minTarget) minTarget = currentTarget.start;
-          if (currentTarget.end > maxTarget) maxTarget = currentTarget.end;
+          minTarget = Math.min(minTarget, currentTarget.start);
+          maxTarget = Math.max(maxTarget, currentTarget.end);
         }
 
         return {
@@ -498,6 +505,15 @@
       }
 
       var oneToMany = selectedCheckbox.length == 1;
+      var lookID = [];
+      if (oneToMany) {
+        lookID.push(selectedCheckbox[0]);
+      } else {
+        for (var j = 0; j < selectedCheckbox.length; j++) {
+          lookID.push(selectedCheckbox[j]);
+        }
+      }
+
       for (var i = 0; i < collinearityFile.length; i++) {
         if (collinearityFile[i].source.includes('N') && collinearityFile[i].target.includes('N')) {
 
@@ -505,43 +521,13 @@
           var sourceID = IDs.source;
           var targetID = IDs.target;
 
-          //console.log('SOURCE: ', sourceID);
-          //console.log('TARGET: ', targetID);
-
-          var lookID = [];
           var shouldAddDataChord = false;
           if (oneToMany) {
-            lookID.push(selectedCheckbox[0]);
-            //console.log('lookID: ', lookID);
-            lookID[0] = fixStringNumbersLessThan10(lookID[0]);
-            // I'm adding the extra 0 here with the function above
             shouldAddDataChord = showAllChromosomes ?
-              (collinearityFile[i].source.includes(lookID[0]) || collinearityFile[i].target.includes(lookID[0])) :
-              (collinearityFile[i].source.includes(lookID[0]) && collinearityFile[i].target.includes(lookID[0]));
-            if (shouldAddDataChord) {
-              // console.log(collinearityFile[i].source);
-            }
-
-            /*if (sourceID == "N1" && targetID == "N3" || targetID == "N1" && sourceID == "N3") {
-              console.log ('HERE I AM !!!', lookID, sourceID, targetID);
-            }*/
-
-
-            // I'm looking the exact match here !!
-            // shouldAddDataChord = lookID.indexOf(sourceID) > -1;
-            // UNDERSTAND BETTER THE LOGIC HERE !!!
+            (lookID.indexOf(sourceID) > -1 || lookID.indexOf(targetID) > -1) :
+            (lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1);
           } else {
-
-            for (var j = 0; j < selectedCheckbox.length; j++) {
-              lookID.push(selectedCheckbox[j]);
-            }
-            // Working now ... clean everything ... take things outside loop
-
-            /*if (sourceID == "N1" && targetID == "N3" || targetID == "N1" && sourceID == "N3") {
-               console.log ('HERE I AM !!!', lookID, sourceID, targetID);
-            } */
             shouldAddDataChord = lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1;
-            //console.log ('HERE I AM !!!', shouldAddDataChord);
           }
 
           var currentBlock = collinearityFile[i].block;
@@ -568,42 +554,10 @@
               });
             }
           }
-
-          /*if (shouldAddDataChord) {
-            dataChords.push({
-              source: {
-                id: sourceID,
-                start: geneDictionary[collinearityFile[i].source].start,
-                end: geneDictionary[collinearityFile[i].source].end
-              },
-              target: {
-                id: targetID,
-                start: geneDictionary[collinearityFile[i].target].start,
-                end: geneDictionary[collinearityFile[i].target].end
-              }
-            });
-          }*/
-
         }
       }
 
       console.log('DATA CHORDS: ', dataChords.length);
-
-
-      /* dataChords = [{
-        source: {
-          id: 'N1',
-          start: 696,
-          end: 2800000
-        },
-        target: {
-          id: 'N16',
-          start: 14800,
-          end: 20000000
-        }
-      }];*/
-
-      // var configurationChords = ;
 
       myCircos.chords('chords', dataChords, {
         radius: function(d) {
