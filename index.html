@@ -15,6 +15,7 @@ Student ID: 11239727
   <title>A web-based genome synteny browser</title>
   <script type="text/javascript" src="circos.js"></script>
   <script type="text/javascript" src="d3.js"></script>
+  <script type="text/javascript" src="d3-scale-chromatic.js"></script>
   <script type="text/javascript" src="d3-queue.js"></script>
 
   <script type="text/javascript" src="lodash.js"></script>
@@ -764,7 +765,7 @@ Student ID: 11239727
       }
 
       var data = [];
-      var colors = d3.scaleOrdinal(d3.schemeCategory10);
+      var colors = d3.scaleOrdinal(d3.schemeAccent);
 
       gffKeys.forEach(function(key, i) {
         // TODO: Add select all button
@@ -953,7 +954,7 @@ Student ID: 11239727
 
             if (d3.selectAll(nodes).attr("opacity") != 0.35) {
               d3.selectAll(nodes).attr("opacity", 0.35);
-              d3.select(nodes[i]).attr("opacity", 1);
+              d3.select(nodes[i]).attr("opacity", 0.9);
             }
 
             generateBlockView(d);
