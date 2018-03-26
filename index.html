@@ -305,7 +305,7 @@ Student ID: 11239727
 
       d3.select("#form-config").selectAll('.chr-box')
         .data(gffKeys)
-        .on("change", function(input) {
+        .on("change", function() {
           var selectedChromosomes = [];
           var visitedChr = {};
           for (var i = 0; i < gffKeys.length; i++) {
@@ -452,12 +452,48 @@ Student ID: 11239727
         }));
       }
 
-      d3.select("body").select('.block-view').remove();
+      d3.select("body").select('#block-view-container').remove();
+      var gY0, gY1, y0axis, y1axis, isFlipped = false;
+      var dataBlock = [];
+
+      function flipTargetDataBlock(dataBlock) {
+        var temp = 0;
+        var tempArray = _.cloneDeep(dataBlock);
+
+        for (var i = 0; i < tempArray.length / 2; i++) {
+          temp = tempArray[i].data[1];
+          tempArray[i].data[1] = tempArray[tempArray.length - i - 1].data[1];
+          tempArray[tempArray.length - i - 1].data[1] = temp;
+        }
+
+        return tempArray;
+      }
+
+      function isPerfectlyFlipped(dataBlock) {
+        var tempArray = _.cloneDeep(dataBlock);
+        var numericGeneArray = [];
+
+        for (var i = 0; i < tempArray.length; i++) {
+          numericGeneArray.push(parseInt(tempArray[i].target.split("g")[1].split(".")[0]));
+        }
+
+        var isDescending = true;
+
+        for (var i = 0; i < numericGeneArray.length - 1; i++) {
+          if (numericGeneArray[i] < numericGeneArray[i + 1]) {
+            isDescending = false;
+            break;
+          }
+        }
+
+        return isDescending;
+      }
 
       // append the svg object to the body of the page
       // appends a 'group' element to 'svg'
       // moves the 'group' element to the top left margin
       var svgBlock = d3.select("body").append("div")
+        .attr("id", "block-view-container")
         .style("float", "left")
         .style("margin-left", '50px')
         .append("svg")
@@ -467,13 +503,44 @@ Student ID: 11239727
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+      d3.select("#block-view-container")
+        .append('p')
+        .style('text-align', 'right')
+        .style('margin', '-30px 0 0')
+        .append('input')
+        .attr('class', 'flip-orientation')
+        .attr('type', 'checkbox')
+        .attr('name', 'flip-orientation')
+        .attr('value', 'flip-orientation')
+        .property('checked', false);
+
+      d3.select("#block-view-container")
+        .select('p')
+        .append('span')
+        .text("Flip Orientation");
+
+      d3.select("#block-view-container")
+        .append('p')
+        .attr('class', 'flip-hint')
+        .style('display', 'none')
+        .style('margin-top', '10px')
+        .html(function() {
+          return '<em>Hint: This block is perfectly inverted. </em>';
+        });
+
+      d3.select("#block-view-container")
+        .select('.flip-orientation')
+        .on("change", function() {
+          dataBlock = flipTargetDataBlock(dataBlock);
+          isFlipped = d3.select(this).property("checked");
+
+          generatePathBlockView(dataBlock);
+        });
+
       var zoomView = svgBlock.append("g")
         .attr("class", "zoom")
         .attr("width", widthBlock)
         .attr("height", heightBlock);
-
-      var gY0, gY1, y0axis, y1axis;
-      var dataBlock = [];
 
       var zoom = d3.zoom()
         .scaleExtent([1, 5]) // check later
@@ -495,7 +562,6 @@ Student ID: 11239727
             //  .data(dataBlock)
             //  .attr("d", path);
           }
-
         });
 
       svgBlock.call(zoom)
@@ -524,8 +590,8 @@ Student ID: 11239727
         });
       }
 
-      /* // Mockup data
-      dataBlock = [{
+      // Mockup data
+      /*dataBlock = [{
           source: 1,
           target: 2,
           data: [58.13, 9.8]
@@ -552,71 +618,110 @@ Student ID: 11239727
         }
       ];*/
 
-      function minData(d) {
-        var minValue = 100000000;
-        for (var i = 0; i < dataBlock.length; i++) {
-          minValue = Math.min(minValue, dataBlock[i].data[d]);
+      /*
+        Mockup data with target flipped:
+
+        58.13 -> 20
+        130.28 -> 17.7
+        40 -> 5
+        31.5 -> 3.41
+        31.5 9.8
+       */
+
+      function generatePathBlockView(dataBlock) {
+        var d3Element = d3.select("#block-view-container")
+          .select(".flip-hint");
+
+        if (!isFlipped) {
+          if (isPerfectlyFlipped(dataBlock)) {
+            // Show hint: display block
+            d3Element.style('display', 'block');
+          }
+        } else {
+          d3Element.style('display', 'none');
         }
-        return minValue;
+
+        function minData(d) {
+          var minValue = 100000000;
+          for (var i = 0; i < dataBlock.length; i++) {
+            minValue = Math.min(minValue, dataBlock[i].data[d]);
+          }
+          return minValue;
+        }
+
+        function maxData(d) {
+          var maxValue = 0;
+          for (var i = 0; i < dataBlock.length; i++) {
+            maxValue = Math.max(maxValue, dataBlock[i].data[d]);
+          }
+          return maxValue;
+        }
+
+        var offset = 50000;
+        // console.log('VALUES: ', minData(0), maxData(0), minData(1), maxData(1));
+        y[0].domain([minData(0) - offset, maxData(0) + offset]);
+        y[1].domain([minData(1) - offset, maxData(1) + offset]);
+
+        /* Using chromosome domains: NO, too clutered */
+        /*Trying zooming with this? */
+        /*y[0].domain([
+          gffPositionDictionary[sourceChromosomeID].start,
+          gffPositionDictionary[sourceChromosomeID].end
+        ]);
+
+        y[1].domain([
+          gffPositionDictionary[targetChromosomeID].start,
+          gffPositionDictionary[targetChromosomeID].end
+        ]);*/
+
+        // Add the valueline path.
+        svgBlock.selectAll("path").remove();
+
+        svgBlock.selectAll("path")
+          .data(dataBlock).enter()
+          .append("g")
+          .append("path")
+          .attr("class", "line")
+          .attr("d", path)
+          .attr("stroke-width", 2)
+          .append("title")
+          .text(function(d) {
+            return d.source + ' ➤ ' + d.target;
+          });
+
+        svgBlock.selectAll("path")
+          .on("mouseover", function(d, i, nodes) {
+            if (d3.selectAll(nodes).attr("opacity") != 0.35) {
+              d3.selectAll(nodes).attr("opacity", 0.35);
+              d3.select(nodes[i]).attr("opacity", 1);
+            }
+            // console.log("CLICK: ", d.source, d.target);
+          })
+          .on("mouseout", function(d, i, nodes) {
+            if (d3.selectAll(nodes).attr("opacity") != 1) {
+              d3.selectAll(nodes).attr("opacity", 1);
+            }
+          });
+
+        // Add the Y0 Axis
+        y0axis = d3.axisLeft(y[0]);
+        svgBlock.selectAll("g.axisBlue").remove();
+        gY0 = svgBlock.append("g")
+          .attr("class", "axisBlue")
+          .call(y0axis.ticks(8));
+
+        // Add the Y1 Axis
+        y1axis = d3.axisRight(y[1]);
+        svgBlock.selectAll("g.axisGreen").remove();
+        gY1 = svgBlock.append("g")
+          .attr("class", "axisGreen")
+          .attr("transform", "translate( " + widthBlock + ", 0 )")
+          .call(y1axis.ticks(8));
       }
 
-      function maxData(d) {
-        var maxValue = 0;
-        for (var i = 0; i < dataBlock.length; i++) {
-          maxValue = Math.max(maxValue, dataBlock[i].data[d]);
-        }
-        return maxValue;
-      }
+      generatePathBlockView(dataBlock);
 
-      var offset = 50000;
-      console.log('VALUES: ', minData(0), maxData(0), minData(1), maxData(1));
-      y[0].domain([minData(0) - offset, maxData(0) + offset]);
-      y[1].domain([minData(1) - offset, maxData(1) + offset]);
-
-      /* Using chromosome domains: NO, too clutered */
-      /* Trying zooming with this? */
-      /*y[0].domain([
-        gffPositionDictionary[sourceChromosomeID].start,
-        gffPositionDictionary[sourceChromosomeID].end
-      ]);
-
-      y[1].domain([
-        gffPositionDictionary[targetChromosomeID].start,
-        gffPositionDictionary[targetChromosomeID].end
-      ]);*/
-
-      // Add the valueline path.
-      svgBlock.selectAll("path")
-        .data(dataBlock).enter()
-        .append("g")
-        .append("path")
-        .attr("class", "line")
-        .attr("d", path)
-        .attr("stroke-width", 2) // set based on gene length (maybe use scaleQuantize)
-        .append("title")
-        .text(function(d) {
-          return d.source + ' ➤ ' + d.target;
-        });
-
-      svgBlock.selectAll("path")
-        .on("mouseover", function(d, i, nodes) {
-          if (d3.select(nodes[i]).attr("opacity") != 0.5) {
-            d3.select(nodes[i]).attr("opacity", 0.5);
-          }
-          console.log("CLICK: ", d.source, d.target);
-        })
-        .on("mouseout", function(d, i, nodes) {
-          if (d3.select(nodes[i]).attr("opacity") != 1) {
-            d3.select(nodes[i]).attr("opacity", 1);
-          }
-        });
-
-      // Add the Y0 Axis
-      y0axis = d3.axisLeft(y[0]);
-      gY0 = svgBlock.append("g")
-        .attr("class", "axisBlue")
-        .call(y0axis.ticks(8));
-
+      // Add the Y0 Axis label text
       svgBlock.append("text")
         .attr("transform", "rotate(-90)")
         .attr("y", 0 - margin.left)
@@ -626,13 +731,7 @@ Student ID: 11239727
         .style("text-anchor", "middle")
         .text(sourceChromosomeID);
 
-      // Add the Y1 Axis
-      y1axis = d3.axisRight(y[1]);
-      gY1 = svgBlock.append("g")
-        .attr("class", "axisGreen")
-        .attr("transform", "translate( " + widthBlock + ", 0 )")
-        .call(y1axis.ticks(8));
-
+      // Add the Y1 Axis label text
       svgBlock.append("text")
         .attr("transform", "rotate(90)")
         .attr("y", 0 - widthBlock - margin.right)
@@ -642,7 +741,7 @@ Student ID: 11239727
         .style("text-anchor", "middle")
         .text(targetChromosomeID);
 
-      // Chart title
+      // Add the Chart title
       svgBlock.append("text")
         .attr("x", (widthBlock / 2))
         .attr("y", 0 - (margin.top / 3))
@@ -658,7 +757,7 @@ Student ID: 11239727
      */
     function generateGenomeView() {
       // Remove block view if it is present
-      d3.select("body").select('.block-view').remove();
+      d3.select("body").select('#block-view-container').remove();
 
       if (selectedCheckbox.length < 1) {
         selectedCheckbox = ["N1"]; // Including N1 as default here
@@ -706,6 +805,7 @@ Student ID: 11239727
         },
         events: {
           'click.chromosome': function(d, i, nodes, event) {
+            // TODO: Remove this
             if (d3.select(nodes[i]).attr("opacity") == 0.5) {
               d3.select(nodes[i]).attr("opacity", 1);
             } else {
@@ -848,16 +948,18 @@ Student ID: 11239727
           'mouseover.block': function(d, i, nodes, event) {
             // console.log('MOUSEOVER: ', nodes[i]);
             // console.log('MOUSEOVER: ', d, i, nodes, event);
-          },
-          'click.block': function(d, i, nodes, event) {
-            if (d3.select(nodes[i]).attr("opacity") == 0.4) {
-              d3.select(nodes[i]).attr("opacity", 0.7);
-            } else {
-              d3.selectAll(nodes).attr("opacity", 0.7);
-              d3.select(nodes[i]).attr("opacity", 0.4);
+
+            d3.selectAll(nodes).attr("opacity", 0.7);
+
+            if (d3.selectAll(nodes).attr("opacity") != 0.35) {
+              d3.selectAll(nodes).attr("opacity", 0.35);
+              d3.select(nodes[i]).attr("opacity", 1);
             }
 
             generateBlockView(d);
+          },
+          'click.block': function(d, i, nodes, event) {
+            // TODO: Remove this
           }
         }
       });
