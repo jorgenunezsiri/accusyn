@@ -28,6 +28,10 @@ Student ID: 11239727
       color: gainsboro;
     }
 
+    input[type="range"], input[type="button"] {
+      cursor: pointer;
+    }
+
     .line {
       fill: none;
       stroke: peru;
@@ -50,14 +54,14 @@ Student ID: 11239727
 
 <body>
   <div id="config" style="display: none; float: left">
+    <h3>Chromosomes</h3>
     <p>
-      <label for="nAngle" style="display: inline-block; text-align: left; width: 85px">
-       rotate = <span id="nAngle-value">…</span>
+      <label for="nAngle" style="display: inline-block; text-align: left; width: 90px">
+       Rotate = <span id="nAngle-value">…</span>
       </label>
       <input type="range" min="0" max="360" id="nAngle">
     </p>
-    <form id="form-config" onsubmit="event.preventDefault(); checkForm(this);">
-    </form>
+    <form id="form-config"></form>
   </div>
 
   <script type="text/javascript">
@@ -79,36 +83,7 @@ Student ID: 11239727
     var width;
     var height;
 
-    /**
-     * [checkForm description]
-     * @param  {[type]} form [description]
-     * @return {[type]}      [description]
-     */
-    function checkForm(form) {
-      d3.selectAll(".chr-box").each(function(d) {
-        d3.select(this).attr("disabled", null);
-        d3.select(this.parentNode).classed("disabled", false);
-        d3.select(this.parentNode).select('span').text(d);
-      });
-
-      selectedCheckbox = [];
-      showAllChromosomes = false;
-      // gets all the input tags in form
-      var inputFields = form.getElementsByTagName('input');
-      // traverse the input fields elements, and adds the value of each selected checkbox
-      for (var i = 0; i < inputFields.length; i++) {
-        if (inputFields[i].type == 'checkbox' && inputFields[i].checked == true) {
-          if (inputFields[i].name == 'show-all') {
-            showAllChromosomes = true;
-          } else {
-            inputFields[i].checked = false;
-            selectedCheckbox.push(inputFields[i].value);
-          }
-        }
-      }
-
-      generateGenomeView();
-    }
+    var chromosomeRotateAngle = 0;
 
     /**
      * [fixSourceTargetCollinearity description]
@@ -279,17 +254,28 @@ Student ID: 11239727
       d3.select("#form-config")
         .append('p')
         .attr('class', 'show-all')
+        .attr('title', 'If selected, all chromosomes will show.')
         .append('input')
         .attr('type', 'checkbox')
         .attr('name', "show-all")
         .attr('value', "Show All")
-        .attr('checked', true);
+        .property('checked', true);
 
       d3.select("#form-config").select('p.show-all')
         .append('span')
-        .text(function() {
-          return "Show All";
+        .text("Show All");
+
+      d3.select('p.show-all > input')
+        .on("change", function() {
+          showAllChromosomes = d3.select(this).property("checked");
+          console.log('SHOW ALL: ', showAllChromosomes);
+
+          generateGenomeView();
         });
+
+      d3.select("#form-config")
+        .append('h3')
+        .text('Connections');
 
       d3.select("#form-config").selectAll('p:not(.show-all)')
         .data(gffKeys).enter()
@@ -307,6 +293,7 @@ Student ID: 11239727
       d3.select("#form-config").selectAll('.chr-box')
         .data(gffKeys)
         .on("change", function() {
+          selectedCheckbox = [];
           var selectedChromosomes = [];
           var visitedChr = {};
           for (var i = 0; i < gffKeys.length; i++) {
@@ -322,8 +309,15 @@ Student ID: 11239727
             if (cb.property("checked")) {
               visitedChr[d] = true; // Assume this
               selectedChromosomes.push(cb.property("value"));
+              selectedCheckbox.push(cb.property("value"));
             }
           });
+
+          if (selectedChromosomes.length == 0) {
+            d3.select('.select-all > input').property("value", "Select All");
+          } else {
+            d3.select('.select-all > input').property("value", "Deselect All");
+          }
 
           if (selectedChromosomes.length == 1) {
             console.log('selectedChromosomes: ', selectedChromosomes);
@@ -364,9 +358,9 @@ Student ID: 11239727
             });
 
             console.log('VISITED CHR: ', visitedChr);
-          } else if (selectedChromosomes.length > 1) {
-            d3.select('p.show-all > input').property("checked", false);
           }
+
+          generateGenomeView();
         });
 
       d3.select("#form-config").selectAll('p:not(.show-all)')
@@ -379,8 +373,49 @@ Student ID: 11239727
 
       d3.select("#form-config")
         .append('p')
+        .attr('class', 'select-all')
+        .attr('title', 'Selects all the connections.')
         .append('input')
-        .attr('type', 'submit');
+        .attr('type', 'button')
+        .attr('value', 'Select All');
+
+      d3.select("#form-config")
+        .select('.select-all > input')
+        .on("click", function() {
+          if (d3.select(this).property("value") == "Select All") {
+            d3.select(this).property("value", "Deselect All");
+
+            d3.select('p.select-all').attr('title', 'Deselects all the connections.');
+
+            d3.selectAll(".chr-box").each(function() {
+              if (!d3.select(this).property("checked")) {
+                d3.select(this).property("checked", true);
+                selectedCheckbox.push(d3.select(this).property("value"));
+              }
+            });
+          } else {
+            d3.select(this).property("value", "Select All");
+
+            d3.select('p.select-all').attr('title', 'Selects all the connections.');
+
+            d3.selectAll(".chr-box").each(function(d) {
+              d3.select(this.parentNode).classed("disabled", false);
+              d3.select(this.parentNode).select('span').text(d);
+
+              var cb = d3.select(this);
+              cb.attr("disabled", null);
+              if (d3.select(this).property("checked")) {
+                d3.select(this).property("checked", false);
+              }
+            });
+
+            selectedCheckbox = [];
+          }
+
+          showAllChromosomes = true;
+          d3.select('.show-all > input').property("checked", true);
+          generateGenomeView();
+        });
 
       console.log('DICTIONARY gff: ', gffPositionDictionary);
       console.log('gene: ', geneDictionary['BnaN01g00190.1']);
@@ -507,7 +542,7 @@ Student ID: 11239727
       d3.select("#block-view-container")
         .append('p')
         .style('text-align', 'right')
-        .style('margin', '-30px 0 0')
+        .style('margin', '-40px 30px 0 0')
         .append('input')
         .attr('class', 'flip-orientation')
         .attr('type', 'checkbox')
@@ -760,12 +795,8 @@ Student ID: 11239727
       // Remove block view if it is present
       d3.select("body").select('#block-view-container').remove();
 
-      if (selectedCheckbox.length < 1) {
-        selectedCheckbox = ["N1"]; // Including N1 as default here
-      }
-
       var data = [];
-      var colors = d3.scaleOrdinal(d3.schemeAccent);
+      var colors = d3.scaleOrdinal(d3.schemeSet3);
 
       gffKeys.forEach(function(key, i) {
         // TODO: Add select all button
@@ -977,10 +1008,12 @@ Student ID: 11239727
       });
 
       // Initial starting angle of the text
-      update(0);
+      update(chromosomeRotateAngle);
 
       // update the element
       function update(nAngle) {
+
+        chromosomeRotateAngle = nAngle;
 
         // adjust the text on the range slider
         d3.select("#nAngle-value").text(nAngle + String.fromCharCode(176));
