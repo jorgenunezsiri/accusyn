@@ -28,7 +28,8 @@ Student ID: 11239727
       color: gainsboro;
     }
 
-    input[type="range"], input[type="button"] {
+    input[type="range"],
+    input[type="button"] {
       cursor: pointer;
     }
 
@@ -49,6 +50,18 @@ Student ID: 11239727
     .zoom {
       fill: none;
     }
+
+    p.filter-connections:nth-child(1),
+    p.filter-connections:nth-child(2),
+    p.filter-connections:nth-child(3) {
+      display: inline-block;
+      margin: 0;
+    }
+
+    p.filter-connections:nth-child(2),
+    p.filter-connections:nth-child(3) {
+      margin: 0 0 0 10px;
+    }
   </style>
 </head>
 
@@ -57,7 +70,7 @@ Student ID: 11239727
     <h3>Chromosomes</h3>
     <p>
       <label for="nAngle" style="display: inline-block; text-align: left; width: 90px">
-       Rotate = <span id="nAngle-value">…</span>
+        Rotate = <span id="nAngle-value">…</span>
       </label>
       <input type="range" min="0" max="360" id="nAngle">
     </p>
@@ -76,6 +89,7 @@ Student ID: 11239727
     var gffKeys = [];
     var gffFile;
     var collinearityFile;
+    var dataChromosomes = [];
     var dataChords = [];
 
     var myCircos;
@@ -84,6 +98,8 @@ Student ID: 11239727
     var height;
 
     var chromosomeRotateAngle = 0;
+    var filterValue = 1;
+    var filterSelect = 'At Least';
 
     /**
      * [fixSourceTargetCollinearity description]
@@ -242,6 +258,17 @@ Student ID: 11239727
         }
       }
 
+      var maxBlockSize = 0;
+      var maxBlockIndex = 0
+      Object.keys(blockDictionary).forEach(function(d) {
+        if (blockDictionary[d].length > maxBlockSize) {
+          maxBlockSize = blockDictionary[d].length;
+          maxBlockIndex = d;
+        }
+      });
+
+      console.log('MAXIMUM Block size: ', maxBlockSize, maxBlockIndex); // N13 -> N3
+
       console.log('Connection dictionary: ', connectionDictionary);
 
       console.log("Block dictionary: ", blockDictionary["45"]);
@@ -249,7 +276,7 @@ Student ID: 11239727
       d3.select("#config")
         .style("display", "block")
         .style("margin-left", '10px')
-        .style("width", width / 3.5 + 'px');
+        .style("width", width / 3 + 'px');
 
       d3.select("#form-config")
         .append('p')
@@ -277,7 +304,48 @@ Student ID: 11239727
         .append('h3')
         .text('Connections');
 
-      d3.select("#form-config").selectAll('p:not(.show-all)')
+      d3.select("#form-config")
+        .append('div')
+        .attr('class', 'filter-connections-div')
+        .append('p')
+        .attr('class', 'filter-connections')
+        .text('Filter:');
+
+      d3.select('.filter-connections-div')
+        .append('p')
+        .attr('class', 'filter-connections')
+        .append('select')
+        .html(function() {
+          return '<option value="At Least">At Least</option><option value="At Most">At Most</option>';
+        });
+
+      d3.select('.filter-connections-div')
+        .select('select')
+        .on("change", function() {
+          filterSelect = d3.select(this).property('value');
+
+          console.log('FILTER SELECT: ', filterSelect);
+
+          generateGenomeView();
+        });
+
+      d3.select('.filter-connections-div')
+        .append('p')
+        .attr('class', 'filter-connections')
+        .html(function() {
+          return '<label for="filter" style="display: inline-block; text-align: left; width: 115px">' +
+            '<span id="filter-value">...</span>' +
+            '</label>'
+        });
+
+      d3.select('.filter-connections-div')
+        .append('p')
+        .attr('class', 'filter-connections')
+        .html(function() {
+          return '<input style="margin-left: 50px" type="range" min="1" max=' + maxBlockSize.toString() + ' id="filter">';
+        });
+
+      d3.select("#form-config").selectAll('p:not(.show-all):not(.filter-connections)')
         .data(gffKeys).enter()
         .append('p')
         .append('input')
@@ -363,7 +431,7 @@ Student ID: 11239727
           generateGenomeView();
         });
 
-      d3.select("#form-config").selectAll('p:not(.show-all)')
+      d3.select("#form-config").selectAll('p:not(.show-all):not(.filter-connections)')
         .append('span')
         .text(function(d) {
           if (d) {
@@ -425,7 +493,8 @@ Student ID: 11239727
         .attr('id', 'chart')
         .attr("width", width)
         .attr("height", height)
-        .style("float", "left");
+        .style("float", "left")
+        .style("margin-top", '50px');
 
       svg.select("svg > .all")
         .call(d3.zoom().on("zoom", function() {
@@ -510,7 +579,7 @@ Student ID: 11239727
         var numericGeneArray = [];
 
         for (var i = 0; i < tempArray.length; i++) {
-          numericGeneArray.push(parseInt(tempArray[i].target.split("g")[1].split(".")[0]));
+          numericGeneArray.push(parseInt(tempArray[i].target.id.split("g")[1].split(".")[0]));
         }
 
         var isDescending = true;
@@ -532,6 +601,7 @@ Student ID: 11239727
         .attr("id", "block-view-container")
         .style("float", "left")
         .style("margin-left", '50px')
+        .style("margin-top", '50px')
         .append("svg")
         .attr("class", "block-view")
         .attr("width", widthBlock + margin.left + margin.right)
@@ -620,11 +690,30 @@ Student ID: 11239727
         ];
         // console.log('CURRENT DATA: ', currentData);
         dataBlock.push({
-          source: blockSource,
-          target: blockTarget,
+          source: {
+            id: blockSource,
+            start: currentSource.start,
+            end: currentSource.end
+          },
+          target: {
+            id: blockTarget,
+            start: currentTarget.start,
+            end: currentTarget.end
+          },
           data: currentData
         });
       }
+
+      var strokeWidthScale = d3.scaleQuantize()
+        .domain([
+          d3.min(dataBlock, function(d) {
+            return (d.source.end - d.source.start) + (d.target.end - d.target.start);
+          }),
+          d3.max(dataBlock, function(d) {
+            return (d.source.end - d.source.start) + (d.target.end - d.target.start);
+          })
+        ])
+        .range([1, 2, 3, 4, 5]);
 
       // Mockup data
       /*dataBlock = [{
@@ -710,7 +799,7 @@ Student ID: 11239727
           gffPositionDictionary[targetChromosomeID].end
         ]);*/
 
-        // Add the valueline path.
+        // Remove old and add the valueline path.
         svgBlock.selectAll("path").remove();
 
         svgBlock.selectAll("path")
@@ -719,10 +808,14 @@ Student ID: 11239727
           .append("path")
           .attr("class", "line")
           .attr("d", path)
-          .attr("stroke-width", 2)
+          .attr("stroke-width", function(d) {
+            return strokeWidthScale(
+              (d.source.end - d.source.start) + (d.target.end - d.target.start)
+            );
+          })
           .append("title")
           .text(function(d) {
-            return d.source + ' ➤ ' + d.target;
+            return d.source.id + ' ➤ ' + d.target.id;
           });
 
         svgBlock.selectAll("path")
@@ -744,7 +837,7 @@ Student ID: 11239727
         svgBlock.selectAll("g.axisBlue").remove();
         gY0 = svgBlock.append("g")
           .attr("class", "axisBlue")
-          .call(y0axis.ticks(8));
+          .call(y0axis.ticks(10));
 
         // Add the Y1 Axis
         y1axis = d3.axisRight(y[1]);
@@ -752,7 +845,7 @@ Student ID: 11239727
         gY1 = svgBlock.append("g")
           .attr("class", "axisGreen")
           .attr("transform", "translate( " + widthBlock + ", 0 )")
-          .call(y1axis.ticks(8));
+          .call(y1axis.ticks(10));
       }
 
       generatePathBlockView(dataBlock);
@@ -795,7 +888,7 @@ Student ID: 11239727
       // Remove block view if it is present
       d3.select("body").select('#block-view-container').remove();
 
-      var data = [];
+      dataChromosomes = [];
       var colors = d3.scaleOrdinal(d3.schemeSet3);
 
       gffKeys.forEach(function(key, i) {
@@ -809,22 +902,22 @@ Student ID: 11239727
           };
 
           if (showAllChromosomes) {
-            data.push(currentObj);
+            dataChromosomes.push(currentObj);
           } else {
             if (selectedCheckbox.indexOf(key) > -1) {
-              data.push(currentObj);
+              dataChromosomes.push(currentObj);
             }
           }
         }
       });
 
-      console.log('DATA: ', data);
+      console.log('DATA: ', dataChromosomes);
 
       var configuration = {
         innerRadius: 300,
         outerRadius: 350,
         cornerRadius: 1,
-        gap: data.length === 1 ? 0 : 0.04, // in radian
+        gap: dataChromosomes.length === 1 ? 0 : 0.04, // in radian
         labels: {
           display: true,
           position: 'center',
@@ -864,10 +957,6 @@ Student ID: 11239727
         }
       };
 
-      myCircos.layout(data, configuration);
-
-      dataChords = [];
-
       function lookForBlocksPositions(block) {
         var blockArray = blockDictionary[block];
         // TODO: Another way to declare these?
@@ -897,121 +986,128 @@ Student ID: 11239727
 
       console.log(lookForBlocksPositions(45));
 
-      console.log(selectedCheckbox);
-      var visited = []; // TODO: Fix this
-      for (var i = 0; i < 1500; i++) {
-        visited.push(false);
-      }
+      function generatePathGenomeView() {
+        myCircos.layout(dataChromosomes, configuration);
+        dataChords = [];
 
-      var oneToMany = selectedCheckbox.length == 1;
-      var lookID = [];
-      if (oneToMany) {
-        lookID.push(selectedCheckbox[0]);
-      } else {
-        for (var j = 0; j < selectedCheckbox.length; j++) {
-          lookID.push(selectedCheckbox[j]);
+        console.log(selectedCheckbox);
+        var visited = []; // TODO: Fix this
+        for (var i = 0; i < 1500; i++) {
+          visited.push(false);
         }
-      }
 
-      for (var i = 0; i < collinearityFile.length; i++) {
-        if (collinearityFile[i].source.includes('N') && collinearityFile[i].target.includes('N')) {
-
-          var IDs = fixSourceTargetCollinearity(collinearityFile, i);
-          var sourceID = IDs.source;
-          var targetID = IDs.target;
-
-          var shouldAddDataChord = false;
-          if (oneToMany) {
-            shouldAddDataChord = showAllChromosomes ?
-              (lookID.indexOf(sourceID) > -1 || lookID.indexOf(targetID) > -1) :
-              (lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1);
-          } else {
-            shouldAddDataChord = lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1;
+        var oneToMany = selectedCheckbox.length == 1;
+        var lookID = [];
+        if (oneToMany) {
+          lookID.push(selectedCheckbox[0]);
+        } else {
+          for (var j = 0; j < selectedCheckbox.length; j++) {
+            lookID.push(selectedCheckbox[j]);
           }
+        }
 
-          var currentBlock = collinearityFile[i].block;
-          if (!visited[currentBlock]) {
-            var blockPositions = lookForBlocksPositions(currentBlock);
+        for (var i = 0; i < collinearityFile.length; i++) {
+          if (collinearityFile[i].source.includes('N') && collinearityFile[i].target.includes('N')) {
 
-            visited[currentBlock] = true;
-            if (shouldAddDataChord) {
-              dataChords.push({
-                source: {
-                  id: sourceID,
-                  start: blockPositions.minSource,
-                  end: blockPositions.maxSource,
-                  value: {
-                    id: currentBlock,
-                    length: blockPositions.blockLength,
+            var IDs = fixSourceTargetCollinearity(collinearityFile, i);
+            var sourceID = IDs.source;
+            var targetID = IDs.target;
+
+            var shouldAddDataChord = false;
+            if (oneToMany) {
+              shouldAddDataChord = showAllChromosomes ?
+                (lookID.indexOf(sourceID) > -1 || lookID.indexOf(targetID) > -1) :
+                (lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1);
+            } else {
+              shouldAddDataChord = lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1;
+            }
+
+            var currentBlock = collinearityFile[i].block;
+            if (!visited[currentBlock]) {
+              // Only need to enter the very first time each block is visited
+              visited[currentBlock] = true;
+
+              shouldAddDataChord = shouldAddDataChord && (
+                (filterSelect === 'At Least' && blockDictionary[currentBlock].length >= filterValue) ||
+                (filterSelect === 'At Most' && blockDictionary[currentBlock].length <= filterValue)
+              );
+              if (shouldAddDataChord) {
+                var blockPositions = lookForBlocksPositions(currentBlock);
+                dataChords.push({
+                  source: {
+                    id: sourceID,
+                    start: blockPositions.minSource,
+                    end: blockPositions.maxSource,
+                    value: {
+                      id: currentBlock,
+                      length: blockPositions.blockLength,
+                    }
+                  },
+                  target: {
+                    id: targetID,
+                    start: blockPositions.minTarget,
+                    end: blockPositions.maxTarget
                   }
-                },
-                target: {
-                  id: targetID,
-                  start: blockPositions.minTarget,
-                  end: blockPositions.maxTarget
-                }
-              });
+                });
+              }
             }
           }
         }
+
+        console.log('DATA CHORDS: ', dataChords.length);
+
+        myCircos.chords('chords', dataChords, {
+          radius: function(d) {
+            return null;
+          },
+          logScale: false,
+          opacity: 0.7,
+          color: function(d) {
+            /*if (d.source.value) {
+              return d.source.value;
+            } else*/
+            return '#ff5722';
+          },
+          tooltipContent: function(d) {
+            return '<h4>' + d.source.id + ' ➤ ' + d.target.id + '</h4>' +
+              '<h4><u>Block information</u></h4>' +
+              '<h4>ID: ' + d.source.value.id + '</h4>' +
+              '<h4>Length: ' + d.source.value.length + '</h4>';
+          },
+          events: {
+            'mouseover.block': function(d, i, nodes, event) {
+              // console.log('MOUSEOVER: ', nodes[i]);
+              // console.log('MOUSEOVER: ', d, i, nodes, event);
+
+              d3.selectAll(nodes).attr("opacity", 0.7);
+
+              if (d3.selectAll(nodes).attr("opacity") != 0.35) {
+                d3.selectAll(nodes).attr("opacity", 0.35);
+                d3.select(nodes[i]).attr("opacity", 0.9);
+              }
+
+              generateBlockView(d);
+            },
+            'click.block': function(d, i, nodes, event) {
+              // TODO: Remove this
+            }
+          }
+        });
+
+        myCircos.render();
       }
 
-      console.log('DATA CHORDS: ', dataChords.length);
-
-      myCircos.chords('chords', dataChords, {
-        radius: function(d) {
-          return null;
-        },
-        logScale: false,
-        opacity: 0.7,
-        color: function(d) {
-          /*if (d.source.value) {
-            return d.source.value;
-          } else*/
-          return '#ff5722';
-        },
-        tooltipContent: function(d) {
-          return '<h4>' + d.source.id + ' ➤ ' + d.target.id + '</h4>' +
-            '<h4><u>Block information</u></h4>' +
-            '<h4>ID: ' + d.source.value.id + '</h4>' +
-            '<h4>Length: ' + d.source.value.length + '</h4>';
-        },
-        events: {
-          'mouseover.block': function(d, i, nodes, event) {
-            // console.log('MOUSEOVER: ', nodes[i]);
-            // console.log('MOUSEOVER: ', d, i, nodes, event);
-
-            d3.selectAll(nodes).attr("opacity", 0.7);
-
-            if (d3.selectAll(nodes).attr("opacity") != 0.35) {
-              d3.selectAll(nodes).attr("opacity", 0.35);
-              d3.select(nodes[i]).attr("opacity", 0.9);
-            }
-
-            generateBlockView(d);
-          },
-          'click.block': function(d, i, nodes, event) {
-            // TODO: Remove this
-          }
-        }
-      });
-
-      myCircos.render();
-
-      /*svg.select(".all")
-        .on("scroll", function(d) {
-          console.log('hello: ', d);
-        })*/
+      generatePathGenomeView();
 
       d3.select("#nAngle").on("input", function() {
-        update(+this.value);
+        updateAngle(+this.value);
       });
 
       // Initial starting angle of the text
-      update(chromosomeRotateAngle);
+      updateAngle(chromosomeRotateAngle);
 
       // update the element
-      function update(nAngle) {
+      function updateAngle(nAngle) {
 
         chromosomeRotateAngle = nAngle;
 
@@ -1022,6 +1118,26 @@ Student ID: 11239727
         // rotate the text
         svg.select(".all")
           .attr("transform", "translate(" + width / 2 + "," + height / 2 + ") rotate(" + -nAngle + ")");
+      }
+
+      // Filtering
+      d3.select("#filter").on("input", function() {
+        updateFilter(+this.value);
+      });
+
+      // Default filtering
+      updateFilter(filterValue);
+
+      // update the element
+      function updateFilter(value) {
+
+        filterValue = value;
+
+        // adjust the text on the range slider
+        d3.select("#filter-value").text(value == 1 ? value + " connection" : value + " connections");
+        d3.select("#filter").property("value", value);
+
+        generatePathGenomeView();
       }
     }
 
