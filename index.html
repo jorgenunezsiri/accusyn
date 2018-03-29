@@ -72,7 +72,7 @@ Student ID: 11239727
       <label for="nAngle" style="display: inline-block; text-align: left; width: 90px">
         Rotate = <span id="nAngle-value">…</span>
       </label>
-      <input type="range" min="0" max="360" id="nAngle">
+      <input type="range" min="0" max="360" id="nAngle" style="width: 145px">
     </p>
     <form id="form-config"></form>
   </div>
@@ -342,7 +342,7 @@ Student ID: 11239727
         .append('p')
         .attr('class', 'filter-connections')
         .html(function() {
-          return '<input style="margin-left: 50px" type="range" min="1" max=' + maxBlockSize.toString() + ' id="filter">';
+          return '<input style="margin-left: 45px; width: 195px" type="range" min="1" max=' + maxBlockSize.toString() + ' id="filter">';
         });
 
       d3.select("#form-config").selectAll('p:not(.show-all):not(.filter-connections)')
@@ -648,31 +648,59 @@ Student ID: 11239727
         .attr("width", widthBlock)
         .attr("height", heightBlock);
 
+      var clip = svgBlock.append("defs").append("svg:clipPath")
+        .attr("id", "clip")
+        .append("svg:rect")
+        .attr("id", "clip-rect")
+        .attr("x", "0")
+        .attr("y", "0")
+        .attr('width', widthBlock)
+        .attr('height', heightBlock);
+
+      var drag = d3.drag()
+        .on("drag", function() {
+          console.log('EVENT HERE: ', d3.event.y);
+        });
+
       var zoom = d3.zoom()
-        .scaleExtent([1, 5]) // check later
+        .scaleExtent([0.1, 5]) // check later
         .on("zoom", function(d) {
 
           //Log out d3.event.transform, so you can see all the goodies inside
-          console.log(d3.event.transform);
+          //console.log(d3.event.transform);
           // console.log('RESCALE: ', d3.event.transform.rescaleY(y[1]));
+          //
+          var lastEventTransform = d3.event.transform;
 
-          zoomView.attr("transform", d3.event.transform);
+          // zoomView.attr("transform", lastEventTransform);
           // d3.selectAll('.line').style("stroke-width", 2/d3.event.transform.k);
-          // d3.event.transform.rescaleX(x);
-
-          if (gY0) gY0.call(y0axis.scale(d3.event.transform.rescaleY(y[0])));
-          if (gY1) gY1.call(y1axis.scale(d3.event.transform.rescaleY(y[1])));
 
           if (gY0 && gY1) {
-            //svgBlock.selectAll("path")
-            //  .data(dataBlock)
-            //  .attr("d", path);
+
+            gY0.call(y0axis.scale(lastEventTransform.rescaleY(y[0])));
+            gY1.call(y1axis.scale(lastEventTransform.rescaleY(y[1])));
+
+            var newY = [lastEventTransform.rescaleY(y[0]), lastEventTransform.rescaleY(y[1])];
+
+            var lineZoom = d3.line();
+
+            function pathZoom(d) {
+              d = d.data;
+              return lineZoom(dimensions.map(function(p) {
+                return [x(p), newY[p](d[p])];
+              }));
+            }
+
+            svgBlock.selectAll("path")
+              .data(dataBlock)
+              .attr("d", pathZoom);
           }
         });
 
       svgBlock.call(zoom)
         .call(zoom.transform, d3.zoomIdentity
           .translate(margin.left, margin.top)
+          .scale(0.9)
         );
 
       var blockArray = blockDictionary[blockID];
@@ -784,6 +812,7 @@ Student ID: 11239727
 
         var offset = 50000;
         // console.log('VALUES: ', minData(0), maxData(0), minData(1), maxData(1));
+
         y[0].domain([minData(0) - offset, maxData(0) + offset]);
         y[1].domain([minData(1) - offset, maxData(1) + offset]);
 
@@ -802,9 +831,9 @@ Student ID: 11239727
         // Remove old and add the valueline path.
         svgBlock.selectAll("path").remove();
 
-        svgBlock.selectAll("path")
+        svgBlock.append("g").attr("clip-path", "url(#clip)")
+          .selectAll("path")
           .data(dataBlock).enter()
-          .append("g")
           .append("path")
           .attr("class", "line")
           .attr("d", path)
@@ -877,7 +906,7 @@ Student ID: 11239727
         .attr("text-anchor", "middle")
         .style("font-size", "16px")
         .style("text-decoration", "underline")
-        .text(sourceChromosomeID + ' vs. ' + targetChromosomeID + ' - Block ' + blockID);
+        .text(sourceChromosomeID + ' vs. ' + targetChromosomeID + ' - Block ' + blockID + ' gene locations');
     }
 
     /**
