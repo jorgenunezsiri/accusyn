@@ -137,6 +137,197 @@ Student ID: 11239727
     }
 
     /**
+     * [lookForBlocksPositions description]
+     *
+     * @param  {[type]} block [description]
+     * @return {[type]}       [description]
+     */
+    function lookForBlocksPositions(block) {
+      var blockArray = blockDictionary[block];
+
+      var maxSource = 0;
+      var minSource = 100000000;
+      var maxTarget = 0;
+      var minTarget = 100000000;
+      for (var i = 0; i < blockArray.length; i++) {
+        var currentSource = geneDictionary[blockArray[i].source];
+        var currentTarget = geneDictionary[blockArray[i].target];
+
+        minSource = Math.min(minSource, currentSource.start);
+        maxSource = Math.max(maxSource, currentSource.end);
+
+        minTarget = Math.min(minTarget, currentTarget.start);
+        maxTarget = Math.max(maxTarget, currentTarget.end);
+      }
+
+      return {
+        blockLength: blockArray.length,
+        minSource: minSource,
+        maxSource: maxSource,
+        minTarget: minTarget,
+        maxTarget: maxTarget
+      }
+    }
+
+    /**
+     * [generatePathGenomeView description]
+     *
+     * @return {[type]} [description]
+     */
+    function generatePathGenomeView() {
+      myCircos.layout(dataChromosomes, {
+        innerRadius: 300,
+        outerRadius: 350,
+        cornerRadius: 1,
+        gap: dataChromosomes.length === 1 ? 0 : 0.04, // Value in radian
+        labels: {
+          display: true,
+          position: 'center',
+          size: '16px',
+          color: '#000000',
+          radialOffset: 20
+        },
+        ticks: {
+          display: false
+        }
+      });
+
+      dataChords = [];
+
+      console.log(selectedCheckbox);
+      var visited = {};
+      Object.keys(blockDictionary).forEach(function(d) {
+        visited[d] = false;
+      });
+
+      var oneToMany = selectedCheckbox.length == 1;
+      var lookID = [];
+      if (oneToMany) {
+        lookID.push(selectedCheckbox[0]);
+      } else {
+        for (var j = 0; j < selectedCheckbox.length; j++) {
+          lookID.push(selectedCheckbox[j]);
+        }
+      }
+
+      for (var i = 0; i < collinearityFile.length; i++) {
+        if (collinearityFile[i].source.includes('N') && collinearityFile[i].target.includes('N')) {
+
+          var IDs = fixSourceTargetCollinearity(collinearityFile, i);
+          var sourceID = IDs.source;
+          var targetID = IDs.target;
+
+          var shouldAddDataChord = false;
+          if (oneToMany) {
+            shouldAddDataChord = showAllChromosomes ?
+              (lookID.indexOf(sourceID) > -1 || lookID.indexOf(targetID) > -1) :
+              (lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1);
+          } else {
+            shouldAddDataChord = lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1;
+          }
+
+          var currentBlock = collinearityFile[i].block;
+          if (!visited[currentBlock]) {
+            // Only need to enter the very first time each block is visited
+            visited[currentBlock] = true;
+
+            shouldAddDataChord = shouldAddDataChord && (
+              (filterSelect === 'At Least' && blockDictionary[currentBlock].length >= filterValue) ||
+              (filterSelect === 'At Most' && blockDictionary[currentBlock].length <= filterValue)
+            );
+            if (shouldAddDataChord) {
+              var blockPositions = lookForBlocksPositions(currentBlock);
+              dataChords.push({
+                source: {
+                  id: sourceID,
+                  start: blockPositions.minSource,
+                  end: blockPositions.maxSource,
+                  value: {
+                    id: currentBlock,
+                    length: blockPositions.blockLength,
+                  }
+                },
+                target: {
+                  id: targetID,
+                  start: blockPositions.minTarget,
+                  end: blockPositions.maxTarget
+                }
+              });
+            }
+          }
+        }
+      }
+
+      console.log('DATA CHORDS: ', dataChords.length);
+
+      myCircos.chords('chords', dataChords, {
+        radius: function(d) {
+          return null;
+        },
+        logScale: false,
+        opacity: 0.7,
+        color: function(d) {
+          return connectionColor;
+        },
+        tooltipContent: function(d) {
+          return '<h4>' + d.source.id + ' ➤ ' + d.target.id + '</h4>' +
+            '<h4><u>Block information</u></h4>' +
+            '<h4>ID: ' + d.source.value.id + '</h4>' +
+            '<h4>Length: ' + d.source.value.length + '</h4>';
+        },
+        events: {
+          'mouseover.block': function(d, i, nodes) {
+            d3.selectAll(nodes).attr("opacity", 0.7);
+
+            if (d3.selectAll(nodes).attr("opacity") != 0.35) {
+              d3.selectAll(nodes).attr("opacity", 0.35);
+              d3.select(nodes[i]).attr("opacity", 0.9);
+            }
+
+            generateBlockView(d);
+          }
+        }
+      });
+
+      myCircos.render();
+    }
+
+    /**
+     * Updates the angle of the genome view
+     *
+     * @param  {[type]} nAngle [description]
+     * @return {[type]}        [description]
+     */
+    function updateAngle(nAngle) {
+      chromosomeRotateAngle = nAngle;
+
+      // Adjust the text on the range slider
+      d3.select("#nAngle-value").text(nAngle + String.fromCharCode(176));
+      d3.select("#nAngle").property("value", nAngle);
+
+      // Rotate the text
+      svg.select(".all")
+        .attr("transform", "translate(" + width / 2 + "," + height / 2 + ") rotate(" + -nAngle + ")");
+    }
+
+    /**
+     *  Updates the filter range value
+     *
+     * @param  {[type]} value            [description]
+     * @param  {[type]} shouldUpdatePath [description]
+     * @return {[type]}                  [description]
+     */
+    function updateFilter(value, shouldUpdatePath) {
+      filterValue = value;
+
+      // Adjust the text on the range slider
+      d3.select("#filter-value").text(value == 1 ? value + " connection" : value + " connections");
+      d3.select("#filter").property("value", value);
+
+      if (shouldUpdatePath) generatePathGenomeView();
+    }
+
+    /**
      * [generateData description]
      *
      * @param  {[type]} error        [description]
@@ -480,6 +671,22 @@ Student ID: 11239727
         width: width,
         height: height
       });
+
+      // Default rotating angle
+      d3.select("#nAngle").on("input", function() {
+        updateAngle(+this.value);
+      });
+
+      // Initial starting angle of the text
+      updateAngle(chromosomeRotateAngle);
+
+      // Filtering
+      d3.select("#filter").on("input", function() {
+        updateFilter(+this.value, true);
+      });
+
+      // Default filtering
+      updateFilter(filterValue, false);
 
       generateGenomeView();
     }
@@ -880,216 +1087,7 @@ Student ID: 11239727
 
       console.log('DATA: ', dataChromosomes);
 
-      var configuration = {
-        innerRadius: 300,
-        outerRadius: 350,
-        cornerRadius: 1,
-        gap: dataChromosomes.length === 1 ? 0 : 0.04, // Value in radian
-        labels: {
-          display: true,
-          position: 'center',
-          size: '16px',
-          color: '#000000',
-          radialOffset: 20
-        },
-        ticks: {
-          display: false
-        }
-      };
-
-      /**
-       * [lookForBlocksPositions description]
-       *
-       * @param  {[type]} block [description]
-       * @return {[type]}       [description]
-       */
-      function lookForBlocksPositions(block) {
-        var blockArray = blockDictionary[block];
-
-        var maxSource = 0;
-        var minSource = 100000000;
-        var maxTarget = 0;
-        var minTarget = 100000000;
-        for (var i = 0; i < blockArray.length; i++) {
-          var currentSource = geneDictionary[blockArray[i].source];
-          var currentTarget = geneDictionary[blockArray[i].target];
-
-          minSource = Math.min(minSource, currentSource.start);
-          maxSource = Math.max(maxSource, currentSource.end);
-
-          minTarget = Math.min(minTarget, currentTarget.start);
-          maxTarget = Math.max(maxTarget, currentTarget.end);
-        }
-
-        return {
-          blockLength: blockArray.length,
-          minSource: minSource,
-          maxSource: maxSource,
-          minTarget: minTarget,
-          maxTarget: maxTarget
-        }
-      }
-
-      console.log(lookForBlocksPositions(45));
-
-      /**
-       * [generatePathGenomeView description]
-       *
-       * @return {[type]} [description]
-       */
-      function generatePathGenomeView() {
-        myCircos.layout(dataChromosomes, configuration);
-        dataChords = [];
-
-        console.log(selectedCheckbox);
-        var visited = {};
-        Object.keys(blockDictionary).forEach(function(d) {
-          visited[d] = false;
-        });
-
-        var oneToMany = selectedCheckbox.length == 1;
-        var lookID = [];
-        if (oneToMany) {
-          lookID.push(selectedCheckbox[0]);
-        } else {
-          for (var j = 0; j < selectedCheckbox.length; j++) {
-            lookID.push(selectedCheckbox[j]);
-          }
-        }
-
-        for (var i = 0; i < collinearityFile.length; i++) {
-          if (collinearityFile[i].source.includes('N') && collinearityFile[i].target.includes('N')) {
-
-            var IDs = fixSourceTargetCollinearity(collinearityFile, i);
-            var sourceID = IDs.source;
-            var targetID = IDs.target;
-
-            var shouldAddDataChord = false;
-            if (oneToMany) {
-              shouldAddDataChord = showAllChromosomes ?
-                (lookID.indexOf(sourceID) > -1 || lookID.indexOf(targetID) > -1) :
-                (lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1);
-            } else {
-              shouldAddDataChord = lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1;
-            }
-
-            var currentBlock = collinearityFile[i].block;
-            if (!visited[currentBlock]) {
-              // Only need to enter the very first time each block is visited
-              visited[currentBlock] = true;
-
-              shouldAddDataChord = shouldAddDataChord && (
-                (filterSelect === 'At Least' && blockDictionary[currentBlock].length >= filterValue) ||
-                (filterSelect === 'At Most' && blockDictionary[currentBlock].length <= filterValue)
-              );
-              if (shouldAddDataChord) {
-                var blockPositions = lookForBlocksPositions(currentBlock);
-                dataChords.push({
-                  source: {
-                    id: sourceID,
-                    start: blockPositions.minSource,
-                    end: blockPositions.maxSource,
-                    value: {
-                      id: currentBlock,
-                      length: blockPositions.blockLength,
-                    }
-                  },
-                  target: {
-                    id: targetID,
-                    start: blockPositions.minTarget,
-                    end: blockPositions.maxTarget
-                  }
-                });
-              }
-            }
-          }
-        }
-
-        console.log('DATA CHORDS: ', dataChords.length);
-
-        myCircos.chords('chords', dataChords, {
-          radius: function(d) {
-            return null;
-          },
-          logScale: false,
-          opacity: 0.7,
-          color: function(d) {
-            return connectionColor;
-          },
-          tooltipContent: function(d) {
-            return '<h4>' + d.source.id + ' ➤ ' + d.target.id + '</h4>' +
-              '<h4><u>Block information</u></h4>' +
-              '<h4>ID: ' + d.source.value.id + '</h4>' +
-              '<h4>Length: ' + d.source.value.length + '</h4>';
-          },
-          events: {
-            'mouseover.block': function(d, i, nodes, event) {
-              d3.selectAll(nodes).attr("opacity", 0.7);
-
-              if (d3.selectAll(nodes).attr("opacity") != 0.35) {
-                d3.selectAll(nodes).attr("opacity", 0.35);
-                d3.select(nodes[i]).attr("opacity", 0.9);
-              }
-
-              generateBlockView(d);
-            }
-          }
-        });
-
-        myCircos.render();
-      }
-
-      // TODO: CHECK HERE - being called twice always (check function below as well (it impacts performance))
-      // generatePathGenomeView();
-
-      d3.select("#nAngle").on("input", function() {
-        updateAngle(+this.value);
-      });
-
-      // Initial starting angle of the text
-      updateAngle(chromosomeRotateAngle);
-
-      /**
-       * Updates the angle of the genome view
-       *
-       * @param  {[type]} nAngle [description]
-       * @return {[type]}        [description]
-       */
-      function updateAngle(nAngle) {
-        chromosomeRotateAngle = nAngle;
-
-        // Adjust the text on the range slider
-        d3.select("#nAngle-value").text(nAngle + String.fromCharCode(176));
-        d3.select("#nAngle").property("value", nAngle);
-
-        // Rotate the text
-        svg.select(".all")
-          .attr("transform", "translate(" + width / 2 + "," + height / 2 + ") rotate(" + -nAngle + ")");
-      }
-
-      // Filtering
-      d3.select("#filter").on("input", function() {
-        updateFilter(+this.value);
-      });
-
-      // Default filtering
-      updateFilter(filterValue);
-
-      /**
-       * Updates the filter range value
-       *
-       * @param  {[type]} value [description]
-       * @return {[type]}       [description]
-       */
-      function updateFilter(value) {
-        filterValue = value;
-
-        // Adjust the text on the range slider
-        d3.select("#filter-value").text(value == 1 ? value + " connection" : value + " connections");
-        d3.select("#filter").property("value", value);
-
-        generatePathGenomeView();
-      }
+      generatePathGenomeView();
     }
 
     d3.queue()
