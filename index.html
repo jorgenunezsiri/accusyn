@@ -29,26 +29,9 @@ Student ID: 11239727
     }
 
     input[type="range"],
-    input[type="button"] {
+    input[type="button"],
+    button {
       cursor: pointer;
-    }
-
-    .line {
-      fill: none;
-      /* stroke: chocolate; */
-      /* stroke-width: 2px; */
-    }
-
-    .axisBlue {
-      /* fill: lightblue; */
-    }
-
-    .axisGreen {
-      /* fill: lightgreen; */
-    }
-
-    .zoom {
-      /* fill: none; */
     }
 
     p.filter-connections:nth-child(1),
@@ -80,22 +63,21 @@ Student ID: 11239727
   <script type="text/javascript">
     // TODO: clean everything and add comments
 
-    var selectedCheckbox = []; // array that will store the value of selected checkboxes
+    var selectedCheckbox = []; // Array that will store the value of selected checkboxes
     var showAllChromosomes = true;
     var gffPositionDictionary = {};
     var geneDictionary = {};
     var connectionDictionary = {};
     var blockDictionary = {};
     var gffKeys = [];
-    var gffFile;
     var collinearityFile;
     var dataChromosomes = [];
     var dataChords = [];
 
     var myCircos;
     var svg;
-    var width;
-    var height;
+    var width = 800;
+    var height = 800;
 
     var chromosomeRotateAngle = 0;
     var filterValue = 1;
@@ -105,13 +87,14 @@ Student ID: 11239727
 
     /**
      * [fixSourceTargetCollinearity description]
+     *
      * @param  {[type]} collinearityFile [description]
      * @param  {[type]} index            [description]
      * @return {[type]}                  [description]
      */
     function fixSourceTargetCollinearity(collinearityFile, index) {
-      var sourceID = collinearityFile[index].source.split("g")[0].split("Bna")[1];
-      var targetID = collinearityFile[index].target.split("g")[0].split("Bna")[1];
+      var sourceID = collinearityFile[index].source.split('g')[0].split('Bna')[1];
+      var targetID = collinearityFile[index].target.split('g')[0].split('Bna')[1];
       if (sourceID[1] == '0') {
         sourceID = sourceID.slice(0, 1) + sourceID.slice(2);
       }
@@ -127,6 +110,7 @@ Student ID: 11239727
 
     /**
      * [findBlockConnection description]
+     *
      * @param  {[type]} dictionary [description]
      * @param  {[type]} source     [description]
      * @param  {[type]} target     [description]
@@ -140,6 +124,7 @@ Student ID: 11239727
 
     /**
      * [findIndexConnection description]
+     *
      * @param  {[type]} dictionary [description]
      * @param  {[type]} source     [description]
      * @param  {[type]} target     [description]
@@ -153,6 +138,7 @@ Student ID: 11239727
 
     /**
      * [generateData description]
+     *
      * @param  {[type]} error        [description]
      * @param  {[type]} gff          [description]
      * @param  {[type]} collinearity [description]
@@ -160,7 +146,6 @@ Student ID: 11239727
      */
     function generateData(error, gff, collinearity) {
       if (error) return console.error(error);
-      gffFile = gff;
       collinearityFile = collinearity;
 
       console.log('GFF: ', gff);
@@ -182,9 +167,6 @@ Student ID: 11239727
           end: end
         }
       }
-
-      width = 800;
-      height = 800;
 
       gffKeys = Object.keys(gffPositionDictionary);
       gffKeys.sort(function compare(a, b) {
@@ -250,7 +232,6 @@ Student ID: 11239727
 
             if (targetID != connectionDictionary[targetID][indexConnection].connection) {
               connectionDictionary[targetID][indexConnection].connectionAmount++;
-              // connectionDictionary[targetID][indexConnection].blockAmount = blockDictionary[currentBlock].length;
             }
 
             if (connectionDictionary[targetID][indexConnection].blockIDs.indexOf(currentBlock) === (-1)) {
@@ -260,16 +241,12 @@ Student ID: 11239727
         }
       }
 
-      var maxBlockSize = 0;
-      var maxBlockIndex = 0
+      var maxBlockSize = 0; // N13 -> N3 has the max block size with 2295
       Object.keys(blockDictionary).forEach(function(d) {
-        if (blockDictionary[d].length > maxBlockSize) {
-          maxBlockSize = blockDictionary[d].length;
-          maxBlockIndex = d;
-        }
+        maxBlockSize = Math.max(maxBlockSize, blockDictionary[d].length);
       });
 
-      console.log('MAXIMUM Block size: ', maxBlockSize, maxBlockIndex); // N13 -> N3
+      console.log('MAX BLOCK SIZE: ', maxBlockSize);
 
       console.log('Connection dictionary: ', connectionDictionary);
 
@@ -277,24 +254,24 @@ Student ID: 11239727
 
       d3.select("#config")
         .style("display", "block")
-        .style("margin-left", '10px')
-        .style("width", width / 3 + 'px');
+        .style("margin-left", "10px")
+        .style("width", width / 3 + "px");
 
       d3.select("#form-config")
-        .append('p')
-        .attr('class', 'show-all')
-        .attr('title', 'If selected, all chromosomes will show.')
-        .append('input')
-        .attr('type', 'checkbox')
-        .attr('name', "show-all")
-        .attr('value', "Show All")
-        .property('checked', true);
+        .append("p")
+        .attr("class", "show-all")
+        .attr("title", "If selected, all chromosomes will show.")
+        .append("input")
+        .attr("type", "checkbox")
+        .attr("name", "show-all")
+        .attr("value", "Show All")
+        .property("checked", true);
 
       d3.select("#form-config").select('p.show-all')
-        .append('span')
+        .append("span")
         .text("Show All");
 
-      d3.select('p.show-all > input')
+      d3.select("p.show-all > input")
         .on("change", function() {
           showAllChromosomes = d3.select(this).property("checked");
           console.log('SHOW ALL: ', showAllChromosomes);
@@ -303,64 +280,64 @@ Student ID: 11239727
         });
 
       d3.select("#form-config")
-        .append('h3')
-        .text('Connections');
+        .append("h3")
+        .text("Connections");
 
       d3.select("#form-config")
-        .append('div')
-        .attr('class', 'filter-connections-div')
-        .append('p')
-        .attr('class', 'filter-connections')
-        .text('Filter:');
+        .append("div")
+        .attr("class", "filter-connections-div")
+        .append("p")
+        .attr("class", "filter-connections")
+        .text("Filter:");
 
-      d3.select('.filter-connections-div')
-        .append('p')
-        .attr('class', 'filter-connections')
-        .append('select')
+      d3.select(".filter-connections-div")
+        .append("p")
+        .attr("class", "filter-connections")
+        .append("select")
         .html(function() {
           return '<option value="At Least">At Least</option><option value="At Most">At Most</option>';
         });
 
-      d3.select('.filter-connections-div')
-        .select('select')
+      d3.select(".filter-connections-div")
+        .select("select")
         .on("change", function() {
-          filterSelect = d3.select(this).property('value');
+          filterSelect = d3.select(this).property("value");
 
           console.log('FILTER SELECT: ', filterSelect);
 
           generateGenomeView();
         });
 
-      d3.select('.filter-connections-div')
-        .append('p')
-        .attr('class', 'filter-connections')
+      d3.select(".filter-connections-div")
+        .append("p")
+        .attr("class", "filter-connections")
         .html(function() {
           return '<label for="filter" style="display: inline-block; text-align: left; width: 115px">' +
             '<span id="filter-value">...</span>' +
             '</label>'
         });
 
-      d3.select('.filter-connections-div')
-        .append('p')
-        .attr('class', 'filter-connections')
+      d3.select(".filter-connections-div")
+        .append("p")
+        .attr("class", "filter-connections")
         .html(function() {
           return '<input style="margin-left: 45px; width: 195px" type="range" min="1" max=' + maxBlockSize.toString() + ' id="filter">';
         });
 
-      d3.select("#form-config").selectAll('p:not(.show-all):not(.filter-connections)')
+      d3.select("#form-config").selectAll("p:not(.show-all):not(.filter-connections)")
         .data(gffKeys).enter()
-        .append('p')
-        .append('input')
-        .attr('class', 'chr-box')
-        .attr('type', 'checkbox')
-        .attr('name', function(d) {
+        .append("p")
+        .append("input")
+        .attr("class", "chr-box")
+        .attr("type", "checkbox")
+        .attr("name", function(d) {
           return d;
         })
-        .attr('value', function(d) {
+        .attr("value", function(d) {
           return d;
         });
 
-      d3.select("#form-config").selectAll('.chr-box')
+      d3.select("#form-config").selectAll(".chr-box")
         .data(gffKeys)
         .on("change", function() {
           selectedCheckbox = [];
@@ -372,7 +349,7 @@ Student ID: 11239727
 
           d3.selectAll(".chr-box").each(function(d) {
             d3.select(this.parentNode).classed("disabled", false);
-            d3.select(this.parentNode).select('span').text(d);
+            d3.select(this.parentNode).select("span").text(d);
 
             var cb = d3.select(this);
             cb.attr("disabled", null);
@@ -384,9 +361,11 @@ Student ID: 11239727
           });
 
           if (selectedChromosomes.length == 0) {
-            d3.select('.select-all > input').property("value", "Select All");
+            d3.select(".select-all > input").property("value", "Select All");
+            d3.select("p.select-all").attr("title", "Selects all the connections.");
           } else {
-            d3.select('.select-all > input').property("value", "Deselect All");
+            d3.select(".select-all > input").property("value", "Deselect All");
+            d3.select("p.select-all").attr("title", "Deselects all the connections.");
           }
 
           if (selectedChromosomes.length == 1) {
@@ -433,29 +412,27 @@ Student ID: 11239727
           generateGenomeView();
         });
 
-      d3.select("#form-config").selectAll('p:not(.show-all):not(.filter-connections)')
-        .append('span')
+      d3.select("#form-config").selectAll("p:not(.show-all):not(.filter-connections)")
+        .append("span")
         .text(function(d) {
-          if (d) {
-            return d.toString();
-          }
+          return d;
         });
 
       d3.select("#form-config")
-        .append('p')
-        .attr('class', 'select-all')
-        .attr('title', 'Selects all the connections.')
-        .append('input')
-        .attr('type', 'button')
-        .attr('value', 'Select All');
+        .append("p")
+        .attr("class", "select-all")
+        .attr("title", "Selects all the connections.")
+        .append("input")
+        .attr("type", "button")
+        .attr("value", "Select All");
 
       d3.select("#form-config")
-        .select('.select-all > input')
+        .select(".select-all > input")
         .on("click", function() {
           if (d3.select(this).property("value") == "Select All") {
             d3.select(this).property("value", "Deselect All");
 
-            d3.select('p.select-all').attr('title', 'Deselects all the connections.');
+            d3.select("p.select-all").attr("title", "Deselects all the connections.");
 
             d3.selectAll(".chr-box").each(function() {
               if (!d3.select(this).property("checked")) {
@@ -466,11 +443,11 @@ Student ID: 11239727
           } else {
             d3.select(this).property("value", "Select All");
 
-            d3.select('p.select-all').attr('title', 'Selects all the connections.');
+            d3.select("p.select-all").attr("title", "Selects all the connections.");
 
             d3.selectAll(".chr-box").each(function(d) {
               d3.select(this.parentNode).classed("disabled", false);
-              d3.select(this.parentNode).select('span').text(d);
+              d3.select(this.parentNode).select("span").text(d);
 
               var cb = d3.select(this);
               cb.attr("disabled", null);
@@ -483,7 +460,7 @@ Student ID: 11239727
           }
 
           showAllChromosomes = true;
-          d3.select('.show-all > input').property("checked", true);
+          d3.select(".show-all > input").property("checked", true);
           generateGenomeView();
         });
 
@@ -492,17 +469,11 @@ Student ID: 11239727
 
       svg = d3.select("body")
         .append("div")
-        .attr('id', 'chart')
+        .attr("id", "chart")
         .attr("width", width)
         .attr("height", height)
         .style("float", "left")
-        .style("margin-top", '50px');
-
-      svg.select("svg > .all")
-        .call(d3.zoom().on("zoom", function() {
-          svg.select("svg > .all").attr("transform", d3.event.transform)
-        }))
-        .append("g");
+        .style("margin-top", "50px");
 
       myCircos = new Circos({
         container: '#chart',
@@ -515,11 +486,11 @@ Student ID: 11239727
 
     /**
      * [generateBlockView description]
+     *
      * @param  {[type]} data [description]
      * @return {[type]}      [description]
      */
     function generateBlockView(data) {
-      // console.log('DATA in BLOCK VIEW: ', data);
       var sourceChromosomeID = data.source.id;
       var targetChromosomeID = data.target.id;
       var blockID = data.source.value.id;
@@ -533,10 +504,8 @@ Student ID: 11239727
       var widthBlock = 500 - margin.left - margin.right;
       var heightBlock = 800 - margin.top - margin.bottom;
 
-      // set the ranges
-      var y = [];
-      y.push(d3.scaleLinear().range([heightBlock, 0]));
-      y.push(d3.scaleLinear().range([heightBlock, 0]));
+      // Set the ranges for x and y
+      var y = [d3.scaleLinear().range([heightBlock, 0]), d3.scaleLinear().range([heightBlock, 0])];
 
       var x = d3.scalePoint().rangeRound([0, widthBlock]);
       var dimensions = [0, 1];
@@ -544,44 +513,60 @@ Student ID: 11239727
 
       var line = d3.line();
 
-      // define the path
-      // d3 is looping through each data array
-      // p can be either 0 or 1 (the dimensions),
-      // thus d[p] is the value for each dimension in the current array
-      // y[p](d[p]) is scaling the current value in the dimension
-      function path(d) {
-        // console.log('D: ', d);
-        d = d.data;
-        return line(dimensions.map(function(p) {
-          // console.log('DP: ', x(p), p, d[p], y[p](d[p]));
-          // console.log('P: ', p, position(p), y[p](d[p]));
-          return [x(p), y[p](d[p])];
+      /**
+       * Defines the path
+       * d3 is looping through each data array
+       * i can be either 0 or 1 (the dimensions),
+       * thus d[i] is the value for each dimension in the current array
+       * y[i](d[i]) is scaling the current value in the dimension
+       *
+       * @param  {[type]} dataArray [description]
+       * @param  {[type]} y [description]
+       * @return {[type]}   [description]
+       */
+      function path(dataArray, y) {
+        dataArray = dataArray.data;
+        return line(dimensions.map(function(i) {
+          return [x(i), y[i](dataArray[i])];
         }));
       }
 
-      d3.select("body").select('#block-view-container').remove();
+      d3.select("body").select("#block-view-container").remove();
       var gY0, gY1, y0axis, y1axis, isFlipped = false;
       var dataBlock = [];
 
+      /**
+       * [flipTargetDataBlock description]
+       *
+       * @param  {[type]} dataBlock [description]
+       * @return {[type]}           [description]
+       */
       function flipTargetDataBlock(dataBlock) {
+        var index = 1; // Flipping target by default
         var temp = 0;
         var tempArray = _.cloneDeep(dataBlock);
 
         for (var i = 0; i < tempArray.length / 2; i++) {
-          temp = tempArray[i].data[1];
-          tempArray[i].data[1] = tempArray[tempArray.length - i - 1].data[1];
-          tempArray[tempArray.length - i - 1].data[1] = temp;
+          temp = tempArray[i].data[index];
+          tempArray[i].data[index] = tempArray[tempArray.length - i - 1].data[index];
+          tempArray[tempArray.length - i - 1].data[index] = temp;
         }
 
         return tempArray;
       }
 
+      /**
+       * [isPerfectlyFlipped description]
+       *
+       * @param  {[type]}  dataBlock [description]
+       * @return {Boolean}           [description]
+       */
       function isPerfectlyFlipped(dataBlock) {
         var tempArray = _.cloneDeep(dataBlock);
         var numericGeneArray = [];
 
         for (var i = 0; i < tempArray.length; i++) {
-          numericGeneArray.push(parseInt(tempArray[i].target.id.split("g")[1].split(".")[0]));
+          numericGeneArray.push(parseInt(tempArray[i].target.id.split('g')[1].split('.')[0]));
         }
 
         var isDescending = true;
@@ -596,18 +581,17 @@ Student ID: 11239727
         return isDescending;
       }
 
-      // append the svg object to the body of the page
-      // appends a 'group' element to 'svg'
-      // moves the 'group' element to the top left margin
+      // Append block view container to the body of the page
       d3.select("body").append("div")
         .attr("id", "block-view-container")
         .style("float", "left")
-        .style("margin-left", '50px')
-        .style("margin-top", '50px');
+        .style("margin-left", "50px")
+        .style("margin-top", "50px");
 
       d3.select("#block-view-container")
         .append("button")
         .style("position", "absolute")
+        .attr("title", "Resets the block view to its original scale.")
         .text("Reset")
         .on("click", function() {
           generatePathBlockView(dataBlock);
@@ -622,32 +606,32 @@ Student ID: 11239727
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
       d3.select("#block-view-container")
-        .append('p')
-        .style('text-align', 'right')
-        .style('margin', '-40px 30px 0 0')
-        .append('input')
-        .attr('class', 'flip-orientation')
-        .attr('type', 'checkbox')
-        .attr('name', 'flip-orientation')
-        .attr('value', 'flip-orientation')
-        .property('checked', false);
+        .append("p")
+        .style("text-align", "right")
+        .style("margin", "-40px 30px 0 0")
+        .append("input")
+        .attr("class", "flip-orientation")
+        .attr("type", "checkbox")
+        .attr("name", "flip-orientation")
+        .attr("value", "flip-orientation")
+        .property("checked", false);
 
       d3.select("#block-view-container")
-        .select('p')
-        .append('span')
+        .select("p")
+        .append("span")
         .text("Flip Orientation");
 
       d3.select("#block-view-container")
-        .append('p')
-        .attr('class', 'flip-hint')
-        .style('display', 'none')
-        .style('margin-top', '10px')
+        .append("p")
+        .attr("class", "flip-hint")
+        .style("display", "none")
+        .style("margin-top", "10px")
         .html(function() {
-          return '<em>Hint: This block is perfectly inverted. </em>';
+          return '<em>Hint: This block is perfectly inverted.</em>';
         });
 
       d3.select("#block-view-container")
-        .select('.flip-orientation')
+        .select(".flip-orientation")
         .on("change", function() {
           dataBlock = flipTargetDataBlock(dataBlock);
           isFlipped = d3.select(this).property("checked");
@@ -655,8 +639,8 @@ Student ID: 11239727
           generatePathBlockView(dataBlock);
         });
 
+      // Rectangle that has the block view size to catch any zoom event
       var zoomView = svgBlock.append("rect")
-        .attr("class", "zoom")
         .attr("width", widthBlock)
         .attr("height", heightBlock)
         .style("fill", "none")
@@ -668,26 +652,12 @@ Student ID: 11239727
         .attr("id", "clip-rect")
         .attr("x", "0")
         .attr("y", "0")
-        .attr('width', widthBlock)
-        .attr('height', heightBlock);
-
-      var drag = d3.drag()
-        .on("drag", function() {
-          console.log('EVENT HERE: ', d3.event.y);
-        });
+        .attr("width", widthBlock)
+        .attr("height", heightBlock);
 
       var zoom = d3.zoom()
         .scaleExtent([0.01, 100])
         .on("zoom", function(d) {
-
-          //Log out d3.event.transform, so you can see all the goodies inside
-          console.log(d3.event.transform);
-          // console.log('RESCALE: ', d3.event.transform.rescaleY(y[1]));
-          //
-
-          // zoomView.attr("transform", lastEventTransform);
-          // d3.selectAll('.line').style("stroke-width", 2/d3.event.transform.k);
-
           if (gY0 && gY1) {
             var lastEventTransform = d3.event.transform;
 
@@ -696,18 +666,11 @@ Student ID: 11239727
 
             var newY = [lastEventTransform.rescaleY(y[0]), lastEventTransform.rescaleY(y[1])];
 
-            var lineZoom = d3.line();
-
-            function pathZoom(d) {
-              d = d.data;
-              return lineZoom(dimensions.map(function(p) {
-                return [x(p), newY[p](d[p])];
-              }));
-            }
-
             svgBlock.selectAll("path")
               .data(dataBlock)
-              .attr("d", pathZoom);
+              .attr("d", function(data) {
+                return path(data, newY);
+              })
           }
         });
 
@@ -719,12 +682,12 @@ Student ID: 11239727
         var blockTarget = blockArray[i].target;
         var currentSource = geneDictionary[blockSource];
         var currentTarget = geneDictionary[blockTarget];
-        // console.log('SOURCE: ', currentSource, currentTarget);
+
         var currentData = [
           (currentSource.start + currentSource.end) / 2,
           (currentTarget.start + currentTarget.end) / 2
         ];
-        // console.log('CURRENT DATA: ', currentData);
+
         dataBlock.push({
           source: {
             id: blockSource,
@@ -751,48 +714,15 @@ Student ID: 11239727
         ])
         .range([1, 2, 3, 4, 5]);
 
-      // Mockup data
-      /*dataBlock = [{
-          source: 1,
-          target: 2,
-          data: [58.13, 9.8]
-        },
-        {
-          source: 1,
-          target: 2,
-          data: [130.28, 3.41]
-        },
-        {
-          source: 1,
-          target: 2,
-          data: [40, 5]
-        },
-        {
-          source: 1,
-          target: 2,
-          data: [31.5, 17.7]
-        },
-        {
-          source: 1,
-          target: 2,
-          data: [31.5, 20]
-        }
-      ];*/
-
-      /*
-        Mockup data with target flipped:
-
-        58.13 -> 20
-        130.28 -> 17.7
-        40 -> 5
-        31.5 -> 3.41
-        31.5 9.8
+      /**
+       * [generatePathBlockView description]
+       *
+       * @param  {[type]} dataBlock [description]
+       * @return {[type]}           [description]
        */
-
       function generatePathBlockView(dataBlock) {
         svgBlock.call(zoom)
-          .call(zoom.transform, d3.zoomIdentity.scale(1))
-          .append("g");
+          .call(zoom.transform, d3.zoomIdentity.scale(1));
 
         var d3Element = d3.select("#block-view-container")
           .select(".flip-hint");
@@ -800,10 +730,10 @@ Student ID: 11239727
         if (!isFlipped) {
           if (isPerfectlyFlipped(dataBlock)) {
             // Show hint: display block
-            d3Element.style('display', 'block');
+            d3Element.style("display", "block");
           }
         } else {
-          d3Element.style('display', 'none');
+          d3Element.style("display", "none");
         }
 
         function minData(d) {
@@ -823,32 +753,20 @@ Student ID: 11239727
         }
 
         var offset = 50000;
-        // console.log('VALUES: ', minData(0), maxData(0), minData(1), maxData(1));
-
         y[0].domain([minData(0) - offset, maxData(0) + offset]);
         y[1].domain([minData(1) - offset, maxData(1) + offset]);
 
-        /* Using chromosome domains: NO, too clutered */
-        /*Trying zooming with this? */
-        /*y[0].domain([
-          gffPositionDictionary[sourceChromosomeID].start,
-          gffPositionDictionary[sourceChromosomeID].end
-        ]);
-
-        y[1].domain([
-          gffPositionDictionary[targetChromosomeID].start,
-          gffPositionDictionary[targetChromosomeID].end
-        ]);*/
-
-        // Remove old and add the valueline path.
-        svgBlock.selectAll("path").remove();
+        // Remove old paths and add new ones
+        svgBlock.selectAll("path.line").remove();
 
         svgBlock.append("g").attr("clip-path", "url(#clip)")
           .selectAll("path")
           .data(dataBlock).enter()
           .append("path")
           .attr("class", "line")
-          .attr("d", path)
+          .attr("d", function(data) {
+            return path(data, y);
+          })
           .attr("stroke", function() {
             return connectionColor;
           })
@@ -883,7 +801,7 @@ Student ID: 11239727
           .attr("class", "axisY0")
           .call(y0axis.ticks(10))
           .attr("fill", function() {
-            return colors(parseInt(sourceChromosomeID.split("N")[1]) - 1);
+            return colors(parseInt(sourceChromosomeID.split('N')[1]) - 1);
           });
 
         // Add the Y1 Axis
@@ -894,7 +812,7 @@ Student ID: 11239727
           .attr("transform", "translate( " + widthBlock + ", 0 )")
           .call(y1axis.ticks(10))
           .attr("fill", function() {
-            return colors(parseInt(targetChromosomeID.split("N")[1]) - 1);
+            return colors(parseInt(targetChromosomeID.split('N')[1]) - 1);
           });
       }
 
@@ -932,16 +850,16 @@ Student ID: 11239727
 
     /**
      * [generateGenomeView description]
+     *
      * @return {[type]} [description]
      */
     function generateGenomeView() {
       // Remove block view if it is present
-      d3.select("body").select('#block-view-container').remove();
+      d3.select("body").select("#block-view-container").remove();
 
       dataChromosomes = [];
 
       gffKeys.forEach(function(key, i) {
-        // TODO: Add select all button
         if (gffPositionDictionary.hasOwnProperty(key)) {
           var currentObj = {
             len: gffPositionDictionary[key].end,
@@ -966,49 +884,28 @@ Student ID: 11239727
         innerRadius: 300,
         outerRadius: 350,
         cornerRadius: 1,
-        gap: dataChromosomes.length === 1 ? 0 : 0.04, // in radian
+        gap: dataChromosomes.length === 1 ? 0 : 0.04, // Value in radian
         labels: {
           display: true,
           position: 'center',
           size: '16px',
           color: '#000000',
-          radialOffset: 20,
+          radialOffset: 20
         },
         ticks: {
           display: false
-        },
-        events: {
-          'click.chromosome': function(d, i, nodes, event) {
-            // TODO: Remove this
-            if (d3.select(nodes[i]).attr("opacity") == 0.5) {
-              d3.select(nodes[i]).attr("opacity", 1);
-            } else {
-              d3.selectAll(nodes).attr("opacity", 1);
-              d3.select(nodes[i]).attr("opacity", 0.5);
-            }
-
-            var trackContainers = myCircos.svg.selectAll('.all > g');
-
-            // console.log('CONTAINERS: ', trackContainers);
-
-            /*myCircos.svg.selectAll('tile')
-              .data((d) => {
-                console.log(d);
-              })
-              .enter().append('path')
-              .attr('class', 'tile')
-              .attr('d', function (d) {
-                  console.log('D here: ', d);
-              })*/
-            //d.len = 200;
-            console.log('clicked on layout block', d, i, nodes[i], event);
-          }
         }
       };
 
+      /**
+       * [lookForBlocksPositions description]
+       *
+       * @param  {[type]} block [description]
+       * @return {[type]}       [description]
+       */
       function lookForBlocksPositions(block) {
         var blockArray = blockDictionary[block];
-        // TODO: Another way to declare these?
+
         var maxSource = 0;
         var minSource = 100000000;
         var maxTarget = 0;
@@ -1035,15 +932,20 @@ Student ID: 11239727
 
       console.log(lookForBlocksPositions(45));
 
+      /**
+       * [generatePathGenomeView description]
+       *
+       * @return {[type]} [description]
+       */
       function generatePathGenomeView() {
         myCircos.layout(dataChromosomes, configuration);
         dataChords = [];
 
         console.log(selectedCheckbox);
-        var visited = []; // TODO: Fix this
-        for (var i = 0; i < 1500; i++) {
-          visited.push(false);
-        }
+        var visited = {};
+        Object.keys(blockDictionary).forEach(function(d) {
+          visited[d] = false;
+        });
 
         var oneToMany = selectedCheckbox.length == 1;
         var lookID = [];
@@ -1112,9 +1014,6 @@ Student ID: 11239727
           logScale: false,
           opacity: 0.7,
           color: function(d) {
-            /*if (d.source.value) {
-              return d.source.value;
-            } else*/
             return connectionColor;
           },
           tooltipContent: function(d) {
@@ -1125,9 +1024,6 @@ Student ID: 11239727
           },
           events: {
             'mouseover.block': function(d, i, nodes, event) {
-              // console.log('MOUSEOVER: ', nodes[i]);
-              // console.log('MOUSEOVER: ', d, i, nodes, event);
-
               d3.selectAll(nodes).attr("opacity", 0.7);
 
               if (d3.selectAll(nodes).attr("opacity") != 0.35) {
@@ -1136,9 +1032,6 @@ Student ID: 11239727
               }
 
               generateBlockView(d);
-            },
-            'click.block': function(d, i, nodes, event) {
-              // TODO: Remove this
             }
           }
         });
@@ -1146,7 +1039,8 @@ Student ID: 11239727
         myCircos.render();
       }
 
-      generatePathGenomeView();
+      // TODO: CHECK HERE - being called twice always (check function below as well (it impacts performance))
+      // generatePathGenomeView();
 
       d3.select("#nAngle").on("input", function() {
         updateAngle(+this.value);
@@ -1155,16 +1049,20 @@ Student ID: 11239727
       // Initial starting angle of the text
       updateAngle(chromosomeRotateAngle);
 
-      // update the element
+      /**
+       * Updates the angle of the genome view
+       *
+       * @param  {[type]} nAngle [description]
+       * @return {[type]}        [description]
+       */
       function updateAngle(nAngle) {
-
         chromosomeRotateAngle = nAngle;
 
-        // adjust the text on the range slider
+        // Adjust the text on the range slider
         d3.select("#nAngle-value").text(nAngle + String.fromCharCode(176));
         d3.select("#nAngle").property("value", nAngle);
 
-        // rotate the text
+        // Rotate the text
         svg.select(".all")
           .attr("transform", "translate(" + width / 2 + "," + height / 2 + ") rotate(" + -nAngle + ")");
       }
@@ -1177,12 +1075,16 @@ Student ID: 11239727
       // Default filtering
       updateFilter(filterValue);
 
-      // update the element
+      /**
+       * Updates the filter range value
+       *
+       * @param  {[type]} value [description]
+       * @return {[type]}       [description]
+       */
       function updateFilter(value) {
-
         filterValue = value;
 
-        // adjust the text on the range slider
+        // Adjust the text on the range slider
         d3.select("#filter-value").text(value == 1 ? value + " connection" : value + " connections");
         d3.select("#filter").property("value", value);
 
