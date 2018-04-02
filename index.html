@@ -181,9 +181,9 @@ Student ID: 11239727
      */
     function generatePathGenomeView() {
       dataChords = []; // Emptying data chords array
+
       var foundCurrentSelectedBlock = false;
 
-      console.log(selectedCheckbox);
       var visited = {}; // Visited block dictionary
       Object.keys(blockDictionary).forEach(function(d) {
         visited[d] = false;
@@ -253,7 +253,6 @@ Student ID: 11239727
               });
 
               if (_.isEqual(dataChords[dataChords.length - 1], currentSelectedBlock)) {
-                console.log('FOUND TRUE');
                 foundCurrentSelectedBlock = true;
               }
             }
@@ -261,12 +260,9 @@ Student ID: 11239727
         }
       }
 
-      console.log('DATA CHORDS: ', dataChords.length);
-
       // Remove block view if selected block is not present anymore
       if (!foundCurrentSelectedBlock &&
         !d3.select("body").select("#block-view-container").empty()) {
-        console.log('NOT FOUND -> REMOVING!!!');
         d3.select("body").select("#block-view-container").remove();
       }
 
@@ -358,9 +354,6 @@ Student ID: 11239727
     function generateData(error, gff, collinearity) {
       if (error) return console.error(error);
       collinearityFile = collinearity;
-
-      console.log('GFF: ', gff);
-      console.log('collinearity: ', collinearity);
 
       // For loop to update position dictionary with file data
       for (var i = 0; i < gff.length; i++) {
@@ -473,12 +466,6 @@ Student ID: 11239727
         maxBlockSize = Math.max(maxBlockSize, blockDictionary[d].length);
       });
 
-      console.log('MAX BLOCK SIZE: ', maxBlockSize);
-
-      console.log('Connection dictionary: ', connectionDictionary);
-
-      console.log("Block dictionary: ", blockDictionary["45"]);
-
       // Updating the style of the configuration panel
       d3.select("#config")
         .style("display", "block")
@@ -502,7 +489,6 @@ Student ID: 11239727
       d3.select("p.show-all > input")
         .on("change", function() {
           showAllChromosomes = d3.select(this).property("checked");
-          console.log('SHOW ALL: ', showAllChromosomes);
 
           // Calling genome view for updates
           generateGenomeView();
@@ -536,8 +522,6 @@ Student ID: 11239727
         .select("select")
         .on("change", function() {
           filterSelect = d3.select(this).property("value");
-
-          console.log('FILTER SELECT: ', filterSelect);
 
           // Calling path genome view for updates
           generatePathGenomeView();
@@ -647,8 +631,6 @@ Student ID: 11239727
                 d3.select(this.parentNode).classed("disabled", true);
               }
             });
-
-            console.log('VISITED CHR: ', visitedChr);
           }
 
           // Calling genome view for updates
@@ -711,9 +693,6 @@ Student ID: 11239727
           // Calling genome view for updates
           generateGenomeView();
         });
-
-      console.log('DICTIONARY gff: ', gffPositionDictionary);
-      console.log('gene: ', geneDictionary['BnaN01g00190.1']);
 
       // SVG element that will include the circos plot
       svg = d3.select("body")
@@ -960,8 +939,6 @@ Student ID: 11239727
         });
 
       var blockArray = blockDictionary[blockID];
-      console.log('Block Dictionary: ', blockArray);
-
       for (var i = 0; i < blockArray.length; i++) {
         var blockSource = blockArray[i].source;
         var blockTarget = blockArray[i].target;
@@ -1199,8 +1176,6 @@ Student ID: 11239727
           }
         }
       });
-
-      console.log('DATA: ', dataChromosomes);
 
       // Generating layout configuration for the circos plot
       myCircos.layout(dataChromosomes, {
