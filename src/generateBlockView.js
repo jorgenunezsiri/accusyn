@@ -4,10 +4,13 @@ Project: A web-based genome synteny browser
 Course: CMPT398 - Information Visualization
 
 Name: Jorge Nunez Siri
+E-mail: jdn766@mail.usask.ca
 NSID: jdn766
 Student ID: 11239727
 
 Function file: generateBlockView.js
+
+@2018, Jorge Nunez Siri, All rights reserved
 */
 
 /**

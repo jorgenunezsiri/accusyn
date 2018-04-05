@@ -4,44 +4,14 @@ Project: A web-based genome synteny browser
 Course: CMPT398 - Information Visualization
 
 Name: Jorge Nunez Siri
+E-mail: jdn766@mail.usask.ca
 NSID: jdn766
 Student ID: 11239727
 
 Function file: generateGenomeView.js
+
+@2018, Jorge Nunez Siri, All rights reserved
 */
-
-/**
- * Looks for minimum and maximum positions within the current block
- *
- * @param  {string} block Current block
- * @return {Object}       Resulting block min and max information
- */
-function lookForBlocksPositions(block) {
-  var blockArray = blockDictionary[block];
-
-  var maxSource = 0;
-  var minSource = 100000000;
-  var maxTarget = 0;
-  var minTarget = 100000000;
-  for (var i = 0; i < blockArray.length; i++) {
-    var currentSource = geneDictionary[blockArray[i].source];
-    var currentTarget = geneDictionary[blockArray[i].target];
-
-    minSource = Math.min(minSource, currentSource.start);
-    maxSource = Math.max(maxSource, currentSource.end);
-
-    minTarget = Math.min(minTarget, currentTarget.start);
-    maxTarget = Math.max(maxTarget, currentTarget.end);
-  }
-
-  return {
-    blockLength: blockArray.length,
-    minSource: minSource,
-    maxSource: maxSource,
-    minTarget: minTarget,
-    maxTarget: maxTarget
-  }
-}
 
 /**
  * Generates all paths in the genomeView using the current selected
@@ -55,9 +25,9 @@ function generatePathGenomeView() {
   var foundCurrentSelectedBlock = false;
 
   var visited = {}; // Visited block dictionary
-  Object.keys(blockDictionary).forEach(function(d) {
-    visited[d] = false;
-  });
+  for (var i = 0; i < blockKeys.length; i++) {
+    visited[blockKeys[i]] = false;
+  };
 
   var oneToMany = selectedCheckbox.length == 1;
   var lookID = [];
@@ -71,10 +41,13 @@ function generatePathGenomeView() {
     }
   }
 
-  for (var i = 0; i < collinearityFile.length; i++) {
-    if (collinearityFile[i].source.includes('N') && collinearityFile[i].target.includes('N')) {
+  for (var i = 0; i < blockKeys.length; i++) {
+    var currentBlock = blockKeys[i];
+    if (!visited[currentBlock]) {
+      // Only need to enter the very first time each block is visited
+      visited[currentBlock] = true;
 
-      var IDs = fixSourceTargetCollinearity(collinearityFile, i);
+      var IDs = fixSourceTargetCollinearity(blockDictionary[currentBlock][0]);
       var sourceID = IDs.source;
       var targetID = IDs.target;
 
@@ -92,43 +65,37 @@ function generatePathGenomeView() {
         shouldAddDataChord = lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1;
       }
 
-      var currentBlock = collinearityFile[i].block;
-      if (!visited[currentBlock]) {
-        // Only need to enter the very first time each block is visited
-        visited[currentBlock] = true;
+      // Only add data chord if the filter condition is satisfied
+      shouldAddDataChord = shouldAddDataChord && (
+        (filterSelect === 'At Least' && blockDictionary[currentBlock].length >= filterValue) ||
+        (filterSelect === 'At Most' && blockDictionary[currentBlock].length <= filterValue)
+      );
 
-        // Only add data chord if the filter condition is satisfied
-        shouldAddDataChord = shouldAddDataChord && (
-          (filterSelect === 'At Least' && blockDictionary[currentBlock].length >= filterValue) ||
-          (filterSelect === 'At Most' && blockDictionary[currentBlock].length <= filterValue)
-        );
-
-        if (shouldAddDataChord) {
-          var blockPositions = lookForBlocksPositions(currentBlock);
-          dataChords.push({
-            source: {
-              id: sourceID,
-              start: blockPositions.minSource,
-              end: blockPositions.maxSource,
-              value: {
-                id: currentBlock,
-                length: blockPositions.blockLength,
-              }
-            },
-            target: {
-              id: targetID,
-              start: blockPositions.minTarget,
-              end: blockPositions.maxTarget
+      if (shouldAddDataChord) {
+        var blockPositions = blockDictionary[currentBlock].blockPositions;
+        dataChords.push({
+          source: {
+            id: sourceID,
+            start: blockPositions.minSource,
+            end: blockPositions.maxSource,
+            value: {
+              id: currentBlock,
+              length: blockPositions.blockLength,
             }
-          });
-
-          if (_.isEqual(dataChords[dataChords.length - 1], currentSelectedBlock)) {
-            foundCurrentSelectedBlock = true;
+          },
+          target: {
+            id: targetID,
+            start: blockPositions.minTarget,
+            end: blockPositions.maxTarget
           }
+        });
+
+        if (_.isEqual(dataChords[dataChords.length - 1], currentSelectedBlock)) {
+          foundCurrentSelectedBlock = true;
         }
       }
     }
-  }
+  };
 
   // Remove block view if selected block is not present anymore
   if (!foundCurrentSelectedBlock &&
@@ -191,27 +158,26 @@ function generateGenomeView() {
   dataChromosomes = [];
 
   // Using gffKeys array to add selected chromosomes to the genome view
-  gffKeys.forEach(function(key, i) {
-    if (gffPositionDictionary.hasOwnProperty(key)) {
-      var currentObj = {
-        len: gffPositionDictionary[key].end,
-        color: colors(i),
-        label: key,
-        id: key
-      };
+  for (var i = 0; i < gffKeys.length; i++) {
+    var key = gffKeys[i];
+    var currentObj = {
+      len: gffPositionDictionary[key].end,
+      color: colors(i),
+      label: key,
+      id: key
+    };
 
-      if (showAllChromosomes) {
-        // All the chromosomes will show
+    if (showAllChromosomes) {
+      // All the chromosomes will show
+      dataChromosomes.push(currentObj);
+    } else {
+      if (selectedCheckbox.indexOf(key) > -1) {
+        // If current chromosome is selected and showAllChromosomes is
+        // not selected, then add it
         dataChromosomes.push(currentObj);
-      } else {
-        if (selectedCheckbox.indexOf(key) > -1) {
-          // If current chromosome is selected and showAllChromosomes is
-          // not selected, then add it
-          dataChromosomes.push(currentObj);
-        }
       }
     }
-  });
+  }
 
   // Generating layout configuration for the circos plot
   myCircos.layout(dataChromosomes, {

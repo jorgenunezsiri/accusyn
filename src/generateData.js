@@ -4,13 +4,17 @@ Project: A web-based genome synteny browser
 Course: CMPT398 - Information Visualization
 
 Name: Jorge Nunez Siri
+E-mail: jdn766@mail.usask.ca
 NSID: jdn766
 Student ID: 11239727
 
 Function file: generateData.js
+
+@2018, Jorge Nunez Siri, All rights reserved
 */
 
 var blockDictionary = {}; // Dictionary to store the data for all blocks
+var blockKeys = []; // Array that includes the keys from the blockDictionary
 var connectionDictionary = {}; // Dictionary to store the data for all the connections between any source and target
 var dataChromosomes = []; // Array that stores the current chromosomes in the circos plot
 var dataChords = []; // Array that stores the plotting information for each block chord
@@ -27,7 +31,6 @@ var height = 800; // Circos plot height
 var chromosomeRotateAngle = 0; // Default rotating angle for the genome view
 var colors = d3.scaleOrdinal(d3.schemeSet2); // Default color scheme
 var connectionColor = "sandybrown"; // Default connection color
-var collinearityFile; // To store the data from the collinearity file
 var currentSelectedBlock = {}; // To store the data of the current selected block
 var filterValue = 1; // Default filtering value
 var filterSelect = 'At Least'; // Default filtering select
@@ -37,13 +40,12 @@ var showAllChromosomes = true; // To keep track of the Show All input state
  * Fixes current IDs in collinearity file by removing 0 when
  * chromosome number is below 10 (e.g. (N09,N01) turns into (N9, N1))
  *
- * @param  {Object} collinearityFile All the similarity relationships
- * @param  {number} index            Current index
+ * @param  {Object} currentCollinearity Current index with the similarity relationships
  * @return {Object}                  Object with sourceID and targetID fixed
  */
-function fixSourceTargetCollinearity(collinearityFile, index) {
-  var sourceID = collinearityFile[index].source.split('g')[0].split('Bna')[1];
-  var targetID = collinearityFile[index].target.split('g')[0].split('Bna')[1];
+function fixSourceTargetCollinearity(currentCollinearity) {
+  var sourceID = currentCollinearity.source.split('g')[0].split('Bna')[1];
+  var targetID = currentCollinearity.target.split('g')[0].split('Bna')[1];
   if (sourceID[1] == '0') {
     sourceID = sourceID.slice(0, 1) + sourceID.slice(2);
   }
@@ -126,6 +128,39 @@ function updateFilter(value, shouldUpdatePath) {
 }
 
 /**
+ * Looks for minimum and maximum positions within the current block
+ *
+ * @param  {string} block Current block
+ * @return {Object}       Resulting block min and max information
+ */
+function lookForBlocksPositions(block) {
+  var blockArray = blockDictionary[block];
+
+  var maxSource = 0;
+  var minSource = 100000000;
+  var maxTarget = 0;
+  var minTarget = 100000000;
+  for (var i = 0; i < blockArray.length; i++) {
+    var currentSource = geneDictionary[blockArray[i].source];
+    var currentTarget = geneDictionary[blockArray[i].target];
+
+    minSource = Math.min(minSource, currentSource.start);
+    maxSource = Math.max(maxSource, currentSource.end);
+
+    minTarget = Math.min(minTarget, currentTarget.start);
+    maxTarget = Math.max(maxTarget, currentTarget.end);
+  }
+
+  return {
+    blockLength: blockArray.length,
+    minSource: minSource,
+    maxSource: maxSource,
+    minTarget: minTarget,
+    maxTarget: maxTarget
+  }
+}
+
+/**
  * Generates and preprocess data for the syteny browser
  *
  * @param  {Object} error               Error handler
@@ -135,7 +170,7 @@ function updateFilter(value, shouldUpdatePath) {
  */
 function generateData(error, gff, collinearity) {
   if (error) return console.error(error);
-  collinearityFile = collinearity;
+  var collinearityFile = collinearity; // To store the data from the collinearity file
 
   // For loop to update position dictionary with file data
   for (var i = 0; i < gff.length; i++) {
@@ -178,12 +213,13 @@ function generateData(error, gff, collinearity) {
 
       // Adding all the block connections in the dictionary
       blockDictionary[currentBlock].push({
+        blockPositions: {},
         connection: collinearityFile[i].connection,
         source: collinearityFile[i].source,
         target: collinearityFile[i].target
       });
 
-      var IDs = fixSourceTargetCollinearity(collinearityFile, i);
+      var IDs = fixSourceTargetCollinearity(collinearityFile[i]);
       var sourceID = IDs.source;
       var targetID = IDs.target;
 
@@ -240,13 +276,18 @@ function generateData(error, gff, collinearity) {
     }
   }
 
+  blockKeys = Object.keys(blockDictionary);
+
   // Determining the block with maximum number of connections
   // (to be used in the filter input range)
   // N13 -> N3 has the max block size with 2295 connections
+  // Also, adding all the minimum and maximum positions for each block
   var maxBlockSize = 0;
-  Object.keys(blockDictionary).forEach(function(d) {
-    maxBlockSize = Math.max(maxBlockSize, blockDictionary[d].length);
-  });
+  for(var i = 0; i < blockKeys.length; i++) {
+    var currentBlock = blockKeys[i];
+    maxBlockSize = Math.max(maxBlockSize, blockDictionary[currentBlock].length);
+    blockDictionary[currentBlock].blockPositions = lookForBlocksPositions(currentBlock);
+  }
 
   // Updating the style of the configuration panel
   d3.select("#config")
