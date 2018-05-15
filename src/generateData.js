@@ -278,6 +278,8 @@ function generateData(error, gff, collinearity) {
 
   blockKeys = Object.keys(blockDictionary);
 
+  console.log('CONNECTIONS: ', connectionDictionary);
+
   // Determining the block with maximum number of connections
   // (to be used in the filter input range)
   // N13 -> N3 has the max block size with 2295 connections

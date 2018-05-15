@@ -194,6 +194,12 @@ function generateGenomeView() {
     },
     ticks: {
       display: false
+    },
+    events: {
+      'contextmenu.chr': function(d, i, nodes, event) {
+        event.preventDefault();
+        console.log('HERE I AM');
+      }
     }
   });
 
