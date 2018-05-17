@@ -73,20 +73,54 @@ function generatePathGenomeView() {
 
       if (shouldAddDataChord) {
         var blockPositions = blockDictionary[currentBlock].blockPositions;
+
+        var sourcePositions = {
+          start: blockPositions.minSource,
+          end: blockPositions.maxSource
+        };
+        var targetPositions = {
+          start: blockPositions.minTarget,
+          end: blockPositions.maxTarget
+        };
+
+        //
+        // 20-28, 1-13
+        // newStart = lastChrPosition - (endBlock)
+        // newEnd = lastChrPosition - (startBlock)
+        // 28-28 = 0, 28-20 = 8
+        // 28-13 = 15, 28-1 = 27
+
+        // newStart = lastChrPosition - (endBlock)
+        // newEnd = lastChrPosition - (startBlock)
+        var tmpStart = 0;
+        if (currentFlippedChromosomes.indexOf(sourceID) !== (-1)) {
+          tmpStart = sourcePositions.start;
+
+          sourcePositions.start = gffPositionDictionary[sourceID].end - sourcePositions.end;
+          sourcePositions.end = gffPositionDictionary[sourceID].end - tmpStart;
+        }
+
+        if (currentFlippedChromosomes.indexOf(targetID) !== (-1)) {
+          tmpStart = targetPositions.start;
+
+          targetPositions.start = gffPositionDictionary[targetID].end - targetPositions.end;
+          targetPositions.end = gffPositionDictionary[targetID].end - tmpStart;
+        }
+
         dataChords.push({
           source: {
             id: sourceID,
-            start: blockPositions.minSource,
-            end: blockPositions.maxSource,
+            start: sourcePositions.start,
+            end: sourcePositions.end,
             value: {
               id: currentBlock,
-              length: blockPositions.blockLength,
+              length: blockPositions.blockLength
             }
           },
           target: {
             id: targetID,
-            start: blockPositions.minTarget,
-            end: blockPositions.maxTarget
+            start: targetPositions.start,
+            end: targetPositions.end
           }
         });
 
@@ -95,7 +129,7 @@ function generatePathGenomeView() {
         }
       }
     }
-  };
+  }
 
   // Remove block view if selected block is not present anymore
   if (!foundCurrentSelectedBlock &&
@@ -134,6 +168,11 @@ function generatePathGenomeView() {
 
   // Rendering circos plot with current configuration
   myCircos.render();
+
+  for (var i = 0; i < currentFlippedChromosomes.length; i++) {
+    // d3.select("g." + currentFlippedChromosomes[i]).attr("opacity", 0.8);
+    d3.select("g." + currentFlippedChromosomes[i] + " path#arc-label" + currentFlippedChromosomes[i]).attr("stroke", "#ea4848");
+  }
 
   d3.select(".block-number-headline")
     .text(function() {
@@ -196,8 +235,31 @@ function generateGenomeView() {
       display: false
     },
     events: {
+      'click.chr': function(d, i, nodes, event) {
+
+        var currentId = d.id;
+        var currentPosition = currentFlippedChromosomes.indexOf(currentId);
+
+        // If chromosome id is present, then remove it
+        if (currentPosition !== (-1)) {
+          currentFlippedChromosomes.splice(currentPosition, 1);
+        } else {
+          currentFlippedChromosomes.push(currentId);
+        }
+
+        console.log('CURRENT FLIPPED CHR: ', currentFlippedChromosomes);
+
+        generatePathGenomeView();
+      },
+      // 'mousedown.chr': function(d, i, nodes, event) {
+      //   console.log('MOUSE DOWN');
+      //   setTimeout(function() {
+      //     console.log('2 seconds');
+      //     // You are now in a `hold` state, you can do whatever you like!
+      //   }, 2000);
+      // },
       'contextmenu.chr': function(d, i, nodes, event) {
-        event.preventDefault();
+        // event.preventDefault();
         console.log('HERE I AM');
       }
     }

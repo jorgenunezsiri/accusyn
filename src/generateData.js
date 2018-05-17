@@ -32,6 +32,7 @@ var chromosomeRotateAngle = 0; // Default rotating angle for the genome view
 var colors = d3.scaleOrdinal(d3.schemeSet2); // Default color scheme
 var connectionColor = "sandybrown"; // Default connection color
 var currentSelectedBlock = {}; // To store the data of the current selected block
+var currentFlippedChromosomes = []; // Array that stores the current set of chromosomes with flipped locations
 var filterValue = 1; // Default filtering value
 var filterSelect = 'At Least'; // Default filtering select
 var showAllChromosomes = true; // To keep track of the Show All input state

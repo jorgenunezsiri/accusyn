@@ -334,13 +334,19 @@ function generateBlockView(data) {
       .attr("d", function(data) {
         return path(data, y);
       })
+      .transition()
+      .duration(500)
+      .ease(d3.easeLinear)
       .attr("stroke", connectionColor)
       .attr("stroke-width", function(d) {
         // Returning stroke-width based on defined scale
         return strokeWidthScale(
           (d.source.end - d.source.start) + (d.target.end - d.target.start)
         );
-      })
+      });
+
+    // Add a tooltip
+    svgBlock.selectAll("path.line")
       .append("title") // Being used as simple tooptip
       .text(function(d) {
         return d.source.id + ' ➤ ' + d.target.id;
@@ -371,7 +377,7 @@ function generateBlockView(data) {
       .attr("class", "axisY0")
       .call(y0axis.ticks(10))
       .attr("fill", function() {
-        return colors(parseInt(sourceChromosomeID.split('N')[1]) - 1);
+        return colors(parseInt(targetChromosomeID.split('N')[1]) - 1);
       });
 
     // Add the Y1 Axis
@@ -387,7 +393,7 @@ function generateBlockView(data) {
       .attr("transform", "translate( " + widthBlock + ", 0 )")
       .call(y1axis.ticks(10))
       .attr("fill", function() {
-        return colors(parseInt(targetChromosomeID.split('N')[1]) - 1);
+        return colors(parseInt(sourceChromosomeID.split('N')[1]) - 1);
       });
   }
 
@@ -401,7 +407,7 @@ function generateBlockView(data) {
     .attr("dy", "1em")
     .style("font-size", "16px")
     .style("text-anchor", "middle")
-    .text(sourceChromosomeID);
+    .text(targetChromosomeID);
 
   // Add the Y1 Axis label text
   svgBlock.append("text")
@@ -411,7 +417,7 @@ function generateBlockView(data) {
     .attr("dy", "1em")
     .style("font-size", "16px")
     .style("text-anchor", "middle")
-    .text(targetChromosomeID);
+    .text(sourceChromosomeID);
 
   // Add the Chart title
   svgBlock.append("text")
@@ -419,6 +425,6 @@ function generateBlockView(data) {
     .attr("y", 0 - (margin.top / 3))
     .attr("text-anchor", "middle")
     .style("font-size", "16px")
-    .style("text-decoration", "underline")
+    .style("font-style", "italic")
     .text(sourceChromosomeID + ' vs. ' + targetChromosomeID + ' - Block ' + blockID + ' gene locations');
 }

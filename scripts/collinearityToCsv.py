@@ -1,6 +1,6 @@
 import csv
 
-infile = open('../files/Bnapus.collinearity', 'r')
+infile = open('../files/bnapus.collinearity', 'r')
 
 block = []
 connection = []

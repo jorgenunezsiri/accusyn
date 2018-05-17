@@ -24984,7 +24984,7 @@ var Chords = function (_Track) {
         });
       });
 
-      link.attr('fill', conf.colorValue);
+      link.style('fill', 'white').transition().duration(500).ease(d3.easeLinear).style('fill', conf.colorValue);
 
       return link;
     }
