@@ -10425,8 +10425,8 @@ var Core = function () {
     }
   }, {
     key: 'render',
-    value: function render(ids, removeTracks) {
-      (0, _render3.default)(ids, removeTracks, this);
+    value: function render(ids, removeTracks, transition) {
+      (0, _render3.default)(ids, removeTracks, this, transition);
     }
   }]);
 
@@ -14465,6 +14465,7 @@ function render() {
   var ids = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
   var removeTracks = arguments[1];
   var circos = arguments[2];
+  var transition = arguments[3];
 
   var renderAll = ids.length === 0;
 
@@ -14483,7 +14484,7 @@ function render() {
 
   (0, _forEach2.default)(circos.tracks, function (track, trackId) {
     if (renderAll || trackId in ids) {
-      track.render(circos, translated, trackId);
+      track.render(circos, translated, trackId, transition);
     }
   });
   if (renderAll || 'layout' in ids) {
@@ -24962,12 +24963,20 @@ var Chords = function (_Track) {
     }
   }, {
     key: 'renderChords',
-    value: function renderChords(parentElement, name, conf, data, instance, getCoordinates) {
+    value: function renderChords(transition, parentElement, name, conf, data, instance, getCoordinates) {
       var _this2 = this;
+
+      var defaultTransition = {
+        from: "white",
+        to: conf.colorValue,
+        time: 500
+      };
 
       var track = parentElement.append('g');
 
-      var link = track.selectAll('.chord').data(data).enter().append('path').attr('class', 'chord').attr('d', (0, _d3Chord.ribbon)().source(function (d) {
+      var link = track.selectAll('.chord').data(data).enter().append('path').attr('class', function (d) {
+        return 'chord ' + d.source.id + ' ' + d.target.id;
+      }).attr('d', (0, _d3Chord.ribbon)().source(function (d) {
         return getCoordinates(d.source, instance._layout, _this2.conf, d);
       }).target(function (d) {
         return getCoordinates(d.target, instance._layout, _this2.conf, d);
@@ -24984,18 +24993,28 @@ var Chords = function (_Track) {
         });
       });
 
-      link.style('fill', 'white').transition().duration(500).ease(d3.easeLinear).style('fill', conf.colorValue);
+      if (transition && transition.shouldDo) {
+        link.each(function (d) {
+          if (transition.chr && (transition.chr === d.source.id || transition.chr === d.target.id)) {
+            d3.select(this).style('fill', transition.from).transition().duration(transition.time).ease(d3.easeLinear).style('fill', transition.to);
+          } else {
+            d3.select(this).style('fill', defaultTransition.from).transition().duration(defaultTransition.time).ease(d3.easeLinear).style('fill', defaultTransition.to);
+          }
+        });
+      } else {
+        link.attr('fill', conf.colorValue);
+      }
 
       return link;
     }
   }, {
     key: 'render',
-    value: function render(instance, parentElement, name) {
+    value: function render(instance, parentElement, name, transition) {
       parentElement.select('.' + name).remove();
 
       var track = parentElement.append('g').attr('class', name).attr('z-index', this.conf.zIndex);
 
-      var selection = this.renderChords(track, name, this.conf, this.data, instance, this.getCoordinates);
+      var selection = this.renderChords(transition, track, name, this.conf, this.data, instance, this.getCoordinates);
       if (this.conf.tooltipContent) {
         (0, _tooltip.registerTooltip)(this, instance, selection, this.conf);
       }

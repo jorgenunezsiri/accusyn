@@ -17,9 +17,19 @@ Function file: generateGenomeView.js
  * Generates all paths in the genomeView using the current selected
  * chromosomes and the configuration
  *
+ * @param  {Object} transition Current transition configuration
  * @return {undefined} undefined
  */
-function generatePathGenomeView() {
+function generatePathGenomeView(transition) {
+  if (transition == null) {
+    transition = {
+      shouldDo: true,
+      from: "white",
+      to: connectionColor,
+      time: 500
+    };
+  }
+
   dataChords = []; // Emptying data chords array
 
   var foundCurrentSelectedBlock = false;
@@ -147,7 +157,7 @@ function generatePathGenomeView() {
       return '<h4>' + d.source.id + ' ➤ ' + d.target.id + '</h4>' +
         '<h4><u>Block information</u></h4>' +
         '<h4>ID: ' + d.source.value.id + '</h4>' +
-        '<h4>Length: ' + d.source.value.length + '</h4>';
+        '<h4>Size: ' + d.source.value.length + '</h4>';
     },
     events: {
       'mouseover.block': function(d, i, nodes) {
@@ -167,7 +177,11 @@ function generatePathGenomeView() {
   });
 
   // Rendering circos plot with current configuration
-  myCircos.render();
+  if (transition && transition.shouldDo) {
+    myCircos.render(undefined, undefined, transition);
+  } else {
+    myCircos.render();
+  }
 
   for (var i = 0; i < currentFlippedChromosomes.length; i++) {
     // d3.select("g." + currentFlippedChromosomes[i]).attr("opacity", 0.8);
@@ -236,9 +250,25 @@ function generateGenomeView() {
     },
     events: {
       'click.chr': function(d, i, nodes, event) {
+        d3.selectAll("path.chord").attr("opacity", 0.7);
 
         var currentId = d.id;
         var currentPosition = currentFlippedChromosomes.indexOf(currentId);
+
+        d3.selectAll("path.chord." + currentId)
+          //.style("fill", connectionColor)
+          .transition()
+          .duration(750)
+          .ease(d3.easeLinear)
+          .style("fill", "lightblue");
+
+        var transition = {
+          shouldDo: true,
+          from: "lightblue",
+          to: connectionColor,
+          time: 1500,
+          chr: currentId
+        };
 
         // If chromosome id is present, then remove it
         if (currentPosition !== (-1)) {
@@ -249,7 +279,10 @@ function generateGenomeView() {
 
         console.log('CURRENT FLIPPED CHR: ', currentFlippedChromosomes);
 
-        generatePathGenomeView();
+        setTimeout(function() {
+          generatePathGenomeView(transition);
+        }, 1250);
+
       },
       // 'mousedown.chr': function(d, i, nodes, event) {
       //   console.log('MOUSE DOWN');

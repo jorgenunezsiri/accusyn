@@ -125,7 +125,9 @@ function updateFilter(value, shouldUpdatePath) {
   d3.select("#filter-value").text(value == 1 ? value + " connection" : value + " connections");
   d3.select("#filter").property("value", value);
 
-  if (shouldUpdatePath) generatePathGenomeView();
+  if (shouldUpdatePath) generatePathGenomeView({
+    shouldDo: false
+  });
 }
 
 /**
@@ -284,9 +286,10 @@ function generateData(error, gff, collinearity) {
   // Determining the block with maximum number of connections
   // (to be used in the filter input range)
   // N13 -> N3 has the max block size with 2295 connections
+  // 2306 connections with top 5 BLAST hits
   // Also, adding all the minimum and maximum positions for each block
   var maxBlockSize = 0;
-  for(var i = 0; i < blockKeys.length; i++) {
+  for (var i = 0; i < blockKeys.length; i++) {
     var currentBlock = blockKeys[i];
     maxBlockSize = Math.max(maxBlockSize, blockDictionary[currentBlock].length);
     blockDictionary[currentBlock].blockPositions = lookForBlocksPositions(currentBlock);

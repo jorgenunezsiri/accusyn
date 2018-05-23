@@ -69,7 +69,8 @@ function generateBlockView(data) {
     d3.select("body").select("#block-view-container").remove();
   }
 
-  var gY0, gY1, y0axis, y1axis, isFlipped = false;
+  var gY0, gY1, y0axis, y1axis, isFlipped = false,
+    onInputChange = false;
   var dataBlock = [];
 
   /**
@@ -132,8 +133,18 @@ function generateBlockView(data) {
     .attr("title", "Resets the block view to its original scale.")
     .text("Reset")
     .on("click", function() {
+      if (isFlipped && !onInputChange) {
+        onInputChange = true;
+        isFlipped = false;
+      } else {
+        onInputChange = false;
+      }
+
+      d3.select("#block-view-container input.flip-orientation")
+        .property("checked", false);
+
       // Resetting by calling path block view
-      generatePathBlockView(dataBlock);
+      generatePathBlockView();
     });
 
   var svgBlock = d3.select("#block-view-container")
@@ -172,11 +183,11 @@ function generateBlockView(data) {
   d3.select("#block-view-container")
     .select(".flip-orientation")
     .on("change", function() {
-      dataBlock = flipTargetDataBlock(dataBlock);
       isFlipped = d3.select(this).property("checked");
+      onInputChange = true;
 
       // Calling path block view for updates
-      generatePathBlockView(dataBlock);
+      generatePathBlockView();
     });
 
   // Rectangle that has the block view size to catch any zoom event
@@ -219,6 +230,9 @@ function generateBlockView(data) {
           })
       }
     });
+
+  // Calling zoom for the block, so it works for every path
+  svgBlock.call(zoom);
 
   var blockArray = blockDictionary[blockID];
   for (var i = 0; i < blockArray.length; i++) {
@@ -264,27 +278,9 @@ function generateBlockView(data) {
    * Generates all paths in the blockView using the current selected
    * block in the genomeView
    *
-   * @param  {Array<Object>} dataBlock Current block data array
-   * @return {undefined}               undefined
+   * @return {undefined} undefined
    */
-  function generatePathBlockView(dataBlock) {
-    // Calling zoom for the block, so it works for every path
-    svgBlock.call(zoom)
-      .call(zoom.transform, d3.zoomIdentity.scale(1));
-
-    var d3Element = d3.select("#block-view-container")
-      .select(".flip-hint");
-
-    if (!isFlipped) {
-      if (isPerfectlyFlipped(dataBlock)) {
-        // If flip orientation is not selected, and the data block is perfectly
-        // flipped, then show hint (display block)
-        d3Element.style("display", "block");
-      }
-    } else {
-      d3Element.style("display", "none");
-    }
-
+  function generatePathBlockView() {
     /**
      * Determines the minimum value in the current block scale
      *
@@ -313,91 +309,145 @@ function generateBlockView(data) {
       return maxValue;
     }
 
-    // Offset to be used for the scales domain
-    var offset = 50000;
+    var d3HintElement = d3.select("#block-view-container")
+      .select(".flip-hint");
 
-    // Y scale domains using minimum, maximum and offset values
-    y[0].domain([minData(0) - offset, maxData(0) + offset]);
-    y[1].domain([minData(1) - offset, maxData(1) + offset]);
-
-    // Remove old paths if they are present
-    if (!svgBlock.selectAll("path.line").empty()) {
-      svgBlock.selectAll("path.line").remove();
+    if (!isFlipped) {
+      if (isPerfectlyFlipped(dataBlock)) {
+        // If flip orientation is not selected, and the data block is perfectly
+        // flipped, then show hint (display block)
+        d3HintElement.style("display", "block");
+      }
+    } else {
+      d3HintElement.style("display", "none");
     }
 
-    // Add new paths inside the block
-    svgBlock.append("g").attr("clip-path", "url(#clip)")
-      .selectAll("path")
-      .data(dataBlock).enter()
-      .append("path")
-      .attr("class", "line")
-      .attr("d", function(data) {
-        return path(data, y);
-      })
-      .transition()
-      .duration(500)
-      .ease(d3.easeLinear)
-      .attr("stroke", connectionColor)
-      .attr("stroke-width", function(d) {
-        // Returning stroke-width based on defined scale
-        return strokeWidthScale(
-          (d.source.end - d.source.start) + (d.target.end - d.target.start)
-        );
-      });
-
-    // Add a tooltip
-    svgBlock.selectAll("path.line")
-      .append("title") // Being used as simple tooptip
-      .text(function(d) {
-        return d.source.id + ' ➤ ' + d.target.id;
-      });
-
-    svgBlock.selectAll("path")
-      .on("mouseover", function(d, i, nodes) {
-        if (d3.selectAll(nodes).attr("opacity") != 0.35) {
-          d3.selectAll(nodes).attr("opacity", 0.35);
-          d3.select(nodes[i]).attr("opacity", 1);
-        }
-      })
-      .on("mouseout", function(d, i, nodes) {
-        if (d3.selectAll(nodes).attr("opacity") != 1) {
-          d3.selectAll(nodes).attr("opacity", 1);
-        }
-      });
-
-    // Add the Y0 Axis
-    y0axis = d3.axisLeft(y[0]).tickSize(15);
-
-    // Remove axisY0 if it is present
-    if (!svgBlock.selectAll("g.axisY0").empty()) {
-      svgBlock.selectAll("g.axisY0").remove();
+    if (onInputChange) {
+      svgBlock.selectAll("path.line")
+        .transition()
+        .duration(750)
+        .ease(d3.easeLinear)
+        .attr("stroke", "lightblue");
+      console.log('IS FLIPPED: ', isFlipped);
+      dataBlock = flipTargetDataBlock(dataBlock);
     }
 
-    gY0 = svgBlock.append("g")
-      .attr("class", "axisY0")
-      .call(y0axis.ticks(10))
-      .attr("fill", function() {
-        return colors(parseInt(targetChromosomeID.split('N')[1]) - 1);
-      });
+    function drawPathBlockView() {
 
-    // Add the Y1 Axis
-    y1axis = d3.axisRight(y[1]).tickSize(15);
+      // Remove old paths if they are present
+      if (!svgBlock.selectAll("path.line").empty()) {
+        // svgBlock.selectAll("path.line").style("opacity", 1).transition().duration(500)
+        //   .style("opacity", 0).remove();
+        //   setTimeout(function() {
+        //
+        //   }, 5000);
+        svgBlock.selectAll("path.line").remove();
+      }
 
-    // Remove axisY1 if it is present
-    if (!svgBlock.selectAll("g.axisY1").empty()) {
-      svgBlock.selectAll("g.axisY1").remove();
+      // Offset to be used for the scales domain
+      var offset = 50000;
+
+      // Y scale domains using minimum, maximum and offset values
+      y[0].domain([minData(0) - offset, maxData(0) + offset]);
+      y[1].domain([minData(1) - offset, maxData(1) + offset]);
+
+      // Add new paths inside the block
+      svgBlock.append("g").attr("clip-path", "url(#clip)")
+        .selectAll("path")
+        .data(dataBlock).enter()
+        .append("path")
+        .attr("class", "line")
+        .attr("d", function(data) {
+          return path(data, y);
+        })
+        .attr("stroke-width", function(d) {
+          // Returning stroke-width based on defined scale
+          return strokeWidthScale(
+            (d.source.end - d.source.start) + (d.target.end - d.target.start)
+          );
+        });
+
+      if (!onInputChange) {
+        svgBlock.selectAll("path.line")
+          .attr("stroke", "white")
+          .transition()
+          .duration(500)
+          .ease(d3.easeLinear)
+          .attr("stroke", connectionColor);
+      } else {
+        svgBlock.selectAll("path.line")
+          .attr("stroke", "lightblue")
+          .transition()
+          .duration(1500)
+          .ease(d3.easeLinear)
+          .attr("stroke", connectionColor);
+      }
+
+      // Add a tooltip
+      svgBlock.selectAll("path.line")
+        .append("title") // Being used as simple tooptip
+        .text(function(d) {
+          return d.source.id + ' ➤ ' + d.target.id;
+        });
+
+      svgBlock.selectAll("path")
+        .on("mouseover", function(d, i, nodes) {
+          if (d3.selectAll(nodes).attr("opacity") != 0.35) {
+            d3.selectAll(nodes).attr("opacity", 0.35);
+            d3.select(nodes[i]).attr("opacity", 1);
+          }
+        })
+        .on("mouseout", function(d, i, nodes) {
+          if (d3.selectAll(nodes).attr("opacity") != 1) {
+            d3.selectAll(nodes).attr("opacity", 1);
+          }
+        });
+
+      // Add the Y0 Axis
+      y0axis = d3.axisLeft(y[0]).tickSize(15);
+
+      // Remove axisY0 if it is present
+      if (!svgBlock.selectAll("g.axisY0").empty()) {
+        svgBlock.selectAll("g.axisY0").remove();
+      }
+
+      gY0 = svgBlock.append("g")
+        .attr("class", "axisY0")
+        .call(y0axis.ticks(10))
+        .attr("fill", function() {
+          return colors(parseInt(targetChromosomeID.split('N')[1]) - 1);
+        });
+
+      // Add the Y1 Axis
+      y1axis = d3.axisRight(y[1]).tickSize(15);
+
+      // Remove axisY1 if it is present
+      if (!svgBlock.selectAll("g.axisY1").empty()) {
+        svgBlock.selectAll("g.axisY1").remove();
+      }
+
+      gY1 = svgBlock.append("g")
+        .attr("class", "axisY1")
+        .attr("transform", "translate( " + widthBlock + ", 0 )")
+        .call(y1axis.ticks(10))
+        .attr("fill", function() {
+          return colors(parseInt(sourceChromosomeID.split('N')[1]) - 1);
+        });
+
+      onInputChange = false;
+      svgBlock.call(zoom.transform, d3.zoomIdentity.scale(1));
     }
 
-    gY1 = svgBlock.append("g")
-      .attr("class", "axisY1")
-      .attr("transform", "translate( " + widthBlock + ", 0 )")
-      .call(y1axis.ticks(10))
-      .attr("fill", function() {
-        return colors(parseInt(sourceChromosomeID.split('N')[1]) - 1);
-      });
+    if (onInputChange) {
+      setTimeout(function() {
+        drawPathBlockView();
+      }, 1250);
+    } else {
+      drawPathBlockView();
+    }
   }
 
-  generatePathBlockView(dataBlock);
+  generatePathBlockView();
 
   // Add the Y0 Axis label text
   svgBlock.append("text")
