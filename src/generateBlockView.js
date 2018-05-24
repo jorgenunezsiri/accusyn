@@ -174,7 +174,7 @@ function generateBlockView(data) {
   d3.select("#block-view-container")
     .append("p")
     .attr("class", "flip-hint")
-    .style("display", "none")
+    .style("opacity", 0)
     .style("margin-top", "10px")
     .html(function() {
       return '<em>Hint: This block is perfectly inverted.</em>';
@@ -223,11 +223,11 @@ function generateBlockView(data) {
         var newY = [zoomTransform.rescaleY(y[0]), zoomTransform.rescaleY(y[1])];
 
         // Plotting the lines path using the new scales
-        svgBlock.selectAll("path")
+        svgBlock.selectAll("path.line")
           .data(dataBlock)
           .attr("d", function(data) {
             return path(data, newY);
-          })
+          });
       }
     });
 
@@ -309,43 +309,131 @@ function generateBlockView(data) {
       return maxValue;
     }
 
+    // Offset to be used for the scales domain
+    var offset = 50000;
+
+    // Hint label about perfectly inverted
     var d3HintElement = d3.select("#block-view-container")
       .select(".flip-hint");
 
     if (!isFlipped) {
       if (isPerfectlyFlipped(dataBlock)) {
         // If flip orientation is not selected, and the data block is perfectly
-        // flipped, then show hint (display block)
-        d3HintElement.style("display", "block");
+        // flipped, then show hint (opacity 1)
+        d3HintElement
+          .style("opacity", 0)
+          .transition()
+          .duration(500)
+          .ease(d3.easeLinear)
+          .style("opacity", 1);
       }
     } else {
-      d3HintElement.style("display", "none");
+      if (d3HintElement.style("opacity") == 1) {
+        d3HintElement
+          .style("opacity", 1)
+          .transition()
+          .duration(500)
+          .ease(d3.easeLinear)
+          .style("opacity", 0);
+      }
     }
 
     if (onInputChange) {
+      // Change paths color to lightblue
       svgBlock.selectAll("path.line")
         .transition()
-        .duration(750)
+        .duration(100)
         .ease(d3.easeLinear)
         .attr("stroke", "lightblue");
-      console.log('IS FLIPPED: ', isFlipped);
-      dataBlock = flipTargetDataBlock(dataBlock);
+
+      // Flipping transition
+      var transitionTime = 100;
+      var transitionHeightDivision = 1;
+      var TRANSITION_NORMAL_TIME = 125;
+      var TRANSITION_FLIPPING_TIME = TRANSITION_NORMAL_TIME * 2;
+      var TRANSITION_HEIGHT_DIVISION_MULTIPLE = 2;
+
+      var summing = true;
+
+      // 2 - 4 - 8 - 16 - 32 - 64
+      // Flip here and sum flipping time
+      // 64 - 32 - 16 - 8 - 4 - 2
+
+      // Only break loop when summing is false && transitionHeightDivision == 1
+      // summing || transitionHeightDivision != 1
+      // Or when indexTransition == 14
+      for (var indexTransition = 1; indexTransition <= 13; indexTransition++) {
+        if (indexTransition == 7) {
+          summing = false;
+          transitionHeightDivision = 128;
+          transitionTime += TRANSITION_FLIPPING_TIME;
+        } else {
+          transitionTime += TRANSITION_NORMAL_TIME;
+        }
+
+        if (summing) {
+          transitionHeightDivision *= TRANSITION_HEIGHT_DIVISION_MULTIPLE;
+        } else {
+          transitionHeightDivision /= TRANSITION_HEIGHT_DIVISION_MULTIPLE;
+        }
+
+        console.log('TRANSITION TIME: ', transitionTime);
+        console.log('TRANSITION HEIGHT DIVISION: ', transitionHeightDivision);
+        console.log('INDEX TRANSITION: ', indexTransition);
+        console.log('SUMMING: ', summing);
+        console.log('\n');
+
+        // if (!summing && transitionHeightDivision == 1) {
+        //   break;
+        // }
+
+        // More info: https://stackoverflow.com/a/37728255
+        (function(indexTransition, transitionTime, transitionHeightDivision) {
+          setTimeout(function() {
+            // Creating new scales for y1 to improve the flipping transition
+            var newY = [y[0], d3.scaleLinear().range([heightBlock / transitionHeightDivision, 0])];
+            newY[0].domain([minData(0) - offset, maxData(0) + offset]);
+            newY[1].domain([minData(1) - offset, maxData(1) + offset]);
+
+            // Remove axisY1 if it is present
+            if (!svgBlock.selectAll("g.axisY1").empty()) {
+              svgBlock.selectAll("g.axisY1").remove();
+            }
+
+            gY1 = svgBlock.append("g")
+              .attr("class", "axisY1")
+              .attr("transform", "translate( " + widthBlock + ", 0 )")
+              .call(d3.axisRight(newY[1]).tickSize(15).ticks(10))
+              .attr("fill", function() {
+                return colors(parseInt(sourceChromosomeID.split('N')[1]) - 1);
+              });
+
+            // Plotting the lines path using the new scales
+            svgBlock.selectAll("path.line")
+              .data(dataBlock)
+              .attr("d", function(data) {
+                return path(data, newY);
+              });
+
+            if (indexTransition == 7) {
+              dataBlock = flipTargetDataBlock(dataBlock);
+            }
+          }, transitionTime);
+        })(indexTransition, transitionTime, transitionHeightDivision);
+      }
     }
 
+    /**
+     * Draws all the paths for the block view
+     *
+     * @return {undefined} undefined
+     */
     function drawPathBlockView() {
 
       // Remove old paths if they are present
       if (!svgBlock.selectAll("path.line").empty()) {
-        // svgBlock.selectAll("path.line").style("opacity", 1).transition().duration(500)
-        //   .style("opacity", 0).remove();
-        //   setTimeout(function() {
-        //
-        //   }, 5000);
         svgBlock.selectAll("path.line").remove();
       }
-
-      // Offset to be used for the scales domain
-      var offset = 50000;
 
       // Y scale domains using minimum, maximum and offset values
       y[0].domain([minData(0) - offset, maxData(0) + offset]);
@@ -435,13 +523,16 @@ function generateBlockView(data) {
         });
 
       onInputChange = false;
+
+      // Changing zoom scale to default
       svgBlock.call(zoom.transform, d3.zoomIdentity.scale(1));
     }
 
+    // Total time: 100+(125*13)+(125*2) = 1975
     if (onInputChange) {
       setTimeout(function() {
         drawPathBlockView();
-      }, 1250);
+      }, 1975);
     } else {
       drawPathBlockView();
     }

@@ -10425,8 +10425,8 @@ var Core = function () {
     }
   }, {
     key: 'render',
-    value: function render(ids, removeTracks, transition) {
-      (0, _render3.default)(ids, removeTracks, this, transition);
+    value: function render(ids, removeTracks, transition, transitionRemove) {
+      (0, _render3.default)(ids, removeTracks, this, transition, transitionRemove);
     }
   }]);
 
@@ -14466,6 +14466,7 @@ function render() {
   var removeTracks = arguments[1];
   var circos = arguments[2];
   var transition = arguments[3];
+  var transitionRemove = arguments[4];
 
   var renderAll = ids.length === 0;
 
@@ -14488,7 +14489,7 @@ function render() {
     }
   });
   if (renderAll || 'layout' in ids) {
-    (0, _render2.default)(translated, circos);
+    (0, _render2.default)(translated, circos, transitionRemove);
   }
 
   // re-order tracks and layout according to z-index
@@ -14780,40 +14781,56 @@ function renderLayoutTicks(conf, layout, instance) {
   });
 }
 
-function renderLayout(parentElement, instance) {
+function renderLayout(parentElement, instance, transitionRemove) {
+
   var conf = instance._layout.conf;
-  parentElement.select('.cs-layout').remove();
 
-  var layout = parentElement.append('g').attr('class', 'cs-layout').attr('z-index', conf.zIndex).on('click', conf.onClick);
-
-  var block = layout.selectAll('g').data(instance._layout.data).enter().append('g').attr('class', function (d) {
-    return d.id;
-  }).attr('opacity', conf.opacity);
-
-  Object.keys(conf.events).forEach(function (eventName) {
-    block.on(eventName, function (d, i, nodes) {
-      conf.events[eventName](d, i, nodes, _d3Selection.event);
-    });
-  });
-
-  var entry = (0, _d3Shape.arc)().innerRadius(conf.innerRadius).outerRadius(conf.outerRadius).cornerRadius(conf.cornerRadius).startAngle(function (d) {
-    return d.start;
-  }).endAngle(function (d) {
-    return d.end;
-  });
-
-  block.append('path').attr('d', entry).attr('fill', function (d) {
-    return d.color;
-  }).attr('id', function (d) {
-    return d.id;
-  });
-
-  if (conf.labels.display) {
-    renderLayoutLabels(conf, block);
+  if (transitionRemove) {
+    parentElement.selectAll('.cs-layout').style("opacity", 1).transition().duration(250).style("opacity", 0).remove();
+  } else {
+    parentElement.selectAll('.cs-layout').remove();
   }
 
-  if (conf.ticks.display) {
-    renderLayoutTicks(conf, layout, instance);
+  function insideRenderLayout() {
+    var layout = parentElement.append('g').attr('class', 'cs-layout').attr('z-index', conf.zIndex).on('click', conf.onClick);
+
+    var block = layout.selectAll('g').data(instance._layout.data).enter().append('g').attr('class', function (d) {
+      return d.id;
+    }).attr('opacity', conf.opacity);
+
+    Object.keys(conf.events).forEach(function (eventName) {
+      block.on(eventName, function (d, i, nodes) {
+        conf.events[eventName](d, i, nodes, _d3Selection.event);
+      });
+    });
+
+    var entry = (0, _d3Shape.arc)().innerRadius(conf.innerRadius).outerRadius(conf.outerRadius).cornerRadius(conf.cornerRadius).startAngle(function (d) {
+      return d.start;
+    }).endAngle(function (d) {
+      return d.end;
+    });
+
+    block.append('path').attr('d', entry).attr('fill', function (d) {
+      return d.color;
+    }).attr('id', function (d) {
+      return d.id;
+    });
+
+    if (conf.labels.display) {
+      renderLayoutLabels(conf, block);
+    }
+
+    if (conf.ticks.display) {
+      renderLayoutTicks(conf, layout, instance);
+    }
+  }
+
+  if (transitionRemove) {
+    setTimeout(function () {
+      insideRenderLayout();
+    }, 250);
+  } else {
+    insideRenderLayout();
   }
 }
 
@@ -24966,12 +24983,6 @@ var Chords = function (_Track) {
     value: function renderChords(transition, parentElement, name, conf, data, instance, getCoordinates) {
       var _this2 = this;
 
-      var defaultTransition = {
-        from: "white",
-        to: conf.colorValue,
-        time: 500
-      };
-
       var track = parentElement.append('g');
 
       var link = track.selectAll('.chord').data(data).enter().append('path').attr('class', function (d) {
@@ -24995,14 +25006,17 @@ var Chords = function (_Track) {
 
       if (transition && transition.shouldDo) {
         link.each(function (d) {
+          var current = d3.select(this);
           if (transition.chr && (transition.chr === d.source.id || transition.chr === d.target.id)) {
-            d3.select(this).style('fill', transition.from).transition().duration(transition.time).ease(d3.easeLinear).style('fill', transition.to);
-          } else {
-            d3.select(this).style('fill', defaultTransition.from).transition().duration(defaultTransition.time).ease(d3.easeLinear).style('fill', defaultTransition.to);
+            current.raise().style('fill', transition.from).transition().duration(transition.time).ease(d3.easeLinear).style('fill', transition.to);
+          } else if (transition.from != null && transition.to != null && transition.time != null && transition.chr == null) {
+            current.style('fill', transition.from).transition().duration(transition.time).ease(d3.easeLinear).style('fill', transition.to);
+          } else if (transition.chr && transition.chr !== d.source.id && transition.chr !== d.target.id) {
+            current.style('fill', conf.colorValue);
           }
         });
       } else {
-        link.attr('fill', conf.colorValue);
+        link.style('fill', conf.colorValue);
       }
 
       return link;

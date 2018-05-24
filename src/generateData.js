@@ -36,6 +36,7 @@ var currentFlippedChromosomes = []; // Array that stores the current set of chro
 var filterValue = 1; // Default filtering value
 var filterSelect = 'At Least'; // Default filtering select
 var showAllChromosomes = true; // To keep track of the Show All input state
+var removingBlockView = false; // To keep track of when the block view is being removed
 
 /**
  * Fixes current IDs in collinearity file by removing 0 when
@@ -353,7 +354,9 @@ function generateData(error, gff, collinearity) {
       filterSelect = d3.select(this).property("value");
 
       // Calling path genome view for updates
-      generatePathGenomeView();
+      generatePathGenomeView({
+        shouldDo: false
+      });
     });
 
   d3.select(".filter-connections-div")
