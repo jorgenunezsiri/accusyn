@@ -13907,6 +13907,8 @@ var Layout = function () {
       block.start = block.offset / _this.size * (2 * Math.PI - _this.data.length * _this.conf.gap) + index * _this.conf.gap;
 
       block.end = (block.offset + block.len) / _this.size * (2 * Math.PI - _this.data.length * _this.conf.gap) + index * _this.conf.gap;
+
+      console.log('BLOCK inside library: ', block, '\nTOTAL: ', (block.end - block.start) * (180 / Math.PI));
     });
   }
 

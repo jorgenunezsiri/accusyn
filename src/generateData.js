@@ -33,10 +33,14 @@ var colors = d3.scaleOrdinal(d3.schemeSet2); // Default color scheme
 var connectionColor = "sandybrown"; // Default connection color
 var currentSelectedBlock = {}; // To store the data of the current selected block
 var currentFlippedChromosomes = []; // Array that stores the current set of chromosomes with flipped locations
+var currentChromosomeOrder = []; // Array that stores the current order of chromosomes
 var filterValue = 1; // Default filtering value
 var filterSelect = 'At Least'; // Default filtering select
 var showAllChromosomes = true; // To keep track of the Show All input state
 var removingBlockView = false; // To keep track of when the block view is being removed
+
+
+var currentChromosomeMouseDown = ""; // DECIDE IF THIS VARIABLE CAN BE LOCAL
 
 /**
  * Fixes current IDs in collinearity file by removing 0 when
@@ -106,7 +110,7 @@ function updateAngle(nAngle) {
   d3.select("#nAngle-value").text(nAngle + String.fromCharCode(176));
   d3.select("#nAngle").property("value", nAngle);
 
-  // Rotate the text
+  // Rotate the genome view
   svg.select(".all")
     .attr("transform", "translate(" + width / 2 + "," + height / 2 + ") rotate(" + -nAngle + ")");
 }
@@ -186,6 +190,7 @@ function generateData(error, gff, collinearity) {
     if (!(gff[i].chrom in gffPositionDictionary)) {
       gffPositionDictionary[gff[i].chrom] = {};
       gffPositionDictionary[gff[i].chrom].start = start;
+      gffPositionDictionary[gff[i].chrom].color = colors(i);
     }
 
     gffPositionDictionary[gff[i].chrom].end = end;
@@ -204,6 +209,9 @@ function generateData(error, gff, collinearity) {
     if (a > b) return 1;
     return 0;
   });
+
+  console.log('KEYS: ', gffKeys);
+  currentChromosomeOrder = gffKeys.slice();
 
   blockDictionary = {};
   connectionDictionary = {};

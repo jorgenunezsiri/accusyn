@@ -310,7 +310,7 @@ function generateBlockView(data) {
     }
 
     // Offset to be used for the scales domain
-    var offset = 50000;
+    var offsetDomain = 50000;
 
     // Hint label about perfectly inverted
     var d3HintElement = d3.select("#block-view-container")
@@ -338,21 +338,24 @@ function generateBlockView(data) {
       }
     }
 
+    // Transition constants
+    var COLOR_CHANGE_TIME = 300;
+    var MAX_INDEX_TRANSITION = 13;
+    var TRANSITION_NORMAL_TIME = 130;
+    var TRANSITION_FLIPPING_TIME = TRANSITION_NORMAL_TIME * 2;
+    var TRANSITION_HEIGHT_DIVISION_MULTIPLE = 2;
+
     if (onInputChange) {
       // Change paths color to lightblue
       svgBlock.selectAll("path.line")
         .transition()
-        .duration(100)
+        .duration(COLOR_CHANGE_TIME)
         .ease(d3.easeLinear)
         .attr("stroke", "lightblue");
 
       // Flipping transition
-      var transitionTime = 100;
+      var transitionTime = COLOR_CHANGE_TIME;
       var transitionHeightDivision = 1;
-      var TRANSITION_NORMAL_TIME = 125;
-      var TRANSITION_FLIPPING_TIME = TRANSITION_NORMAL_TIME * 2;
-      var TRANSITION_HEIGHT_DIVISION_MULTIPLE = 2;
-
       var summing = true;
 
       // 2 - 4 - 8 - 16 - 32 - 64
@@ -362,7 +365,7 @@ function generateBlockView(data) {
       // Only break loop when summing is false && transitionHeightDivision == 1
       // summing || transitionHeightDivision != 1
       // Or when indexTransition == 14
-      for (var indexTransition = 1; indexTransition <= 13; indexTransition++) {
+      for (var indexTransition = 1; indexTransition <= MAX_INDEX_TRANSITION; indexTransition++) {
         if (indexTransition == 7) {
           summing = false;
           transitionHeightDivision = 128;
@@ -390,10 +393,37 @@ function generateBlockView(data) {
         // More info: https://stackoverflow.com/a/37728255
         (function(indexTransition, transitionTime, transitionHeightDivision) {
           setTimeout(function() {
+            var offsetTransition = 0;
+            /*
+            1 -> 2
+            2 -> 4
+            3 -> 8
+            4 -> 16
+            5 -> 32
+            6 -> 64
+            7 -> 128 -> 64
+            8 -> 32
+            9 -> 16
+            10 -> 8
+            11 -> 4
+            12 -> 2
+            13 -> 1
+             */
+
+            // offsetTransition =
+            // if (transitionHeightDivision === 2) offsetTransition = 225;
+            if (transitionHeightDivision >= 2) {
+              offsetTransition = (heightBlock - (heightBlock / transitionHeightDivision)) / 2;
+            }
+
+            console.log('HEIGHT BLOCK: ', heightBlock, offsetTransition, transitionHeightDivision);
+
             // Creating new scales for y1 to improve the flipping transition
-            var newY = [y[0], d3.scaleLinear().range([heightBlock / transitionHeightDivision, 0])];
-            newY[0].domain([minData(0) - offset, maxData(0) + offset]);
-            newY[1].domain([minData(1) - offset, maxData(1) + offset]);
+            var minimumRange = offsetTransition + ((heightBlock - offsetTransition) / transitionHeightDivision);
+            var maximumRange = offsetTransition;
+            var newY = [y[0], d3.scaleLinear().range([minimumRange, maximumRange])];
+            newY[0].domain([minData(0) - offsetDomain, maxData(0) + offsetDomain]);
+            newY[1].domain([minData(1) - offsetDomain, maxData(1) + offsetDomain]);
 
             // Remove axisY1 if it is present
             if (!svgBlock.selectAll("g.axisY1").empty()) {
@@ -405,7 +435,7 @@ function generateBlockView(data) {
               .attr("transform", "translate( " + widthBlock + ", 0 )")
               .call(d3.axisRight(newY[1]).tickSize(15).ticks(10))
               .attr("fill", function() {
-                return colors(parseInt(sourceChromosomeID.split('N')[1]) - 1);
+                return gffPositionDictionary[sourceChromosomeID].color;
               });
 
             // Plotting the lines path using the new scales
@@ -435,9 +465,9 @@ function generateBlockView(data) {
         svgBlock.selectAll("path.line").remove();
       }
 
-      // Y scale domains using minimum, maximum and offset values
-      y[0].domain([minData(0) - offset, maxData(0) + offset]);
-      y[1].domain([minData(1) - offset, maxData(1) + offset]);
+      // Y scale domains using minimum, maximum and offsetDomain values
+      y[0].domain([minData(0) - offsetDomain, maxData(0) + offsetDomain]);
+      y[1].domain([minData(1) - offsetDomain, maxData(1) + offsetDomain]);
 
       // Add new paths inside the block
       svgBlock.append("g").attr("clip-path", "url(#clip)")
@@ -466,7 +496,7 @@ function generateBlockView(data) {
         svgBlock.selectAll("path.line")
           .attr("stroke", "lightblue")
           .transition()
-          .duration(1500)
+          .duration(COLOR_CHANGE_TIME)
           .ease(d3.easeLinear)
           .attr("stroke", connectionColor);
       }
@@ -503,7 +533,8 @@ function generateBlockView(data) {
         .attr("class", "axisY0")
         .call(y0axis.ticks(10))
         .attr("fill", function() {
-          return colors(parseInt(targetChromosomeID.split('N')[1]) - 1);
+          return gffPositionDictionary[targetChromosomeID].color;
+          // return colors(parseInt(targetChromosomeID.split('N')[1]) - 1);
         });
 
       // Add the Y1 Axis
@@ -519,7 +550,7 @@ function generateBlockView(data) {
         .attr("transform", "translate( " + widthBlock + ", 0 )")
         .call(y1axis.ticks(10))
         .attr("fill", function() {
-          return colors(parseInt(sourceChromosomeID.split('N')[1]) - 1);
+          return gffPositionDictionary[sourceChromosomeID].color;
         });
 
       onInputChange = false;
@@ -528,11 +559,13 @@ function generateBlockView(data) {
       svgBlock.call(zoom.transform, d3.zoomIdentity.scale(1));
     }
 
-    // Total time: 100+(125*13)+(125*2) = 1975
+    // Total time: COLOR_CHANGE_TIME+(130*13)+(130*2) = 2080
+
+    console.log('TOTAL TIME: ', COLOR_CHANGE_TIME + (TRANSITION_NORMAL_TIME * MAX_INDEX_TRANSITION) + TRANSITION_FLIPPING_TIME);
     if (onInputChange) {
       setTimeout(function() {
         drawPathBlockView();
-      }, 1975);
+      }, (COLOR_CHANGE_TIME + (TRANSITION_NORMAL_TIME * MAX_INDEX_TRANSITION) + TRANSITION_FLIPPING_TIME));
     } else {
       drawPathBlockView();
     }
