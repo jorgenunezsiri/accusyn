@@ -28,7 +28,7 @@ var svg; // Circos svg
 var width = 800; // Circos plot width
 var height = 800; // Circos plot height
 
-var chromosomeRotateAngle = 0; // Default rotating angle for the genome view
+var chromosomeRotateAngle = 0; // Current rotating angle for the genome view (default to 0)
 var colors = d3.scaleOrdinal(d3.schemeSet2); // Default color scheme
 var connectionColor = "sandybrown"; // Default connection color
 var currentSelectedBlock = {}; // To store the data of the current selected block
@@ -39,8 +39,7 @@ var filterSelect = 'At Least'; // Default filtering select
 var showAllChromosomes = true; // To keep track of the Show All input state
 var removingBlockView = false; // To keep track of when the block view is being removed
 
-
-var currentChromosomeMouseDown = ""; // DECIDE IF THIS VARIABLE CAN BE LOCAL
+var draggedAngle = 0; // To keep track of the rotating angles of the genome view
 
 /**
  * Fixes current IDs in collinearity file by removing 0 when
@@ -100,10 +99,11 @@ function findIndexConnection(dictionary, source, target) {
 /**
  * Updates the angle of the genome view
  *
- * @param  {number} nAngle Current angle between 0 and 360
- * @return {undefined}     undefined
+ * @param  {number} nAngle    Current angle between 0 and 360
+ * @param  {number} nDragging Current dragging angle between 0 and 360
+ * @return {undefined}        undefined
  */
-function updateAngle(nAngle) {
+function updateAngle(nAngle, nDragging) {
   chromosomeRotateAngle = nAngle;
 
   // Adjust the text on the rotating range slider
@@ -112,7 +112,7 @@ function updateAngle(nAngle) {
 
   // Rotate the genome view
   svg.select(".all")
-    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ") rotate(" + -nAngle + ")");
+    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ") rotate(" + (-1) * (nAngle + nDragging) + ")");
 }
 
 /**
@@ -210,7 +210,6 @@ function generateData(error, gff, collinearity) {
     return 0;
   });
 
-  console.log('KEYS: ', gffKeys);
   currentChromosomeOrder = gffKeys.slice();
 
   blockDictionary = {};
@@ -536,12 +535,32 @@ function generateData(error, gff, collinearity) {
 
   // SVG element that will include the circos plot
   svg = d3.select("body")
-    .append("div")
+    .append("svg")
     .attr("id", "chart")
     .attr("width", width)
     .attr("height", height)
     .style("float", "left")
     .style("margin-top", "50px");
+
+  // svg
+  //   .call(d3.zoom().on("zoom", function() {
+  //     svg.attr("transform", d3.event.transform)
+  //   }));
+
+  // Defining a clip-path so that the genome view always stay inside
+  // its container when zooming in
+
+  // svg.append("defs").append("svg:clipPath")
+  //   .attr("id", "clip-svg")
+  //   .append("svg:rect")
+  //   .attr("id", "clip-rect-svg")
+  //   .attr("x", "0")
+  //   .attr("y", "0")
+  //   .attr("width", width)
+  //   .attr("height", height);
+  //
+  // svg.select(".all").append("g").attr("clip-path", "url(#clip-block)");
+
 
   // Loading the circos plot in the svg element
   myCircos = new Circos({
@@ -553,11 +572,11 @@ function generateData(error, gff, collinearity) {
   // Updating angle on input
   d3.select("#nAngle")
     .on("input", function() {
-      updateAngle(+this.value);
+      updateAngle(+this.value, draggedAngle > 0 ? 360 - draggedAngle : 0);
     });
 
   // Initial starting angle of the text
-  updateAngle(chromosomeRotateAngle);
+  updateAngle(chromosomeRotateAngle, 0);
 
   // Updating filter on input
   d3.select("#filter")

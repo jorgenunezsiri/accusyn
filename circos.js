@@ -10334,7 +10334,7 @@ var Core = function () {
     this.tracks = {};
     this._layout = null;
     this.conf = (0, _defaultsDeep2.default)(conf, defaultConf);
-    var container = (0, _d3Selection.select)(this.conf.container).append('div').style('position', 'relative');
+    var container = (0, _d3Selection.select)(this.conf.container);
     this.svg = container.append('svg');
     if ((0, _d3Selection.select)('body').select('.circos-tooltip').empty()) {
       this.tip = (0, _d3Selection.select)('body').append('div').attr('class', 'circos-tooltip').style('opacity', 0);
@@ -13907,8 +13907,6 @@ var Layout = function () {
       block.start = block.offset / _this.size * (2 * Math.PI - _this.data.length * _this.conf.gap) + index * _this.conf.gap;
 
       block.end = (block.offset + block.len) / _this.size * (2 * Math.PI - _this.data.length * _this.conf.gap) + index * _this.conf.gap;
-
-      console.log('BLOCK inside library: ', block, '\nTOTAL: ', (block.end - block.start) * (180 / Math.PI));
     });
   }
 

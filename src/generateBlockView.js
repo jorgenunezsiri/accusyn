@@ -200,9 +200,9 @@ function generateBlockView(data) {
   // Defining a clip-path so that lines always stay inside the block view,
   // thus paths will be clipped when zooming
   var clip = svgBlock.append("defs").append("svg:clipPath")
-    .attr("id", "clip")
+    .attr("id", "clip-block")
     .append("svg:rect")
-    .attr("id", "clip-rect")
+    .attr("id", "clip-rect-block")
     .attr("x", "0")
     .attr("y", "0")
     .attr("width", widthBlock)
@@ -339,9 +339,9 @@ function generateBlockView(data) {
     }
 
     // Transition constants
-    var COLOR_CHANGE_TIME = 300;
+    var COLOR_CHANGE_TIME = 200;
     var MAX_INDEX_TRANSITION = 13;
-    var TRANSITION_NORMAL_TIME = 130;
+    var TRANSITION_NORMAL_TIME = 90;
     var TRANSITION_FLIPPING_TIME = TRANSITION_NORMAL_TIME * 2;
     var TRANSITION_HEIGHT_DIVISION_MULTIPLE = 2;
 
@@ -408,10 +408,8 @@ function generateBlockView(data) {
             11 -> 4
             12 -> 2
             13 -> 1
-             */
+            */
 
-            // offsetTransition =
-            // if (transitionHeightDivision === 2) offsetTransition = 225;
             if (transitionHeightDivision >= 2) {
               offsetTransition = (heightBlock - (heightBlock / transitionHeightDivision)) / 2;
             }
@@ -470,7 +468,7 @@ function generateBlockView(data) {
       y[1].domain([minData(1) - offsetDomain, maxData(1) + offsetDomain]);
 
       // Add new paths inside the block
-      svgBlock.append("g").attr("clip-path", "url(#clip)")
+      svgBlock.append("g").attr("clip-path", "url(#clip-block)")
         .selectAll("path")
         .data(dataBlock).enter()
         .append("path")
@@ -510,8 +508,8 @@ function generateBlockView(data) {
 
       svgBlock.selectAll("path")
         .on("mouseover", function(d, i, nodes) {
-          if (d3.selectAll(nodes).attr("opacity") != 0.35) {
-            d3.selectAll(nodes).attr("opacity", 0.35);
+          if (d3.selectAll(nodes).attr("opacity") != 0.30) {
+            d3.selectAll(nodes).attr("opacity", 0.30);
             d3.select(nodes[i]).attr("opacity", 1);
           }
         })
