@@ -1,7 +1,7 @@
 /*
 University of Saskatchewan
 GSB: A Web-based Genome Synteny Browser
-Course: CMPT398 - Information Visualization
+Course: CMPT994 - Research
 
 Name: Jorge Nunez Siri
 E-mail: jdn766@mail.usask.ca
