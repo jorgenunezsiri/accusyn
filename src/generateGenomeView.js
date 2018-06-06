@@ -194,7 +194,7 @@ function generatePathGenomeView(transition) {
       transition = {
         shouldDo: true,
         from: "white",
-        to: connectionColor,
+        // to: connectionColor,
         time: 500
       };
     }
@@ -215,7 +215,10 @@ function generatePathGenomeView(transition) {
         }
       },
       color: function(d) {
-        // return gffPositionDictionary[d.source.id].color;
+        if (coloredBlocks) {
+          return gffPositionDictionary[d.source.id].color;
+        }
+
         return connectionColor;
       },
       tooltipContent: function(d) {
@@ -815,7 +818,7 @@ function generateGenomeView() {
           var transition = {
             shouldDo: true,
             from: "lightblue",
-            to: connectionColor,
+            // to: connectionColor,
             time: FLIPPING_CHROMOSOME_TIME,
             chr: currentId
           };

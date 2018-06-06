@@ -38,6 +38,7 @@ var filterValue = 1; // Default filtering value
 var filterSelect = 'At Least'; // Default filtering select
 var showAllChromosomes = true; // To keep track of the Show All input state
 var removingBlockView = false; // To keep track of when the block view is being removed
+var coloredBlocks = false; // To keep track of the value of the color blocks checkbox
 
 var draggedAngle = 0; // To keep track of the rotating angles of the genome view
 
@@ -343,6 +344,28 @@ function generateData(error, gff, collinearity) {
     .style("font-weight", "normal");
 
   d3.select("#form-config")
+    .append("p")
+    .attr("class", "color-blocks")
+    .attr("title", "If selected, all connections will be colored.")
+    .append("input")
+    .attr("type", "checkbox")
+    .attr("name", "color-blocks")
+    .attr("value", "Color blocks")
+    .property("checked", false); // Color block is not checked by default
+
+  d3.select("#form-config").select('p.color-blocks')
+    .append("span")
+    .text("Color blocks");
+
+  d3.select("p.color-blocks > input")
+    .on("change", function() {
+      coloredBlocks = d3.select(this).property("checked");
+
+      // Calling path genome view for updates
+      generatePathGenomeView();
+    });
+
+  d3.select("#form-config")
     .append("div")
     .attr("class", "filter-connections-div")
     .append("p")
@@ -385,7 +408,7 @@ function generateData(error, gff, collinearity) {
         maxBlockSize.toString() + ' id="filter">';
     });
 
-  d3.select("#form-config").selectAll("p:not(.show-all):not(.filter-connections)")
+  d3.select("#form-config").selectAll("p:not(.show-all):not(.filter-connections):not(.color-blocks)")
     .data(gffKeys).enter()
     .append("p")
     .append("input")
