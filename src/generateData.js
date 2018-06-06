@@ -38,7 +38,9 @@ var filterValue = 1; // Default filtering value
 var filterSelect = 'At Least'; // Default filtering select
 var showAllChromosomes = true; // To keep track of the Show All input state
 var removingBlockView = false; // To keep track of when the block view is being removed
+
 var coloredBlocks = false; // To keep track of the value of the color blocks checkbox
+var highlightFlippedBlocks = false; // To keep track of the value of highlight flipped blocks checkbox
 
 var draggedAngle = 0; // To keep track of the rotating angles of the genome view
 
@@ -164,6 +166,10 @@ function lookForBlocksPositions(block) {
 
   return {
     blockLength: blockArray.length,
+    // Taking score, eValue, and isFlipped from first connection in the blockArray
+    blockScore: blockArray[0].score,
+    blockEValue: blockArray[0].eValue,
+    isFlipped: blockArray[0].isFlipped === 'yes' ? true : false,
     minSource: minSource,
     maxSource: maxSource,
     minTarget: minTarget,
@@ -230,7 +236,10 @@ function generateData(error, gff, collinearity) {
         blockPositions: {},
         connection: collinearityFile[i].connection,
         source: collinearityFile[i].source,
-        target: collinearityFile[i].target
+        target: collinearityFile[i].target,
+        score: collinearityFile[i].score,
+        eValue: collinearityFile[i].eValue,
+        isFlipped: collinearityFile[i].isFlipped
       });
 
       var IDs = fixSourceTargetCollinearity(collinearityFile[i]);
@@ -366,6 +375,28 @@ function generateData(error, gff, collinearity) {
     });
 
   d3.select("#form-config")
+    .append("p")
+    .attr("class", "highlight-flipped-blocks")
+    .attr("title", "If selected, all connections will highlight flipped blocks.")
+    .append("input")
+    .attr("type", "checkbox")
+    .attr("name", "highlight-flipped-blocks")
+    .attr("value", "Highlight flipped blocks")
+    .property("checked", false); // Color block is not checked by default
+
+  d3.select("#form-config").select('p.highlight-flipped-blocks')
+    .append("span")
+    .text("Highlight flipped blocks");
+
+  d3.select("p.highlight-flipped-blocks > input")
+    .on("change", function() {
+      highlightFlippedBlocks = d3.select(this).property("checked");
+
+      // Calling path genome view for updates
+      generatePathGenomeView();
+    });
+
+  d3.select("#form-config")
     .append("div")
     .attr("class", "filter-connections-div")
     .append("p")
@@ -408,7 +439,8 @@ function generateData(error, gff, collinearity) {
         maxBlockSize.toString() + ' id="filter">';
     });
 
-  d3.select("#form-config").selectAll("p:not(.show-all):not(.filter-connections):not(.color-blocks)")
+  d3.select("#form-config")
+    .selectAll("p:not(.show-all):not(.filter-connections):not(.color-blocks):not(.highlight-flipped-blocks)")
     .data(gffKeys).enter()
     .append("p")
     .append("input")

@@ -138,7 +138,10 @@ function generatePathGenomeView(transition) {
             end: sourcePositions.end,
             value: {
               id: currentBlock,
-              length: blockPositions.blockLength
+              length: blockPositions.blockLength,
+              score: blockPositions.blockScore,
+              eValue: blockPositions.blockEValue,
+              isFlipped: blockPositions.isFlipped
             }
           },
           target: {
@@ -227,7 +230,10 @@ function generatePathGenomeView(transition) {
           return '<h4>' + d.source.id + ' ➤ ' + d.target.id + '</h4>' +
             '<h4><u>Block information</u></h4>' +
             '<h4>ID: ' + d.source.value.id + '</h4>' +
-            '<h4>Size: ' + d.source.value.length + '</h4>';
+            '<h4>Score: ' + d.source.value.score + '</h4>' +
+            '<h4>E-value: ' + d.source.value.eValue + '</h4>' +
+            '<h4>Size: ' + d.source.value.length + '</h4>' +
+            '<h4>Flipped: ' + (d.source.value.isFlipped ? "Yes" : "No") + '</h4>';
         }
 
         return;
@@ -261,10 +267,20 @@ function generatePathGenomeView(transition) {
       myCircos.render();
     }
 
+    // Highlighting flipped blocks if checkbox is true
+    if (highlightFlippedBlocks) {
+      d3.selectAll("path.chord.isFlipped")
+      .style("stroke", "#ea4848")
+      .style("stroke-width", "1px");
+    }
+
+    // Highlighting flipped chromosomes by default
     for (var i = 0; i < currentFlippedChromosomes.length; i++) {
       // d3.select("g." + currentFlippedChromosomes[i]).attr("opacity", 0.6);
-      d3.select("g." + currentFlippedChromosomes[i] + " path#arc-label" + currentFlippedChromosomes[i]).attr("stroke", "#ea4848");
-      // d3.select("g." + currentFlippedChromosomes[i]).attr("stroke", "#ea4848");
+      d3.select("g." + currentFlippedChromosomes[i] + " path#arc-label" + currentFlippedChromosomes[i])
+        .style("stroke", "#ea4848")
+        .style("stroke-width", "1px");
+      // d3.select("g." + currentFlippedChromosomes[i]).style("stroke", "#ea4848");
     }
   }
 
@@ -516,7 +532,9 @@ function generateGenomeView() {
         trueLastAngle = 0;
 
         // Highlighting current mouse down chromosome
-        d3.select("g." + currentChromosomeMouseDown).attr("stroke", "#ea4848");
+        d3.select("g." + currentChromosomeMouseDown)
+          .style("stroke", "#ea4848")
+          .style("stroke-width", "1px");
       })
       .on("drag", function(d) {
         if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "") return;
@@ -551,7 +569,8 @@ function generateGenomeView() {
         if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "") return;
 
         // Turning off highlighting for current mouse down chromosome
-        d3.select("g." + currentChromosomeMouseDown).attr("stroke", "none");
+        d3.select("g." + currentChromosomeMouseDown)
+          .style("stroke", "none");
 
         var collidedChr = "";
         for (var i = 0; i < dataChromosomes.length; i++) {
