@@ -7957,7 +7957,9 @@ __webpack_require__(457);
 
 function registerTooltip(track, instance, element, trackParams) {
   track.dispatch.on('mouseover', function (d) {
-    instance.tip.html(trackParams.tooltipContent(d)).transition().style('opacity', 0.9).style('left', _d3Selection.event.pageX + 'px').style('top', _d3Selection.event.pageY - 28 + 'px');
+    if (trackParams.tooltipContent(d)) {
+      instance.tip.html(trackParams.tooltipContent(d)).transition().style('opacity', 0.9).style('left', _d3Selection.event.pageX + 'px').style('top', _d3Selection.event.pageY - 28 + 'px');
+    }
   });
 
   track.dispatch.on('mouseout', function (d) {
@@ -24993,7 +24995,9 @@ var Chords = function (_Track) {
         return getCoordinates(d.target, instance._layout, _this2.conf, d);
       })).attr('opacity', conf.opacity).on('mouseover', function (d) {
         _this2.dispatch.call('mouseover', _this2, d);
-        instance.clipboard.attr('value', conf.tooltipContent(d));
+        if (conf.tooptipContent) {
+          instance.clipboard.attr('value', conf.tooltipContent(d));
+        }
       }).on('mouseout', function (d) {
         return _this2.dispatch.call('mouseout', _this2, d);
       });

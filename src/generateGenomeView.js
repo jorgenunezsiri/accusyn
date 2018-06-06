@@ -155,6 +155,12 @@ function generatePathGenomeView(transition) {
     }
   }
 
+  // Resetting currentSelectedBlock object back to default if no block is found
+  if (!foundCurrentSelectedBlock && !_.isEmpty(currentSelectedBlock)) {
+    console.log('HERE RESETTING!!!!');
+    currentSelectedBlock = {};
+  }
+
   // Update block-number-headline with current block size
   d3.select(".block-number-headline")
     .text(function() {
@@ -166,9 +172,11 @@ function generatePathGenomeView(transition) {
 
   // Remove block view if user is filtering
   // and selected block is not present anymore
+  // OR when the block is simply not present (because of view changes)
   // NOTE: When filtering there is NO transition
   removingBlockView = false;
-  if (transition && !transition.shouldDo && !foundCurrentSelectedBlock &&
+  if (((transition && !transition.shouldDo && !foundCurrentSelectedBlock) ||
+      !foundCurrentSelectedBlock) &&
     !d3.select("body").select("#block-view-container").empty()) {
     removingBlockView = true;
     removeBlockViewWithTransition();
@@ -195,27 +203,48 @@ function generatePathGenomeView(transition) {
     myCircos.chords('chords', dataChords, {
       radius: null,
       logScale: false,
-      opacity: 0.7,
-      color: connectionColor,
+      opacity: function(d) {
+        if (foundCurrentSelectedBlock) {
+          if (_.isEqual(d, currentSelectedBlock)) {
+            return 0.9;
+          } else {
+            return 0.3;
+          }
+        } else {
+          return 0.7;
+        }
+      },
+      color: function(d) {
+        // return gffPositionDictionary[d.source.id].color;
+        return connectionColor;
+      },
       tooltipContent: function(d) {
-        return '<h4>' + d.source.id + ' ➤ ' + d.target.id + '</h4>' +
-          '<h4><u>Block information</u></h4>' +
-          '<h4>ID: ' + d.source.value.id + '</h4>' +
-          '<h4>Size: ' + d.source.value.length + '</h4>';
+        // Only show tooltip if the user is not dragging
+        if (currentChromosomeMouseDown === "") {
+          return '<h4>' + d.source.id + ' ➤ ' + d.target.id + '</h4>' +
+            '<h4><u>Block information</u></h4>' +
+            '<h4>ID: ' + d.source.value.id + '</h4>' +
+            '<h4>Size: ' + d.source.value.length + '</h4>';
+        }
+
+        return;
       },
       events: {
         'mouseover.block': function(d, i, nodes) {
-          currentSelectedBlock = d;
+          // Only update block view if the user is not dragging
+          if (currentChromosomeMouseDown === "") {
+            currentSelectedBlock = d;
 
-          d3.selectAll(nodes).attr("opacity", 0.7);
+            d3.selectAll(nodes).attr("opacity", 0.7);
 
-          if (d3.selectAll(nodes).attr("opacity") != 0.30) {
-            d3.selectAll(nodes).attr("opacity", 0.30);
-            d3.select(nodes[i]).attr("opacity", 0.9);
+            if (d3.selectAll(nodes).attr("opacity") != 0.3) {
+              d3.selectAll(nodes).attr("opacity", 0.3);
+              d3.select(nodes[i]).attr("opacity", 0.9);
+            }
+
+            // Showing block view for current block
+            generateBlockView(d);
           }
-
-          // Showing block view for current block
-          generateBlockView(d);
         }
       }
     });
@@ -252,8 +281,10 @@ function generatePathGenomeView(transition) {
  */
 function generateGenomeView() {
   removingBlockView = false;
-  // Remove block view if it is present
-  if (!d3.select("body").select("#block-view-container").empty()) {
+  // Remove block view if it is present and current select block is not empty
+
+  if (_.isEmpty(currentSelectedBlock) &&
+    !d3.select("body").select("#block-view-container").empty()) {
     removingBlockView = true;
     removeBlockViewWithTransition();
   }
@@ -261,11 +292,18 @@ function generateGenomeView() {
   /**
    * Draws the chromosomes for the genome view
    *
+   * @param  {Object} transition Current transition configuration
    * @return {undefined} undefined
    */
-  function drawGenomeView() {
-    var offsetAngle = 0;
-    var lastAngle = 0;
+  function drawGenomeView(transition) {
+    var offsetAngle = 0; // Offset dragging angle
+    var lastAngle = 0; // Last angle that was captured in the drag event
+    // This variable is modified to include more movements of the mouse down chr
+
+    var trueLastAngle = 0; // Last angle from drag event without modification
+    var selectDrag = []; // Array to keep track of the chr that will be moving in the dragging animation
+    var hasMovedDragging = []; // Array to keep track of the chr that have moved in the dragging animation
+    var angleValue = 0; // Stores the angle width of the current mouse down chr
 
     /**
      * Clones and inserts any DOM selector
@@ -278,13 +316,180 @@ function generateGenomeView() {
       return d3.select(node.parentNode.insertBefore(node.cloneNode(true), node.nextSibling));
     }
 
+    /**
+     * Updates chords while the user is dragging or the animation is happening
+     *
+     * @param  {string}  chromosome          Source chromosome to update the chords
+     * @param  {number}  angleFromChromosome Angle of rotation for source chromosome
+     * @param  {number}  extraAngle          Angle of extra rotation for the chords
+     * @param  {number}  transitionDuration  Time for transitioning
+     * @param  {boolean} animation           True if updating chords for animation, false otherwise
+     * @return {undefined}                   undefined
+     */
+    function updateChordsWhileDragging(chromosome, angleFromChromosome, extraAngle, transitionDuration, animation) {
+      // Only update if chromosome (parameter) has chords
+      // meaning that selection should not be empty
+      if (!d3.selectAll('path.chord.' + chromosome).empty()) {
+        var ribbon = d3.ribbon().radius(300);
+        var isChrMouseDown = !animation && chromosome === currentChromosomeMouseDown;
+
+        if (isChrMouseDown) {
+          d3.selectAll('path.chord')
+            .attr("opacity", 0.3);
+        }
+
+        d3.selectAll('path.chord.' + chromosome)
+          .raise()
+          .transition()
+          .duration(transitionDuration)
+          .attr("opacity", 0.7)
+          .attr("d", function(d) {
+
+            // For source
+            var sourceObject = _.find(dataChromosomes, ['id', d.source.id]);
+            var sourceStartAngle = sourceObject.start + (d.source.start /
+              sourceObject.len) * (sourceObject.end - sourceObject.start);
+            var sourceEndAngle = sourceObject.start + (d.source.end /
+              sourceObject.len) * (sourceObject.end - sourceObject.start);
+
+            if (isChrMouseDown) {
+              if (d.source.id === chromosome) {
+                sourceStartAngle += (extraAngle * (Math.PI / 180));
+                sourceEndAngle += (extraAngle * (Math.PI / 180));
+              }
+            }
+
+            // For target
+            var targetObject = _.find(dataChromosomes, ['id', d.target.id]);
+            var targetStartAngle = targetObject.start + (d.target.start /
+              targetObject.len) * (targetObject.end - targetObject.start);
+            var targetEndAngle = targetObject.start + (d.target.end /
+              targetObject.len) * (targetObject.end - targetObject.start);
+
+            if (isChrMouseDown) {
+              if (d.target.id === chromosome) {
+                targetStartAngle += (extraAngle * (Math.PI / 180));
+                targetEndAngle += (extraAngle * (Math.PI / 180));
+              }
+            } else {
+
+              // angleFromChromosome is trueLastAngle,
+              // extraAngle is rotatingAngle
+
+              //
+              // Main idea:
+              // If I'm the one moving (I'm source):
+              // -> All my targets will not move
+              // -> I (source) will move extraAngle which is rotatingAngle
+              //
+              // If others are moving (They are source):
+              // -> They (source) move extraAngle which is rotatingAngle
+              // -> I (target) will move trueLastAngle (which is angleFromChromosome)
+              //
+
+              if (d.source.id !== d.target.id) {
+                if (d.source.id === chromosome) {
+
+                  if (d.source.id === currentChromosomeMouseDown) {
+                    console.log('-> 1');
+                    sourceStartAngle += (extraAngle * (Math.PI / 180));
+                    sourceEndAngle += (extraAngle * (Math.PI / 180));
+
+                    if (selectDrag.indexOf(d.target.id) > -1) {
+                      console.log('-> 1.1');
+                      targetStartAngle += (angleValue * (Math.PI / 180));
+                      targetEndAngle += (angleValue * (Math.PI / 180));
+                    }
+
+                  } else {
+                    console.log('-> 2');
+                    sourceStartAngle += (extraAngle * (Math.PI / 180));
+                    sourceEndAngle += (extraAngle * (Math.PI / 180));
+
+                    if (selectDrag.indexOf(d.target.id) > -1) {
+                      console.log('-> 2.1');
+                      if (d.target.id === currentChromosomeMouseDown) {
+                        targetStartAngle += (angleFromChromosome * (Math.PI / 180));
+                        targetEndAngle += (angleFromChromosome * (Math.PI / 180));
+                      } else if (hasMovedDragging[d.target.id]) {
+                        // Can also be extraAngle here ...
+                        targetStartAngle += (angleValue * (Math.PI / 180));
+                        targetEndAngle += (angleValue * (Math.PI / 180));
+                      }
+                    }
+                  }
+                } else if (d.target.id === chromosome) {
+
+                  if (d.target.id === currentChromosomeMouseDown) {
+                    console.log('-> 3');
+                    targetStartAngle += (extraAngle * (Math.PI / 180));
+                    targetEndAngle += (extraAngle * (Math.PI / 180));
+
+                    if (selectDrag.indexOf(d.source.id) > -1) {
+                      console.log('-> 3.1');
+                      sourceStartAngle += (angleValue * (Math.PI / 180));
+                      sourceEndAngle += (angleValue * (Math.PI / 180));
+                    }
+
+                  } else {
+                    console.log('-> 4');
+                    targetStartAngle += (extraAngle * (Math.PI / 180));
+                    targetEndAngle += (extraAngle * (Math.PI / 180));
+
+                    if (selectDrag.indexOf(d.source.id) > -1) {
+                      console.log('-> 4.1');
+                      if (d.source.id === currentChromosomeMouseDown) {
+                        sourceStartAngle += (angleFromChromosome * (Math.PI / 180));
+                        sourceEndAngle += (angleFromChromosome * (Math.PI / 180));
+                      } else if (hasMovedDragging[d.source.id]) {
+                        // Can also be extraAngle here ...
+                        sourceStartAngle += (angleValue * (Math.PI / 180));
+                        sourceEndAngle += (angleValue * (Math.PI / 180));
+                      }
+                    }
+
+                  }
+
+                }
+              }
+
+              if (d.source.id === d.target.id) {
+                sourceStartAngle += (extraAngle * (Math.PI / 180));
+                sourceEndAngle += (extraAngle * (Math.PI / 180));
+
+                targetStartAngle += (extraAngle * (Math.PI / 180));
+                targetEndAngle += (extraAngle * (Math.PI / 180));
+              }
+            }
+
+            var sourceAngles = {
+              startAngle: sourceStartAngle,
+              endAngle: sourceEndAngle
+            };
+
+            var targetAngles = {
+              startAngle: targetStartAngle,
+              endAngle: targetEndAngle
+            };
+
+            console.log('SOURCE ANGLES: ', sourceAngles);
+            console.log('TARGET ANGLES: ', targetAngles);
+
+            return ribbon({
+              source: sourceAngles,
+              target: targetAngles
+            });
+          });
+      }
+    }
+
     var dragHandler = d3.drag()
       .on("start", function() {
         if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "") return;
 
         // Creating a clone of the current mouse down chromosome
-        d3.selectAll("." + currentChromosomeMouseDown + "-clone").remove();
-        var copy = clone("." + currentChromosomeMouseDown);
+        d3.selectAll("g." + currentChromosomeMouseDown + "-clone").remove();
+        var copy = clone("g." + currentChromosomeMouseDown);
         copy
           .lower()
           .attr("class", currentChromosomeMouseDown + "-clone")
@@ -305,6 +510,7 @@ function generateGenomeView() {
         offsetAngle = angle;
         // Initializing lastAngle variable
         lastAngle = 0;
+        trueLastAngle = 0;
 
         // Highlighting current mouse down chromosome
         d3.select("g." + currentChromosomeMouseDown).attr("stroke", "#ea4848");
@@ -319,8 +525,8 @@ function generateGenomeView() {
         // 1 rad = (180 / Math.PI) = 57.2957795;
         var angle = Math.atan2(y, x) * RADIAN_TO_DEGREES;
 
-        // Selecting current mouse down chromosome with its chords
-        var current = d3.selectAll("." + currentChromosomeMouseDown, ".chord." + currentChromosomeMouseDown);
+        // Selecting current mouse down chromosome
+        var current = d3.select("g." + currentChromosomeMouseDown);
         var currentAngle = (angle - offsetAngle);
 
         current
@@ -331,6 +537,12 @@ function generateGenomeView() {
 
         // Updating lastAngle with currentAngle to be used in the end drag event
         lastAngle = currentAngle;
+        trueLastAngle = currentAngle;
+
+        console.log('LAST ANGLE: ', lastAngle);
+
+        // Updating chords while dragging
+        updateChordsWhileDragging(currentChromosomeMouseDown, 0, lastAngle, 0, false);
       })
       .on("end", function() {
         if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "") return;
@@ -356,20 +568,19 @@ function generateGenomeView() {
 
         console.log('COLLIDED CHR: ', collidedChr);
 
-        var TRANSITION_DRAG_TIME = 250;
-        var transitionDraggingBackTime = TRANSITION_DRAG_TIME;
-
         if (collidedChr === currentChromosomeMouseDown || collidedChr === "") {
           console.log("CURRENT INSIDE!!! ");
-          d3.select("." + currentChromosomeMouseDown + "-clone")
-            .transition()
-            .duration(TRANSITION_DRAG_TIME)
+          // Resetting current mouse down chr
+          currentChromosomeMouseDown = "";
+
+          // Removing cloned chromosome without transition
+          d3.select("g." + currentChromosomeMouseDown + "-clone")
             .attr("opacity", 0)
             .remove();
 
-          setTimeout(function() {
-            generateGenomeView();
-          }, TRANSITION_DRAG_TIME);
+          drawGenomeView({
+            shoulDo: false
+          });
 
           return;
         }
@@ -381,7 +592,8 @@ function generateGenomeView() {
         var currentIndexToDelete = currentChromosomeOrder.indexOf(currentChromosomeMouseDown);
         var currentIndexToInsert = currentChromosomeOrder.indexOf(collidedChr);
 
-        var selectDrag = [];
+        selectDrag = [];
+        hasMovedDragging = [];
 
         if (currentIndexToDelete >= 0) {
           currentChromosomeOrder.splice(currentIndexToDelete, 1);
@@ -441,15 +653,22 @@ function generateGenomeView() {
 
         console.log('SELECT DRAG: ', selectDrag);
 
+        for (var i = 0; i < selectDrag.length; i++) {
+          hasMovedDragging[selectDrag[i]] = false;
+        }
+
+        var TRANSITION_DRAG_TIME = 150;
+        var transitionDraggingBackTime = TRANSITION_DRAG_TIME;
+
         // Transitioning the remaining chromosomes, by removing the clone first
-        d3.select("." + currentChromosomeMouseDown + "-clone")
+        d3.select("g." + currentChromosomeMouseDown + "-clone")
           .transition()
           .duration(TRANSITION_DRAG_TIME)
           .attr("opacity", 0)
           .remove();
 
         var index = 0;
-        var angleValue = (draggingAnglesDictionary[currentChromosomeMouseDown].totalAngle + (GAP_AMOUNT * RADIAN_TO_DEGREES));
+        angleValue = (draggingAnglesDictionary[currentChromosomeMouseDown].totalAngle + (GAP_AMOUNT * RADIAN_TO_DEGREES));
 
         console.log('TIME: ', (TRANSITION_DRAG_TIME * selectDrag.length));
 
@@ -457,26 +676,52 @@ function generateGenomeView() {
           (function(transitionDraggingBackTime, index) {
 
             setTimeout(function() {
-              var selection = d3.selectAll("." + selectDrag[index], ".chord." + selectDrag[index]);
+              var selection = d3.select(".cs-layout g." + selectDrag[index]);
+              // console.log('SELECTION:', selection);
+              var rotatingAngle = angleValue;
 
               if (selectDrag[index] === collidedChr) {
                 selection
                   .transition()
                   .duration(TRANSITION_DRAG_TIME)
-                  .attr("transform", "rotate(" + angleValue + ")");
+                  .attr("transform", "rotate(" + rotatingAngle + ")");
               } else if (selectDrag[index] === currentChromosomeMouseDown) {
+                rotatingAngle = (angleValue + lastAngle);
+
                 console.log('HERE INSIDE MOUSE DOWN SELECT DRAG!!!!');
+
                 selection
                   .transition()
                   .duration(TRANSITION_DRAG_TIME)
-                  .attr("transform", "rotate(" + (angleValue + lastAngle) + ")");
+                  .attr("transform", "rotate(" + rotatingAngle + ")");
               } else {
                 selection
                   .raise()
                   .transition()
                   .duration(TRANSITION_DRAG_TIME)
-                  .attr("transform", "rotate(" + angleValue + ")");
+                  .attr("transform", "rotate(" + rotatingAngle + ")");
               }
+
+              /*var rotatingAnimationAngle =
+                (draggingAnglesDictionary[currentChromosomeMouseDown].startAngle + trueLastAngle) -
+                (draggingAnglesDictionary[currentChromosomeMouseDown].endAngle + (GAP_AMOUNT * RADIAN_TO_DEGREES));*/
+
+              /*if (selectDrag[index] === currentChromosomeMouseDown) {
+                rotatingAnimationAngle = angleValue - (GAP_AMOUNT * RADIAN_TO_DEGREES);
+              }*/
+
+              console.log('ROTATING ANGLE: ', rotatingAngle);
+              console.log('TRUE LAST ANGLE: ', trueLastAngle);
+
+              updateChordsWhileDragging(
+                selectDrag[index],
+                trueLastAngle,
+                rotatingAngle,
+                TRANSITION_DRAG_TIME,
+                true
+              );
+
+              hasMovedDragging[selectDrag[index]] = true;
             }, transitionDraggingBackTime);
           })(transitionDraggingBackTime, index);
 
@@ -492,7 +737,11 @@ function generateGenomeView() {
             console.log('DRAGGED ANGLE: ', draggedAngle);
             updateAngle(chromosomeRotateAngle, 360 - draggedAngle);
           }
-          generateGenomeView();
+
+          // Drawing genome view without removing block view
+          drawGenomeView({
+            shoulDo: false
+          });
 
           // Resetting current mouse down chr
           currentChromosomeMouseDown = "";
@@ -500,7 +749,7 @@ function generateGenomeView() {
 
       });
 
-    dataChromosomes = [];
+    dataChromosomes = []; // Emptying data chromosomes array
 
     // Using currentChromosomeOrder array to add selected chromosomes to the genome view
     for (var i = 0; i < currentChromosomeOrder.length; i++) {
@@ -546,6 +795,7 @@ function generateGenomeView() {
       },
       events: {
         'contextmenu.chr': function(d, i, nodes, event) {
+          var FLIPPING_CHROMOSOME_TIME = 400;
           // To prevent default right click action
           event.preventDefault();
           d3.selectAll("path.chord").attr("opacity", 0.7);
@@ -556,7 +806,7 @@ function generateGenomeView() {
           d3.selectAll("path.chord." + currentId)
             .raise()
             .transition()
-            .duration(750)
+            .duration(FLIPPING_CHROMOSOME_TIME)
             .ease(d3.easeLinear)
             .style("fill", "lightblue");
 
@@ -566,7 +816,7 @@ function generateGenomeView() {
             shouldDo: true,
             from: "lightblue",
             to: connectionColor,
-            time: 750,
+            time: FLIPPING_CHROMOSOME_TIME,
             chr: currentId
           };
 
@@ -581,7 +831,7 @@ function generateGenomeView() {
 
           setTimeout(function() {
             generatePathGenomeView(transition);
-          }, 1250);
+          }, FLIPPING_CHROMOSOME_TIME + (FLIPPING_CHROMOSOME_TIME / 2));
         },
         'mousedown.chr': function(d) {
           currentChromosomeMouseDown = d.id;
@@ -602,7 +852,10 @@ function generateGenomeView() {
         (draggingAnglesDictionary[currentId].endAngle - draggingAnglesDictionary[currentId].startAngle);
     }
 
-    generatePathGenomeView();
+    console.log('DATA CHR: ', dataChromosomes);
+    console.log('DRAGGING DICTIONARY: ', draggingAnglesDictionary);
+
+    generatePathGenomeView(transition);
   }
 
   if (removingBlockView) {

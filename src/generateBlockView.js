@@ -339,9 +339,9 @@ function generateBlockView(data) {
     }
 
     // Transition constants
-    var COLOR_CHANGE_TIME = 200;
+    var COLOR_CHANGE_TIME = 75;
     var MAX_INDEX_TRANSITION = 13;
-    var TRANSITION_NORMAL_TIME = 90;
+    var TRANSITION_NORMAL_TIME = 50;
     var TRANSITION_FLIPPING_TIME = TRANSITION_NORMAL_TIME * 2;
     var TRANSITION_HEIGHT_DIVISION_MULTIPLE = 2;
 

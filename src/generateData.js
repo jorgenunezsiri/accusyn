@@ -112,7 +112,7 @@ function updateAngle(nAngle, nDragging) {
 
   // Rotate the genome view
   svg.select(".all")
-    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ") rotate(" + (-1) * (nAngle + nDragging) + ")");
+    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ") rotate(" + ((-1) * (nAngle + nDragging)) + ")");
 }
 
 /**
@@ -130,9 +130,11 @@ function updateFilter(value, shouldUpdatePath) {
   d3.select("#filter-value").text(value == 1 ? value + " connection" : value + " connections");
   d3.select("#filter").property("value", value);
 
-  if (shouldUpdatePath) generatePathGenomeView({
-    shouldDo: false
-  });
+  if (shouldUpdatePath) {
+    generatePathGenomeView({
+      shouldDo: false
+    });
+  }
 }
 
 /**
@@ -421,7 +423,7 @@ function generateData(error, gff, collinearity) {
       });
 
       // Changing Select/Deselect All button depending on the amount of selected chromosomes
-      if (selectedChromosomes.length == 0) {
+      if (selectedChromosomes.length === 0) {
         d3.select(".select-all > input").property("value", "Select All");
         d3.select("p.select-all").attr("title", "Selects all the connections.");
       } else {
@@ -429,7 +431,7 @@ function generateData(error, gff, collinearity) {
         d3.select("p.select-all").attr("title", "Deselects all the connections.");
       }
 
-      if (selectedChromosomes.length == 1) {
+      if (selectedChromosomes.length === 1) {
         // If only one chromosome is selected, the connection information will show
         // for each other chromosome
 
