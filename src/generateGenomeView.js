@@ -48,11 +48,6 @@ function generatePathGenomeView(transition) {
 
   var foundCurrentSelectedBlock = false;
 
-  var visited = {}; // Visited block dictionary
-  for (var i = 0; i < blockKeys.length; i++) {
-    visited[blockKeys[i]] = false;
-  };
-
   var oneToMany = selectedCheckbox.length === 1;
   var lookID = [];
   if (oneToMany) {
@@ -67,9 +62,9 @@ function generatePathGenomeView(transition) {
 
   for (var i = 0; i < blockKeys.length; i++) {
     var currentBlock = blockKeys[i];
-    if (!visited[currentBlock]) {
-      // Only need to enter the very first time each block is visited
-      visited[currentBlock] = true;
+
+    // Only need to enter if current block is not currently removed
+    if (currentRemovedBlocks.indexOf(currentBlock) === -1) {
 
       var IDs = fixSourceTargetCollinearity(blockDictionary[currentBlock][0]);
       var sourceID = IDs.source;
@@ -248,12 +243,46 @@ function generatePathGenomeView(transition) {
 
             if (d3.selectAll(nodes).attr("opacity") != 0.3) {
               d3.selectAll(nodes).attr("opacity", 0.3);
-              d3.select(nodes[i]).attr("opacity", 0.9);
+              d3.select(nodes[i]).raise().attr("opacity", 0.9);
             }
 
             // Showing block view for current block
             generateBlockView(d);
           }
+        },
+        'contextmenu.chr': function(d, i, nodes, event) {
+          // To prevent default right click action
+          event.preventDefault();
+
+          // Hide tooltip and node when right clicking block
+          d3.select('.circos-tooltip')
+            .transition()
+            .duration(250)
+            .style("opacity", 0);
+
+          // Setting opacity 0.7 to all chords, except current node with 0
+          d3.selectAll('path.chord')
+            .transition()
+            .duration(250)
+            .attr("opacity", 0.7);
+
+          d3.select(nodes[i])
+          .raise()
+          .transition()
+          .duration(250)
+          .style("opacity", 0)
+          .remove();
+
+          // Removing block view
+          removeBlockViewWithTransition();
+
+          // Resetting current selected block object
+          currentSelectedBlock = {};
+
+          console.log('REMOVING ID: ', d.source.value.id);
+
+          // Pushing block id to array to keep track
+          currentRemovedBlocks.push(d.source.value.id);
         }
       }
     });
@@ -361,7 +390,7 @@ function generateGenomeView() {
           .raise()
           .transition()
           .duration(transitionDuration)
-          .attr("opacity", 0.7)
+          .attr("opacity", 0.9)
           .attr("d", function(d) {
 
             // For source
@@ -820,6 +849,7 @@ function generateGenomeView() {
           var FLIPPING_CHROMOSOME_TIME = 400;
           // To prevent default right click action
           event.preventDefault();
+          // Before flipping, set all chords with the same opacity
           d3.selectAll("path.chord").attr("opacity", 0.7);
 
           var currentId = d.id;

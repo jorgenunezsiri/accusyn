@@ -1,0 +1,25 @@
+#form-config p {
+  color: black;
+}
+
+#form-config p.disabled {
+  color: gainsboro;
+}
+
+input[type="range"],
+input[type="button"],
+button {
+  cursor: pointer;
+}
+
+p.filter-connections:nth-child(1),
+p.filter-connections:nth-child(2),
+p.filter-connections:nth-child(3) {
+  display: inline-block;
+  margin: 0;
+}
+
+p.filter-connections:nth-child(2),
+p.filter-connections:nth-child(3) {
+  margin: 0 0 0 10px;
+}

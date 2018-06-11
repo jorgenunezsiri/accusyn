@@ -33,6 +33,7 @@ var colors = d3.scaleOrdinal(d3.schemeSet2); // Default color scheme
 var connectionColor = "sandybrown"; // Default connection color
 var currentSelectedBlock = {}; // To store the data of the current selected block
 var currentFlippedChromosomes = []; // Array that stores the current set of chromosomes with flipped locations
+var currentRemovedBlocks = []; // Array that stores the current set of blocks that are removed
 var currentChromosomeOrder = []; // Array that stores the current order of chromosomes
 var filterValue = 1; // Default filtering value
 var filterSelect = 'At Least'; // Default filtering select

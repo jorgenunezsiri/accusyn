@@ -31,33 +31,9 @@ Main file: index.html
   <script type="text/javascript" src="./src/generateData.js"></script>
   <script type="text/javascript" src="./src/generateGenomeView.js"></script>
   <script type="text/javascript" src="./src/generateBlockView.js"></script>
-  <style type="text/css">
-    #form-config p {
-      color: black;
-    }
 
-    #form-config p.disabled {
-      color: gainsboro;
-    }
-
-    input[type="range"],
-    input[type="button"],
-    button {
-      cursor: pointer;
-    }
-
-    p.filter-connections:nth-child(1),
-    p.filter-connections:nth-child(2),
-    p.filter-connections:nth-child(3) {
-      display: inline-block;
-      margin: 0;
-    }
-
-    p.filter-connections:nth-child(2),
-    p.filter-connections:nth-child(3) {
-      margin: 0 0 0 10px;
-    }
-  </style>
+  <!-- Loading local css -->
+  <link type="text/css" rel="stylesheet" href="./index.css">
 </head>
 
 <body>
@@ -71,14 +47,8 @@ Main file: index.html
     </p>
     <form id="form-config"></form>
   </div>
-
-  <script type="text/javascript">
-    // Call generateData only after loading the data files
-    d3.queue()
-      .defer(d3.csv, './files/gff.csv')
-      .defer(d3.csv, './files/collinearity.csv')
-      .await(generateData)
-  </script>
+  <!-- Loading index.js -->
+  <script type="text/javascript" src="./src/index.js"></script>
 </body>
 
 </html>
