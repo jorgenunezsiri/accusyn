@@ -13,6 +13,9 @@ Function file: generateBlockView.js
 @2018, Jorge Nunez Siri, All rights reserved
 */
 
+var _ = require('lodash');
+var d3 = require('d3');
+
 /**
  * Generates block view for the current highlighted block in the genome view
  *
@@ -20,7 +23,12 @@ Function file: generateBlockView.js
  *                       information
  * @return {undefined}   undefined
  */
-function generateBlockView(data) {
+var generateBlockView = function generateBlockView(data) {
+  var blockDictionary = require('./generateData').blockDictionary();
+  var connectionColor = require('./generateGenomeView').connectionColor();
+  var geneDictionary = require('./generateData').geneDictionary();
+  var gffPositionDictionary = require('./generateData').gffPositionDictionary();
+
   var sourceChromosomeID = data.source.id;
   var targetChromosomeID = data.target.id;
   var blockID = data.source.value.id;
@@ -532,7 +540,6 @@ function generateBlockView(data) {
         .call(y0axis.ticks(10))
         .attr("fill", function() {
           return gffPositionDictionary[targetChromosomeID].color;
-          // return colors(parseInt(targetChromosomeID.split('N')[1]) - 1);
         });
 
       // Add the Y1 Axis
@@ -600,3 +607,5 @@ function generateBlockView(data) {
     .style("font-style", "italic")
     .text(sourceChromosomeID + ' vs. ' + targetChromosomeID + ' - Block ' + blockID + ' gene locations');
 }
+
+module.exports = generateBlockView;

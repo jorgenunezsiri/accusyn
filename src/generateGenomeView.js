@@ -13,9 +13,25 @@ Function file: generateGenomeView.js
 @2018, Jorge Nunez Siri, All rights reserved
 */
 
+var _ = require('lodash');
+var d3 = require('d3');
+
+var getCurrentChromosomeOrder = require('./variables').getCurrentChromosomeOrder;
+var setCurrentChromosomeOrder = require('./variables').setCurrentChromosomeOrder;
+
+// Exported variables
+var connectionColor = "sandybrown"; // Default connection color
+var draggedAngle = 0; // To keep track of the rotating angles of the genome view
+
 // Local variables
-var draggingAnglesDictionary = null; // Dragging angles dictionary based on start and end angles from Circos library
 var currentChromosomeMouseDown = ""; // To store the current chromosome fired by the mousedown event
+var currentFlippedChromosomes = []; // Array that stores the current set of chromosomes with flipped locations
+var currentSelectedBlock = {}; // To store the data of the current selected block
+var currentRemovedBlocks = []; // Array that stores the current set of blocks that are removed
+var dataChords = []; // Array that stores the plotting information for each block chord
+var dataChromosomes = []; // Array that stores the current chromosomes in the circos plot
+var draggingAnglesDictionary = null; // Dragging angles dictionary based on start and end angles from Circos library
+var removingBlockView = false; // To keep track of when the block view is being removed
 
 // Constants
 var GAP_AMOUNT = 0.04; // Value in radians
@@ -42,7 +58,21 @@ function removeBlockViewWithTransition() {
  * @param  {Object} transition Current transition configuration
  * @return {undefined} undefined
  */
-function generatePathGenomeView(transition) {
+var generatePathGenomeView = function generatePathGenomeView(transition) {
+  var coloredBlocks = require('./generateData').coloredBlocks();
+  var filterValue = require('./generateData').filterValue();
+  var filterSelect = require('./generateData').filterSelect();
+  var highlightFlippedBlocks = require('./generateData').highlightFlippedBlocks();
+  var showAllChromosomes = require('./generateData').showAllChromosomes();
+
+  var blockDictionary = require('./generateData').blockDictionary();
+  var blockKeys = require('./generateData').blockKeys();
+  var fixSourceTargetCollinearity = require('./generateData').fixSourceTargetCollinearity;
+
+  var generateBlockView = require('./generateBlockView');
+  var gffPositionDictionary = require('./generateData').gffPositionDictionary();
+  var myCircos = require('./generateData').myCircos();
+  var selectedCheckbox = require('./generateData').selectedCheckbox();
 
   dataChords = []; // Emptying data chords array
 
@@ -197,6 +227,8 @@ function generatePathGenomeView(transition) {
       };
     }
 
+    console.log('DATA CHORDS: ', dataChords);
+
     // Adding the configuration for the circos chords using the generated array
     myCircos.chords('chords', dataChords, {
       radius: null,
@@ -327,8 +359,21 @@ function generatePathGenomeView(transition) {
  *
  * @return {undefined} undefined
  */
-function generateGenomeView() {
+var generateGenomeView = function generateGenomeView() {
+  var gffPositionDictionary = require('./generateData').gffPositionDictionary();
+  var myCircos = require('./generateData').myCircos();
+  var selectedCheckbox = require('./generateData').selectedCheckbox();
+  var showAllChromosomes = require('./generateData').showAllChromosomes();
+
+  var chromosomeRotateAngle = require('./generateData').chromosomeRotateAngle();
+  var updateAngle = require('./generateData').updateAngle;
+
+
+  var width = require('./generateData').width();
+  var height = require('./generateData').height();
+
   removingBlockView = false;
+
   // Remove block view if it is present and current select block is not empty
 
   if (_.isEmpty(currentSelectedBlock) &&
@@ -439,23 +484,23 @@ function generateGenomeView() {
                 if (d.source.id === chromosome) {
 
                   if (d.source.id === currentChromosomeMouseDown) {
-                    console.log('-> 1');
+                    // console.log('-> 1');
                     sourceStartAngle += (extraAngle * (Math.PI / 180));
                     sourceEndAngle += (extraAngle * (Math.PI / 180));
 
                     if (selectDrag.indexOf(d.target.id) > -1) {
-                      console.log('-> 1.1');
+                      // console.log('-> 1.1');
                       targetStartAngle += (angleValue * (Math.PI / 180));
                       targetEndAngle += (angleValue * (Math.PI / 180));
                     }
 
                   } else {
-                    console.log('-> 2');
+                    // console.log('-> 2');
                     sourceStartAngle += (extraAngle * (Math.PI / 180));
                     sourceEndAngle += (extraAngle * (Math.PI / 180));
 
                     if (selectDrag.indexOf(d.target.id) > -1) {
-                      console.log('-> 2.1');
+                      // console.log('-> 2.1');
                       if (d.target.id === currentChromosomeMouseDown) {
                         targetStartAngle += (angleFromChromosome * (Math.PI / 180));
                         targetEndAngle += (angleFromChromosome * (Math.PI / 180));
@@ -469,23 +514,23 @@ function generateGenomeView() {
                 } else if (d.target.id === chromosome) {
 
                   if (d.target.id === currentChromosomeMouseDown) {
-                    console.log('-> 3');
+                    // console.log('-> 3');
                     targetStartAngle += (extraAngle * (Math.PI / 180));
                     targetEndAngle += (extraAngle * (Math.PI / 180));
 
                     if (selectDrag.indexOf(d.source.id) > -1) {
-                      console.log('-> 3.1');
+                      // console.log('-> 3.1');
                       sourceStartAngle += (angleValue * (Math.PI / 180));
                       sourceEndAngle += (angleValue * (Math.PI / 180));
                     }
 
                   } else {
-                    console.log('-> 4');
+                    // console.log('-> 4');
                     targetStartAngle += (extraAngle * (Math.PI / 180));
                     targetEndAngle += (extraAngle * (Math.PI / 180));
 
                     if (selectDrag.indexOf(d.source.id) > -1) {
-                      console.log('-> 4.1');
+                      // console.log('-> 4.1');
                       if (d.source.id === currentChromosomeMouseDown) {
                         sourceStartAngle += (angleFromChromosome * (Math.PI / 180));
                         sourceEndAngle += (angleFromChromosome * (Math.PI / 180));
@@ -520,8 +565,8 @@ function generateGenomeView() {
               endAngle: targetEndAngle
             };
 
-            console.log('SOURCE ANGLES: ', sourceAngles);
-            console.log('TARGET ANGLES: ', targetAngles);
+            // console.log('SOURCE ANGLES: ', sourceAngles);
+            // console.log('TARGET ANGLES: ', targetAngles);
 
             return ribbon({
               source: sourceAngles,
@@ -597,6 +642,8 @@ function generateGenomeView() {
       .on("end", function() {
         if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "") return;
 
+        var currentChromosomeOrder = getCurrentChromosomeOrder();
+
         // Turning off highlighting for current mouse down chromosome
         d3.select("g." + currentChromosomeMouseDown)
           .style("stroke", "none");
@@ -649,6 +696,8 @@ function generateGenomeView() {
         if (currentIndexToDelete >= 0) {
           currentChromosomeOrder.splice(currentIndexToDelete, 1);
           currentChromosomeOrder.splice(currentIndexToInsert, 0, currentChromosomeMouseDown);
+
+          setCurrentChromosomeOrder(currentChromosomeOrder);
 
           for (var i = currentIndexToDelete; currentChromosomeOrder[i] != currentChromosomeMouseDown; i--) {
             if (i == currentIndexToDelete && oldChrOrder[i + 1] == currentChromosomeOrder[i]) {
@@ -802,6 +851,8 @@ function generateGenomeView() {
 
     dataChromosomes = []; // Emptying data chromosomes array
 
+    var currentChromosomeOrder = getCurrentChromosomeOrder();
+
     // Using currentChromosomeOrder array to add selected chromosomes to the genome view
     for (var i = 0; i < currentChromosomeOrder.length; i++) {
       var key = currentChromosomeOrder[i];
@@ -812,6 +863,8 @@ function generateGenomeView() {
         label: key,
         id: key
       };
+
+      console.log('CURRENT OBJECT: ', gffPositionDictionary[key]);
 
       if (showAllChromosomes) {
         // All the chromosomes will show
@@ -826,7 +879,7 @@ function generateGenomeView() {
     }
 
     // Adding the dragHandler to the svg after populating the dataChromosomes object
-    svg.select("svg").call(dragHandler);
+    d3.select("svg#main-container").call(dragHandler);
 
     // Generating layout configuration for the circos plot
     myCircos.layout(dataChromosomes, {
@@ -917,4 +970,11 @@ function generateGenomeView() {
   } else {
     drawGenomeView();
   }
+}
+
+module.exports = {
+  connectionColor: function() { return connectionColor; },
+  draggedAngle: function() { return draggedAngle; },
+  generatePathGenomeView: generatePathGenomeView,
+  generateGenomeView: generateGenomeView
 }

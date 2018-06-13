@@ -20,18 +20,7 @@ Main file: index.html
 <head>
   <meta charset="utf-8">
   <title>GSB: A Web-based Genome Synteny Browser</title>
-  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
-  <script type="text/javascript" src="circos.js"></script>
-  <script type="text/javascript" src="d3.js"></script>
-  <script type="text/javascript" src="d3-scale-chromatic.js"></script>
-  <script type="text/javascript" src="d3-queue.js"></script>
-  <script type="text/javascript" src="lodash.js"></script>
-
-  <!-- Loading local scripts -->
-  <script type="text/javascript" src="./src/generateData.js"></script>
-  <script type="text/javascript" src="./src/generateGenomeView.js"></script>
-  <script type="text/javascript" src="./src/generateBlockView.js"></script>
-
+  <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
   <!-- Loading local css -->
   <link type="text/css" rel="stylesheet" href="./index.css">
 </head>
@@ -47,8 +36,8 @@ Main file: index.html
     </p>
     <form id="form-config"></form>
   </div>
-  <!-- Loading index.js -->
-  <script type="text/javascript" src="./src/index.js"></script>
+  <!-- Loading local script -->
+  <script type="text/javascript" src="./bundle.js"></script>
 </body>
 
 </html>

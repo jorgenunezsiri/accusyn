@@ -11,11 +11,12 @@ Student ID: 11239727
 README file:
 
 
-GSB is a web-based genome synteny browser created using D3.js. To run this project just go to the "synteny-browser" directory, and start a python server (using python 3):
+GSB is a web-based genome synteny browser created using D3.js.
 
-python3 -m http.server 8888
+To run this project just go to the "synteny-browser" directory, and start a webpack-dev-server (using npm):
+npm start
 
-Then, open Google Chrome browser and go to: http://localhost:8888.
+Then, open Google Chrome browser and go to: http://localhost:8080.
 
 After that, GSB will show in your browser and you can interact with it.
 

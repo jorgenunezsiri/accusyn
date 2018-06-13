@@ -13,37 +13,41 @@ Function file: generateData.js
 @2018, Jorge Nunez Siri, All rights reserved
 */
 
+var Circos = require('./circos').Circos;
+console.log('CIRCOS: ', Circos);
+
+var d3 = require('d3');
+var d3Chromatic = require('d3-scale-chromatic');
+
+var generateGenomeView = require('./generateGenomeView').generateGenomeView;
+var generatePathGenomeView = require('./generateGenomeView').generatePathGenomeView;
+
+// Exported variables
 var blockDictionary = {}; // Dictionary to store the data for all blocks
 var blockKeys = []; // Array that includes the keys from the blockDictionary
-var connectionDictionary = {}; // Dictionary to store the data for all the connections between any source and target
-var dataChromosomes = []; // Array that stores the current chromosomes in the circos plot
-var dataChords = []; // Array that stores the plotting information for each block chord
+var chromosomeRotateAngle = 0; // Current rotating angle for the genome view (default to 0)
+var coloredBlocks = false; // To keep track of the value of the color blocks checkbox
+var setCurrentChromosomeOrder = require('./variables').setCurrentChromosomeOrder;
+var filterValue = 1; // Default filtering value
+var filterSelect = 'At Least'; // Default filtering select
 var geneDictionary = {}; // Dictionary that includes the start and end position data for each gene
 var gffKeys = []; // Array that includes the sorted keys from the gff dictionary
 var gffPositionDictionary = {}; // Dictionary that includes the start and end position data for each chromosome
+var highlightFlippedBlocks = false; // To keep track of the value of highlight flipped blocks checkbox
+var myCircos; // Circos plot variable
 var selectedCheckbox = []; // Array that stores the value of selected checkboxes
+var showAllChromosomes = true; // To keep track of the Show All input state
 
-var myCircos; // Circos variable
-var svg; // Circos svg
+// Exported constants
+// These two are constants - Change name later (capitalized)
 var width = 800; // Circos plot width
 var height = 800; // Circos plot height
 
-var chromosomeRotateAngle = 0; // Current rotating angle for the genome view (default to 0)
-var colors = d3.scaleOrdinal(d3.schemeSet2); // Default color scheme
-var connectionColor = "sandybrown"; // Default connection color
-var currentSelectedBlock = {}; // To store the data of the current selected block
-var currentFlippedChromosomes = []; // Array that stores the current set of chromosomes with flipped locations
-var currentRemovedBlocks = []; // Array that stores the current set of blocks that are removed
-var currentChromosomeOrder = []; // Array that stores the current order of chromosomes
-var filterValue = 1; // Default filtering value
-var filterSelect = 'At Least'; // Default filtering select
-var showAllChromosomes = true; // To keep track of the Show All input state
-var removingBlockView = false; // To keep track of when the block view is being removed
 
-var coloredBlocks = false; // To keep track of the value of the color blocks checkbox
-var highlightFlippedBlocks = false; // To keep track of the value of highlight flipped blocks checkbox
+// Local variables
+var connectionDictionary = {}; // Dictionary to store the data for all the connections between any source and target
 
-var draggedAngle = 0; // To keep track of the rotating angles of the genome view
+
 
 /**
  * Fixes current IDs in collinearity file by removing 0 when
@@ -52,7 +56,7 @@ var draggedAngle = 0; // To keep track of the rotating angles of the genome view
  * @param  {Object} currentCollinearity Current index with the similarity relationships
  * @return {Object}                  Object with sourceID and targetID fixed
  */
-function fixSourceTargetCollinearity(currentCollinearity) {
+var fixSourceTargetCollinearity = function fixSourceTargetCollinearity(currentCollinearity) {
   var sourceID = currentCollinearity.source.split('g')[0].split('Bna')[1];
   var targetID = currentCollinearity.target.split('g')[0].split('Bna')[1];
   if (sourceID[1] == '0') {
@@ -66,7 +70,7 @@ function fixSourceTargetCollinearity(currentCollinearity) {
     source: sourceID,
     target: targetID
   }
-}
+};
 
 /**
  * Uses the current connection dictionary to find a connection with the
@@ -107,17 +111,19 @@ function findIndexConnection(dictionary, source, target) {
  * @param  {number} nDragging Current dragging angle between 0 and 360
  * @return {undefined}        undefined
  */
-function updateAngle(nAngle, nDragging) {
+var updateAngle = function updateAngle(nAngle, nDragging) {
   chromosomeRotateAngle = nAngle;
+
+  console.log('nANGLE nDRAGGING: ', nAngle, nDragging);
 
   // Adjust the text on the rotating range slider
   d3.select("#nAngle-value").text(nAngle + String.fromCharCode(176));
   d3.select("#nAngle").property("value", nAngle);
 
   // Rotate the genome view
-  svg.select(".all")
+  d3.select("g.all")
     .attr("transform", "translate(" + width / 2 + "," + height / 2 + ") rotate(" + ((-1) * (nAngle + nDragging)) + ")");
-}
+};
 
 /**
  *  Updates the filter range value
@@ -186,8 +192,10 @@ function lookForBlocksPositions(block) {
  * @param  {Array<Object>} collinearity Data from collinearity file
  * @return {undefined}                  undefined
  */
-function generateData(error, gff, collinearity) {
+var generateData = function generateData(error, gff, collinearity) {
   if (error) return console.error(error);
+  var colors = d3.scaleOrdinal(d3Chromatic.schemeSet2); // Default color scheme
+
   var collinearityFile = collinearity; // To store the data from the collinearity file
 
   // For loop to update position dictionary with file data
@@ -220,7 +228,7 @@ function generateData(error, gff, collinearity) {
     return 0;
   });
 
-  currentChromosomeOrder = gffKeys.slice();
+  setCurrentChromosomeOrder(gffKeys.slice());
 
   blockDictionary = {};
   connectionDictionary = {};
@@ -592,7 +600,7 @@ function generateData(error, gff, collinearity) {
     });
 
   // SVG element that will include the circos plot
-  svg = d3.select("body")
+  var svg = d3.select("body")
     .append("svg")
     .attr("id", "chart")
     .attr("width", width)
@@ -630,6 +638,7 @@ function generateData(error, gff, collinearity) {
   // Updating angle on input
   d3.select("#nAngle")
     .on("input", function() {
+      var draggedAngle = require('./generateGenomeView').draggedAngle();
       updateAngle(+this.value, draggedAngle > 0 ? 360 - draggedAngle : 0);
     });
 
@@ -646,4 +655,24 @@ function generateData(error, gff, collinearity) {
   updateFilter(filterValue, false);
 
   generateGenomeView();
-}
+};
+
+module.exports = {
+  blockDictionary: function() { return blockDictionary; },
+  blockKeys: function() { return blockKeys; },
+  chromosomeRotateAngle: function() { return chromosomeRotateAngle; },
+  coloredBlocks: function() { return coloredBlocks; },
+  filterValue: function() { return filterValue; },
+  filterSelect: function() { return filterSelect; },
+  fixSourceTargetCollinearity: fixSourceTargetCollinearity,
+  generateData: generateData,
+  geneDictionary: function() { return geneDictionary; },
+  gffPositionDictionary: function() { return gffPositionDictionary; },
+  highlightFlippedBlocks: function() { return highlightFlippedBlocks; },
+  myCircos: function() { return myCircos; },
+  selectedCheckbox: function() { return selectedCheckbox; },
+  showAllChromosomes: function() { return showAllChromosomes; },
+  updateAngle: updateAngle,
+  width: function() { return width; },
+  height: function() { return height; }
+};
