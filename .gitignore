@@ -4,3 +4,4 @@ node_modules
 build/bundle.js
 .npm
 .eslintcache
+npm-debug.log

@@ -13,8 +13,31 @@ Function file: generateBlockView.js
 @2018, Jorge Nunez Siri, All rights reserved
 */
 
-var _ = require('lodash');
-var d3 = require('d3');
+import * as d3 from 'd3';
+import cloneDeep from 'lodash/cloneDeep';
+
+import {
+  removeBlockView
+} from './helpers';
+
+// Variables getters and setters
+import {
+  getBlockDictionary,
+  getGeneDictionary,
+  getGffDictionary
+} from './variables';
+
+// Contants
+import {
+  CONNECTION_COLOR,
+  OFFSET_DOMAIN,
+  // Block view transition constants
+  COLOR_CHANGE_TIME,
+  MAX_INDEX_TRANSITION,
+  TRANSITION_NORMAL_TIME,
+  TRANSITION_FLIPPING_TIME,
+  TRANSITION_HEIGHT_DIVISION_MULTIPLE
+} from './constants';
 
 /**
  * Generates block view for the current highlighted block in the genome view
@@ -23,33 +46,32 @@ var d3 = require('d3');
  *                       information
  * @return {undefined}   undefined
  */
-var generateBlockView = function generateBlockView(data) {
-  var blockDictionary = require('./generateData').blockDictionary();
-  var connectionColor = require('./generateGenomeView').connectionColor();
-  var geneDictionary = require('./generateData').geneDictionary();
-  var gffPositionDictionary = require('./generateData').gffPositionDictionary();
+export default function generateBlockView(data) {
+  const blockDictionary = getBlockDictionary();
+  const geneDictionary = getGeneDictionary();
+  const gffPositionDictionary = getGffDictionary();
 
-  var sourceChromosomeID = data.source.id;
-  var targetChromosomeID = data.target.id;
-  var blockID = data.source.value.id;
+  const sourceChromosomeID = data.source.id;
+  const targetChromosomeID = data.target.id;
+  const blockID = data.source.value.id;
 
-  var margin = {
+  const margin = {
     top: 50,
     right: 90,
     bottom: 50,
     left: 90
   };
-  var widthBlock = 500 - margin.left - margin.right;
-  var heightBlock = 800 - margin.top - margin.bottom;
+  const widthBlock = 500 - margin.left - margin.right;
+  const heightBlock = 800 - margin.top - margin.bottom;
 
   // Set the ranges for x and y
-  var y = [d3.scaleLinear().range([heightBlock, 0]), d3.scaleLinear().range([heightBlock, 0])];
+  const y = [d3.scaleLinear().range([heightBlock, 0]), d3.scaleLinear().range([heightBlock, 0])];
 
-  var x = d3.scalePoint().rangeRound([0, widthBlock]);
-  var dimensions = [0, 1];
+  const x = d3.scalePoint().rangeRound([0, widthBlock]);
+  const dimensions = [0, 1];
   x.domain(dimensions);
 
-  var line = d3.line();
+  const line = d3.line();
 
   /**
    * Defines the path for each data point in the block view
@@ -74,12 +96,12 @@ var generateBlockView = function generateBlockView(data) {
 
   // Remove block view if it is present
   if (!d3.select("body").select("#block-view-container").empty()) {
-    d3.select("body").select("#block-view-container").remove();
+    removeBlockView();
   }
 
-  var gY0, gY1, y0axis, y1axis, isFlipped = false,
+  let gY0, gY1, y0axis, y1axis, isFlipped = false,
     onInputChange = false;
-  var dataBlock = [];
+  let dataBlock = [];
 
   /**
    * Flips the data for the current block view
@@ -88,11 +110,11 @@ var generateBlockView = function generateBlockView(data) {
    * @return {Array<Object>}           Flipped array
    */
   function flipTargetDataBlock(dataBlock) {
-    var index = 1; // Flipping target by default
-    var temp = 0;
-    var tempArray = _.cloneDeep(dataBlock);
+    const index = 1; // Flipping target by default
+    let temp = 0;
+    const tempArray = cloneDeep(dataBlock);
 
-    for (var i = 0; i < tempArray.length / 2; i++) {
+    for (let i = 0; i < tempArray.length / 2; i++) {
       temp = tempArray[i].data[index];
       tempArray[i].data[index] = tempArray[tempArray.length - i - 1].data[index];
       tempArray[tempArray.length - i - 1].data[index] = temp;
@@ -109,16 +131,16 @@ var generateBlockView = function generateBlockView(data) {
    *                                    false otherwise
    */
   function isPerfectlyFlipped(dataBlock) {
-    var tempArray = _.cloneDeep(dataBlock);
-    var numericGeneArray = [];
+    const tempArray = cloneDeep(dataBlock);
+    const numericGeneArray = [];
 
-    for (var i = 0; i < tempArray.length; i++) {
+    for (let i = 0; i < tempArray.length; i++) {
       numericGeneArray.push(parseInt(tempArray[i].target.id.split('g')[1].split('.')[0]));
     }
 
-    var isDescending = true;
+    let isDescending = true;
 
-    for (var i = 0; i < numericGeneArray.length - 1; i++) {
+    for (let i = 0; i < numericGeneArray.length - 1; i++) {
       if (numericGeneArray[i] < numericGeneArray[i + 1]) {
         isDescending = false;
         break;
@@ -155,13 +177,13 @@ var generateBlockView = function generateBlockView(data) {
       generatePathBlockView();
     });
 
-  var svgBlock = d3.select("#block-view-container")
+  const svgBlock = d3.select("#block-view-container")
     .append("svg")
     .attr("class", "block-view")
     .attr("width", widthBlock + margin.left + margin.right)
     .attr("height", heightBlock + margin.top + margin.bottom)
     .append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    .attr("transform", `translate(${margin.left},${margin.top})`);
 
   d3.select("#block-view-container")
     .append("p")
@@ -199,7 +221,7 @@ var generateBlockView = function generateBlockView(data) {
     });
 
   // Rectangle that has the block view size to catch any zoom event
-  var zoomView = svgBlock.append("rect")
+  const zoomView = svgBlock.append("rect")
     .attr("width", widthBlock)
     .attr("height", heightBlock)
     .style("fill", "none")
@@ -207,7 +229,7 @@ var generateBlockView = function generateBlockView(data) {
 
   // Defining a clip-path so that lines always stay inside the block view,
   // thus paths will be clipped when zooming
-  var clip = svgBlock.append("defs").append("svg:clipPath")
+  const clip = svgBlock.append("defs").append("svg:clipPath")
     .attr("id", "clip-block")
     .append("svg:rect")
     .attr("id", "clip-rect-block")
@@ -217,18 +239,18 @@ var generateBlockView = function generateBlockView(data) {
     .attr("height", heightBlock);
 
   // Zoom behavior
-  var zoom = d3.zoom()
+  const zoom = d3.zoom()
     .scaleExtent([0.01, 100])
     .on("zoom", function() {
       if (gY0 && gY1) {
-        var zoomTransform = d3.event.transform;
+        const zoomTransform = d3.event.transform;
 
         // Rescaling axes using current zoom transform
         gY0.call(y0axis.scale(zoomTransform.rescaleY(y[0])));
         gY1.call(y1axis.scale(zoomTransform.rescaleY(y[1])));
 
         // Creating new scales (y0, y1) that incorporate current zoom transform
-        var newY = [zoomTransform.rescaleY(y[0]), zoomTransform.rescaleY(y[1])];
+        const newY = [zoomTransform.rescaleY(y[0]), zoomTransform.rescaleY(y[1])];
 
         // Plotting the lines path using the new scales
         svgBlock.selectAll("path.line")
@@ -242,15 +264,17 @@ var generateBlockView = function generateBlockView(data) {
   // Calling zoom for the block, so it works for every path
   svgBlock.call(zoom);
 
-  var blockArray = blockDictionary[blockID];
-  for (var i = 0; i < blockArray.length; i++) {
-    var blockSource = blockArray[i].source;
-    var blockTarget = blockArray[i].target;
-    var currentSource = geneDictionary[blockSource];
-    var currentTarget = geneDictionary[blockTarget];
+  const blockArray = blockDictionary[blockID];
+  for (let i = 0; i < blockArray.length; i++) {
+    const blockSource = blockArray[i].source;
+    const blockTarget = blockArray[i].target;
+    const currentSource = geneDictionary[blockSource];
+    const currentTarget = geneDictionary[blockTarget];
+    const eValueConnection = blockArray[i].eValueConnection;
+    const connectionID = blockArray[i].connection;
 
     // Points are the determined using the midpoint between start and end
-    var currentData = [
+    const currentData = [
       (currentSource.start + currentSource.end) / 2,
       (currentTarget.start + currentTarget.end) / 2
     ];
@@ -266,12 +290,14 @@ var generateBlockView = function generateBlockView(data) {
         start: currentTarget.start,
         end: currentTarget.end
       },
-      data: currentData
+      data: currentData,
+      connection: connectionID,
+      eValue: eValueConnection
     });
   }
 
   // Numeric scale used for the stroke-width of each line path in the block
-  var strokeWidthScale = d3.scaleQuantize()
+  const strokeWidthScale = d3.scaleQuantize()
     .domain([
       d3.min(dataBlock, function(d) {
         return (d.source.end - d.source.start) + (d.target.end - d.target.start);
@@ -296,8 +322,8 @@ var generateBlockView = function generateBlockView(data) {
      * @return {number}   Minimum value
      */
     function minData(d) {
-      var minValue = 100000000;
-      for (var i = 0; i < dataBlock.length; i++) {
+      let minValue = 100000000;
+      for (let i = 0; i < dataBlock.length; i++) {
         minValue = Math.min(minValue, dataBlock[i].data[d]);
       }
       return minValue;
@@ -310,18 +336,15 @@ var generateBlockView = function generateBlockView(data) {
      * @return {number}   Maximum value
      */
     function maxData(d) {
-      var maxValue = 0;
-      for (var i = 0; i < dataBlock.length; i++) {
+      let maxValue = 0;
+      for (let i = 0; i < dataBlock.length; i++) {
         maxValue = Math.max(maxValue, dataBlock[i].data[d]);
       }
       return maxValue;
     }
 
-    // Offset to be used for the scales domain
-    var offsetDomain = 50000;
-
     // Hint label about perfectly inverted
-    var d3HintElement = d3.select("#block-view-container")
+    const d3HintElement = d3.select("#block-view-container")
       .select(".flip-hint");
 
     if (!isFlipped) {
@@ -346,13 +369,6 @@ var generateBlockView = function generateBlockView(data) {
       }
     }
 
-    // Transition constants
-    var COLOR_CHANGE_TIME = 75;
-    var MAX_INDEX_TRANSITION = 13;
-    var TRANSITION_NORMAL_TIME = 50;
-    var TRANSITION_FLIPPING_TIME = TRANSITION_NORMAL_TIME * 2;
-    var TRANSITION_HEIGHT_DIVISION_MULTIPLE = 2;
-
     if (onInputChange) {
       // Change paths color to lightblue
       svgBlock.selectAll("path.line")
@@ -362,9 +378,9 @@ var generateBlockView = function generateBlockView(data) {
         .attr("stroke", "lightblue");
 
       // Flipping transition
-      var transitionTime = COLOR_CHANGE_TIME;
-      var transitionHeightDivision = 1;
-      var summing = true;
+      let transitionTime = COLOR_CHANGE_TIME;
+      let transitionHeightDivision = 1;
+      let summing = true;
 
       // 2 - 4 - 8 - 16 - 32 - 64
       // Flip here and sum flipping time
@@ -373,7 +389,7 @@ var generateBlockView = function generateBlockView(data) {
       // Only break loop when summing is false && transitionHeightDivision == 1
       // summing || transitionHeightDivision != 1
       // Or when indexTransition == 14
-      for (var indexTransition = 1; indexTransition <= MAX_INDEX_TRANSITION; indexTransition++) {
+      for (let indexTransition = 1; indexTransition <= MAX_INDEX_TRANSITION; indexTransition++) {
         if (indexTransition == 7) {
           summing = false;
           transitionHeightDivision = 128;
@@ -401,7 +417,7 @@ var generateBlockView = function generateBlockView(data) {
         // More info: https://stackoverflow.com/a/37728255
         (function(indexTransition, transitionTime, transitionHeightDivision) {
           setTimeout(function() {
-            var offsetTransition = 0;
+            let offsetTransition = 0;
             /*
             1 -> 2
             2 -> 4
@@ -425,11 +441,11 @@ var generateBlockView = function generateBlockView(data) {
             console.log('HEIGHT BLOCK: ', heightBlock, offsetTransition, transitionHeightDivision);
 
             // Creating new scales for y1 to improve the flipping transition
-            var minimumRange = offsetTransition + ((heightBlock - offsetTransition) / transitionHeightDivision);
-            var maximumRange = offsetTransition;
-            var newY = [y[0], d3.scaleLinear().range([minimumRange, maximumRange])];
-            newY[0].domain([minData(0) - offsetDomain, maxData(0) + offsetDomain]);
-            newY[1].domain([minData(1) - offsetDomain, maxData(1) + offsetDomain]);
+            const minimumRange = offsetTransition + ((heightBlock - offsetTransition) / transitionHeightDivision);
+            const maximumRange = offsetTransition;
+            const newY = [y[0], d3.scaleLinear().range([minimumRange, maximumRange])];
+            newY[0].domain([minData(0) - OFFSET_DOMAIN, maxData(0) + OFFSET_DOMAIN]);
+            newY[1].domain([minData(1) - OFFSET_DOMAIN, maxData(1) + OFFSET_DOMAIN]);
 
             // Remove axisY1 if it is present
             if (!svgBlock.selectAll("g.axisY1").empty()) {
@@ -438,7 +454,7 @@ var generateBlockView = function generateBlockView(data) {
 
             gY1 = svgBlock.append("g")
               .attr("class", "axisY1")
-              .attr("transform", "translate( " + widthBlock + ", 0 )")
+              .attr("transform", `translate(${widthBlock},0)`)
               .call(d3.axisRight(newY[1]).tickSize(15).ticks(10))
               .attr("fill", function() {
                 return gffPositionDictionary[sourceChromosomeID].color;
@@ -472,8 +488,8 @@ var generateBlockView = function generateBlockView(data) {
       }
 
       // Y scale domains using minimum, maximum and offsetDomain values
-      y[0].domain([minData(0) - offsetDomain, maxData(0) + offsetDomain]);
-      y[1].domain([minData(1) - offsetDomain, maxData(1) + offsetDomain]);
+      y[0].domain([minData(0) - OFFSET_DOMAIN, maxData(0) + OFFSET_DOMAIN]);
+      y[1].domain([minData(1) - OFFSET_DOMAIN, maxData(1) + OFFSET_DOMAIN]);
 
       // Add new paths inside the block
       svgBlock.append("g").attr("clip-path", "url(#clip-block)")
@@ -497,31 +513,56 @@ var generateBlockView = function generateBlockView(data) {
           .transition()
           .duration(500)
           .ease(d3.easeLinear)
-          .attr("stroke", connectionColor);
+          .attr("stroke", CONNECTION_COLOR);
       } else {
         svgBlock.selectAll("path.line")
           .attr("stroke", "lightblue")
           .transition()
           .duration(COLOR_CHANGE_TIME)
           .ease(d3.easeLinear)
-          .attr("stroke", connectionColor);
+          .attr("stroke", CONNECTION_COLOR);
       }
 
-      // Add a tooltip
-      svgBlock.selectAll("path.line")
-        .append("title") // Being used as simple tooptip
-        .text(function(d) {
-          return d.source.id + ' ➤ ' + d.target.id;
-        });
+      // Add the circos tooltip
+      const tooltipDiv = d3.select("#block-view-container").append("div")
+        .attr("class", "circos-tooltip")
+        .style("opacity", 0);
 
-      svgBlock.selectAll("path")
+      /*svgBlock.selectAll("path")
+        .on("mouseover", function(d) {
+
+        })
+        .on("mouseout", function(d) {
+
+        });*/
+
+      svgBlock.selectAll("path.line")
         .on("mouseover", function(d, i, nodes) {
+          tooltipDiv.transition()
+            // .duration(200)
+            .style("opacity", .9);
+
+          tooltipDiv.html(function() {
+              return `<h4 style="margin-bottom: 0;">${d.source.id}</h4>
+                      ➤
+                      <h4 style="margin-top: 0;">${d.target.id}</h4>
+                      <h4><u>Connection information</u></h4>
+                      <h4>ID: ${d.connection}</h4>
+                      <h4>E-value: ${d.eValue}</h4>`;
+            })
+            .style("left", (d3.event.pageX) + "px")
+            .style("top", (d3.event.pageY - 28) + "px");
+
           if (d3.selectAll(nodes).attr("opacity") != 0.30) {
             d3.selectAll(nodes).attr("opacity", 0.30);
             d3.select(nodes[i]).attr("opacity", 1);
           }
         })
         .on("mouseout", function(d, i, nodes) {
+          tooltipDiv.transition()
+            //.duration(500)
+            .style("opacity", 0);
+
           if (d3.selectAll(nodes).attr("opacity") != 1) {
             d3.selectAll(nodes).attr("opacity", 1);
           }
@@ -552,7 +593,7 @@ var generateBlockView = function generateBlockView(data) {
 
       gY1 = svgBlock.append("g")
         .attr("class", "axisY1")
-        .attr("transform", "translate( " + widthBlock + ", 0 )")
+        .attr("transform", `translate(${widthBlock},0)`)
         .call(y1axis.ticks(10))
         .attr("fill", function() {
           return gffPositionDictionary[sourceChromosomeID].color;
@@ -607,5 +648,3 @@ var generateBlockView = function generateBlockView(data) {
     .style("font-style", "italic")
     .text(sourceChromosomeID + ' vs. ' + targetChromosomeID + ' - Block ' + blockID + ' gene locations');
 }
-
-module.exports = generateBlockView;

@@ -13,176 +13,45 @@ Function file: generateData.js
 @2018, Jorge Nunez Siri, All rights reserved
 */
 
-var Circos = require('./circos').Circos;
-console.log('CIRCOS: ', Circos);
+import * as d3 from 'd3';
+import find from 'lodash/find';
+import findIndex from 'lodash/findIndex';
 
-var d3 = require('d3');
-var d3Chromatic = require('d3-scale-chromatic');
+import generateGenomeView, { generatePathGenomeView } from './generateGenomeView';
+import { schemeSet2 } from 'd3-scale-chromatic';
 
-var generateGenomeView = require('./generateGenomeView').generateGenomeView;
-var generatePathGenomeView = require('./generateGenomeView').generatePathGenomeView;
+import {
+  fixSourceTargetCollinearity,
+  lookForBlocksPositions,
+  updateAngle,
+  updateFilter
+} from './helpers';
 
-// Exported variables
-var blockDictionary = {}; // Dictionary to store the data for all blocks
-var blockKeys = []; // Array that includes the keys from the blockDictionary
-var chromosomeRotateAngle = 0; // Current rotating angle for the genome view (default to 0)
-var coloredBlocks = false; // To keep track of the value of the color blocks checkbox
-var setCurrentChromosomeOrder = require('./variables').setCurrentChromosomeOrder;
-var filterValue = 1; // Default filtering value
-var filterSelect = 'At Least'; // Default filtering select
-var geneDictionary = {}; // Dictionary that includes the start and end position data for each gene
-var gffKeys = []; // Array that includes the sorted keys from the gff dictionary
-var gffPositionDictionary = {}; // Dictionary that includes the start and end position data for each chromosome
-var highlightFlippedBlocks = false; // To keep track of the value of highlight flipped blocks checkbox
-var myCircos; // Circos plot variable
-var selectedCheckbox = []; // Array that stores the value of selected checkboxes
-var showAllChromosomes = true; // To keep track of the Show All input state
+// Variables getters and setters
+import {
+  setBlockDictionary,
+  setCircosObject,
+  setCurrentChromosomeOrder,
+  setGeneDictionary,
+  setGffDictionary
+} from './variables';
 
-// Exported constants
-// These two are constants - Change name later (capitalized)
-var width = 800; // Circos plot width
-var height = 800; // Circos plot height
+// Constants
+import { WIDTH, HEIGHT } from './constants';
 
 
-// Local variables
-var connectionDictionary = {}; // Dictionary to store the data for all the connections between any source and target
-
-
-
-/**
- * Fixes current IDs in collinearity file by removing 0 when
- * chromosome number is below 10 (e.g. (N09,N01) turns into (N9, N1))
- *
- * @param  {Object} currentCollinearity Current index with the similarity relationships
- * @return {Object}                  Object with sourceID and targetID fixed
- */
-var fixSourceTargetCollinearity = function fixSourceTargetCollinearity(currentCollinearity) {
-  var sourceID = currentCollinearity.source.split('g')[0].split('Bna')[1];
-  var targetID = currentCollinearity.target.split('g')[0].split('Bna')[1];
-  if (sourceID[1] == '0') {
-    sourceID = sourceID.slice(0, 1) + sourceID.slice(2);
-  }
-  if (targetID[1] == '0') {
-    targetID = targetID.slice(0, 1) + targetID.slice(2);
-  }
-
-  return {
-    source: sourceID,
-    target: targetID
-  }
-};
-
-/**
- * Uses the current connection dictionary to find a connection with the
- * source and target
- *
- * @param  {Object} dictionary Current dictionary
- * @param  {string} source     Current source
- * @param  {string} target     Current target
- * @return {Object}            Value of the first target that has a
- *                             connection with the source
- */
-function findBlockConnection(dictionary, source, target) {
+/*function findBlockConnection(dictionary, source, target) {
   return dictionary[source].find(function(element) {
     return element.connection == target;
   });
 }
 
-/**
- * Uses the current connection dictionary to find an index of a connection
- * between the source and target
- *
- * @param  {Object} dictionary Current dictionary
- * @param  {string} source     Current source
- * @param  {string} target     Current target
- * @return {number}            Array index of the first target that
- *                             has a connection with the source
- */
 function findIndexConnection(dictionary, source, target) {
   return dictionary[source].findIndex(function(element) {
     return element.connection == target;
   });
-}
+}*/
 
-/**
- * Updates the angle of the genome view
- *
- * @param  {number} nAngle    Current angle between 0 and 360
- * @param  {number} nDragging Current dragging angle between 0 and 360
- * @return {undefined}        undefined
- */
-var updateAngle = function updateAngle(nAngle, nDragging) {
-  chromosomeRotateAngle = nAngle;
-
-  console.log('nANGLE nDRAGGING: ', nAngle, nDragging);
-
-  // Adjust the text on the rotating range slider
-  d3.select("#nAngle-value").text(nAngle + String.fromCharCode(176));
-  d3.select("#nAngle").property("value", nAngle);
-
-  // Rotate the genome view
-  d3.select("g.all")
-    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ") rotate(" + ((-1) * (nAngle + nDragging)) + ")");
-};
-
-/**
- *  Updates the filter range value
- *
- * @param  {number} value             Filtering value
- * @param  {boolean} shouldUpdatePath True if should update paths in genome
- *                                    view, false otherwise
- * @return {undefined}                undefined
- */
-function updateFilter(value, shouldUpdatePath) {
-  filterValue = value;
-
-  // Adjust the text on the filter range slider
-  d3.select("#filter-value").text(value == 1 ? value + " connection" : value + " connections");
-  d3.select("#filter").property("value", value);
-
-  if (shouldUpdatePath) {
-    generatePathGenomeView({
-      shouldDo: false
-    });
-  }
-}
-
-/**
- * Looks for minimum and maximum positions within the current block
- *
- * @param  {string} block Current block
- * @return {Object}       Resulting block min and max information
- */
-function lookForBlocksPositions(block) {
-  var blockArray = blockDictionary[block];
-
-  var maxSource = 0;
-  var minSource = 100000000;
-  var maxTarget = 0;
-  var minTarget = 100000000;
-  for (var i = 0; i < blockArray.length; i++) {
-    var currentSource = geneDictionary[blockArray[i].source];
-    var currentTarget = geneDictionary[blockArray[i].target];
-
-    minSource = Math.min(minSource, currentSource.start);
-    maxSource = Math.max(maxSource, currentSource.end);
-
-    minTarget = Math.min(minTarget, currentTarget.start);
-    maxTarget = Math.max(maxTarget, currentTarget.end);
-  }
-
-  return {
-    blockLength: blockArray.length,
-    // Taking score, eValue, and isFlipped from first connection in the blockArray
-    blockScore: blockArray[0].score,
-    blockEValue: blockArray[0].eValue,
-    isFlipped: blockArray[0].isFlipped === 'yes' ? true : false,
-    minSource: minSource,
-    maxSource: maxSource,
-    minTarget: minTarget,
-    maxTarget: maxTarget
-  }
-}
 
 /**
  * Generates and preprocess data for the syteny browser
@@ -192,31 +61,45 @@ function lookForBlocksPositions(block) {
  * @param  {Array<Object>} collinearity Data from collinearity file
  * @return {undefined}                  undefined
  */
-var generateData = function generateData(error, gff, collinearity) {
+export default function generateData(error, gff, collinearity) {
   if (error) return console.error(error);
-  var colors = d3.scaleOrdinal(d3Chromatic.schemeSet2); // Default color scheme
+  console.log('GFF1: ', gff[1]);
+  // console.log('COLLINEARITY1: ', collinearity1[1]);
 
-  var collinearityFile = collinearity; // To store the data from the collinearity file
+  const colors = d3.scaleOrdinal(schemeSet2); // Default color scheme
+  const geneDictionary = {}; // Dictionary that includes the start and end position data for each gene
+  let gffKeys = []; // Array that includes the sorted keys from the gff dictionary
+  const gffPositionDictionary = {}; // Dictionary that includes the colors, start and end position data for each chromosome
 
   // For loop to update position dictionary with file data
-  for (var i = 0; i < gff.length; i++) {
-    // Not including Scaffold chromosomes
-    if (gff[i].chrom.startsWith('Scaffold')) continue;
-    var start = parseInt(gff[i].start);
-    var end = parseInt(gff[i].end);
+  for (let i = 0; i < gff.length; i++) {
+    const currentChromosomeID = gff[i].sequenceID;
+    const start = parseInt(gff[i].start);
+    const end = parseInt(gff[i].end);
 
-    if (!(gff[i].chrom in gffPositionDictionary)) {
-      gffPositionDictionary[gff[i].chrom] = {};
-      gffPositionDictionary[gff[i].chrom].start = start;
-      gffPositionDictionary[gff[i].chrom].color = colors(i);
+    if (!(currentChromosomeID in gffPositionDictionary)) {
+      gffPositionDictionary[currentChromosomeID] = {};
+      gffPositionDictionary[currentChromosomeID].start = start;
+      gffPositionDictionary[currentChromosomeID].color = colors(i);
     }
 
-    gffPositionDictionary[gff[i].chrom].end = end;
-    geneDictionary[gff[i].gene] = {
+    gffPositionDictionary[currentChromosomeID].end = end;
+    const currentGene = gff[i].attributes.split(';')[0].split('=')[1];
+    // console.log('CURRENT GENE: ', currentGene);
+    geneDictionary[currentGene] = {
       start: start,
       end: end
     }
   }
+
+  console.log('GENES length: ', Object.keys(geneDictionary).length);
+  // GENES length:  107223
+
+  // Setting gene dictionary with all the genes
+  setGeneDictionary(geneDictionary);
+
+  // Setting gff dictionary with the start and end position for each chr
+  setGffDictionary(gffPositionDictionary);
 
   // Obtaining keys from dictionary and sorting them in ascending order
   gffKeys = Object.keys(gffPositionDictionary);
@@ -228,13 +111,16 @@ var generateData = function generateData(error, gff, collinearity) {
     return 0;
   });
 
+  // Setting the current order (default to ordered array of chromosomes)
   setCurrentChromosomeOrder(gffKeys.slice());
+  let howMany = 0;
 
-  blockDictionary = {};
-  connectionDictionary = {};
-  for (var i = 0; i < collinearityFile.length; i++) {
-    if (collinearityFile[i].source.includes('N') && collinearityFile[i].target.includes('N')) {
-      var currentBlock = collinearityFile[i].block;
+  const blockDictionary = {}; // Dictionary to store the data for all blocks
+  const connectionDictionary = {}; // Dictionary to store the data for all the connections between any source and target
+  for (let i = 0; i < collinearity.length; i++) {
+    if (collinearity[i].source.includes('N') && collinearity[i].target.includes('N')) {
+      howMany++;
+      const currentBlock = collinearity[i].block;
 
       if (!(currentBlock in blockDictionary)) {
         blockDictionary[currentBlock] = [];
@@ -242,18 +128,18 @@ var generateData = function generateData(error, gff, collinearity) {
 
       // Adding all the block connections in the dictionary
       blockDictionary[currentBlock].push({
-        blockPositions: {},
-        connection: collinearityFile[i].connection,
-        source: collinearityFile[i].source,
-        target: collinearityFile[i].target,
-        score: collinearityFile[i].score,
-        eValue: collinearityFile[i].eValue,
-        isFlipped: collinearityFile[i].isFlipped
+        connection: collinearity[i].connection,
+        source: collinearity[i].source,
+        target: collinearity[i].target,
+        score: collinearity[i].score,
+        eValue: collinearity[i].eValueBlock,
+        eValueConnection: collinearity[i].eValueConnection,
+        isFlipped: collinearity[i].isFlipped
       });
 
-      var IDs = fixSourceTargetCollinearity(collinearityFile[i]);
-      var sourceID = IDs.source;
-      var targetID = IDs.target;
+      const IDs = fixSourceTargetCollinearity(collinearity[i]);
+      const sourceID = IDs.source;
+      const targetID = IDs.target;
 
       // If source is not in the dictionary, create new array for the source
       if (!(sourceID in connectionDictionary)) {
@@ -265,9 +151,10 @@ var generateData = function generateData(error, gff, collinearity) {
         connectionDictionary[targetID] = [];
       }
 
-      var indexConnection = 0;
+      let indexConnection = 0;
       // If a connection is not found between source and target, then create it
-      if (!findBlockConnection(connectionDictionary, sourceID, targetID)) {
+      if (!find(connectionDictionary[sourceID], ['connection', targetID])) {
+      // if (!findBlockConnection(connectionDictionary, sourceID, targetID)) {
         connectionDictionary[sourceID].push({
           blockIDs: [currentBlock],
           connection: targetID,
@@ -276,7 +163,8 @@ var generateData = function generateData(error, gff, collinearity) {
       } else {
         // If a connection is found, then find index, update connection amount,
         // and add new blockID if not present
-        indexConnection = findIndexConnection(connectionDictionary, sourceID, targetID);
+        indexConnection = findIndex(connectionDictionary[sourceID], ['connection', targetID]);
+        // findIndexConnection(connectionDictionary, sourceID, targetID);
         connectionDictionary[sourceID][indexConnection].connectionAmount++;
 
         if (connectionDictionary[sourceID][indexConnection].blockIDs.indexOf(currentBlock) === (-1)) {
@@ -285,7 +173,8 @@ var generateData = function generateData(error, gff, collinearity) {
       }
 
       // If a connection is not found between target and source, then create it
-      if (!findBlockConnection(connectionDictionary, targetID, sourceID)) {
+      if (!find(connectionDictionary[targetID], ['connection', sourceID])) {
+      // if (!findBlockConnection(connectionDictionary, targetID, sourceID)) {
         connectionDictionary[targetID].push({
           blockIDs: [currentBlock],
           connection: sourceID,
@@ -295,7 +184,8 @@ var generateData = function generateData(error, gff, collinearity) {
         // If a connection is found, then find index,
         // update connection amount only if not same chromosome,
         // and add new blockID if not present
-        var indexConnection = findIndexConnection(connectionDictionary, targetID, sourceID);
+        indexConnection = findIndex(connectionDictionary[targetID], ['connection', sourceID]);
+        // findIndexConnection(connectionDictionary, targetID, sourceID);
 
         if (targetID != connectionDictionary[targetID][indexConnection].connection) {
           connectionDictionary[targetID][indexConnection].connectionAmount++;
@@ -308,27 +198,32 @@ var generateData = function generateData(error, gff, collinearity) {
     }
   }
 
-  blockKeys = Object.keys(blockDictionary);
+  // Array that includes the keys from the blockDictionary
+  const blockKeys = Object.keys(blockDictionary);
 
-  console.log('CONNECTIONS: ', connectionDictionary);
+  console.log('BLOCK DICT len: ', blockKeys.length, howMany);
 
   // Determining the block with maximum number of connections
   // (to be used in the filter input range)
   // N13 -> N3 has the max block size with 2295 connections
   // 2306 connections with top 5 BLAST hits
   // Also, adding all the minimum and maximum positions for each block
-  var maxBlockSize = 0;
-  for (var i = 0; i < blockKeys.length; i++) {
-    var currentBlock = blockKeys[i];
+  let maxBlockSize = 0;
+  for (let i = 0; i < blockKeys.length; i++) {
+    const currentBlock = blockKeys[i];
     maxBlockSize = Math.max(maxBlockSize, blockDictionary[currentBlock].length);
-    blockDictionary[currentBlock].blockPositions = lookForBlocksPositions(currentBlock);
+    blockDictionary[currentBlock].blockPositions =
+      lookForBlocksPositions(blockDictionary, geneDictionary, currentBlock);
   }
+
+  // Setting blockDictionary with all the connections and the blockPositions
+  setBlockDictionary(blockDictionary);
 
   // Updating the style of the configuration panel
   d3.select("#config")
     .style("display", "block")
     .style("margin-left", "10px")
-    .style("width", width / 3 + "px");
+    .style("width", `${WIDTH / 3}px`);
 
   d3.select("#form-config")
     .append("p")
@@ -346,8 +241,6 @@ var generateData = function generateData(error, gff, collinearity) {
 
   d3.select("p.show-all > input")
     .on("change", function() {
-      showAllChromosomes = d3.select(this).property("checked");
-
       // Calling genome view for updates
       generateGenomeView();
     });
@@ -377,8 +270,6 @@ var generateData = function generateData(error, gff, collinearity) {
 
   d3.select("p.color-blocks > input")
     .on("change", function() {
-      coloredBlocks = d3.select(this).property("checked");
-
       // Calling path genome view for updates
       generatePathGenomeView();
     });
@@ -399,8 +290,6 @@ var generateData = function generateData(error, gff, collinearity) {
 
   d3.select("p.highlight-flipped-blocks > input")
     .on("change", function() {
-      highlightFlippedBlocks = d3.select(this).property("checked");
-
       // Calling path genome view for updates
       generatePathGenomeView();
     });
@@ -417,14 +306,12 @@ var generateData = function generateData(error, gff, collinearity) {
     .attr("class", "filter-connections")
     .append("select")
     .html(function() {
-      return '<option value="At Least">At Least</option><option value="At Most">At Most</option>';
+      return '<option value="At Least" selected="selected">At Least</option><option value="At Most">At Most</option>';
     });
 
   d3.select(".filter-connections-div")
     .select("select")
     .on("change", function() {
-      filterSelect = d3.select(this).property("value");
-
       // Calling path genome view for updates
       generatePathGenomeView({
         shouldDo: false
@@ -435,8 +322,8 @@ var generateData = function generateData(error, gff, collinearity) {
     .append("p")
     .attr("class", "filter-connections")
     .html(function() {
-      return '<label for="filter" style="display: inline-block; text-align: left; width: 115px">' +
-        '<span id="filter-value">...</span>' +
+      return '<label for="filter-block-size" style="display: inline-block; text-align: left; width: 115px">' +
+        '<span id="filter-block-size-value">...</span>' +
         '</label>';
     });
 
@@ -444,8 +331,8 @@ var generateData = function generateData(error, gff, collinearity) {
     .append("p")
     .attr("class", "filter-connections")
     .html(function() {
-      return '<input style="margin-left: 45px; width: 195px" type="range" min="1" max=' +
-        maxBlockSize.toString() + ' id="filter">';
+      return `<input style="margin-left: 45px; width: 195px" type="range" min="1" max=
+        ${maxBlockSize.toString()} id="filter-block-size">`;
     });
 
   d3.select("#form-config")
@@ -465,10 +352,10 @@ var generateData = function generateData(error, gff, collinearity) {
   d3.select("#form-config").selectAll(".chr-box")
     .data(gffKeys)
     .on("change", function() {
-      selectedCheckbox = [];
-      var selectedChromosomes = [];
-      var visitedChr = {}; // Visited chromosomes dictionary
-      for (var i = 0; i < gffKeys.length; i++) {
+      // selectedCheckbox = [];
+      const selectedChromosomes = [];
+      const visitedChr = {}; // Visited chromosomes dictionary
+      for (let i = 0; i < gffKeys.length; i++) {
         visitedChr[gffKeys[i]] = false;
       }
 
@@ -476,13 +363,13 @@ var generateData = function generateData(error, gff, collinearity) {
         d3.select(this.parentNode).classed("disabled", false);
         d3.select(this.parentNode).select("span").text(d);
 
-        var cb = d3.select(this);
+        const cb = d3.select(this);
         cb.attr("disabled", null);
         if (cb.property("checked")) {
           // If chromosome is already checked, then it is visited
           visitedChr[d] = true;
           selectedChromosomes.push(cb.property("value"));
-          selectedCheckbox.push(cb.property("value"));
+          // selectedCheckbox.push(cb.property("value"));
         }
       });
 
@@ -499,9 +386,10 @@ var generateData = function generateData(error, gff, collinearity) {
         // If only one chromosome is selected, the connection information will show
         // for each other chromosome
 
-        for (var j = 0; j < gffKeys.length; j++) {
+        for (let j = 0; j < gffKeys.length; j++) {
           // If a connection is found, mark current chromosome as visited
-          if (findBlockConnection(connectionDictionary, selectedChromosomes[0], gffKeys[j])) {
+          if (find(connectionDictionary[selectedChromosomes[0]], ['connection', gffKeys[j]])) {
+          // if (findBlockConnection(connectionDictionary, selectedChromosomes[0], gffKeys[j])) {
             visitedChr[gffKeys[j]] = true;
           }
         }
@@ -509,18 +397,20 @@ var generateData = function generateData(error, gff, collinearity) {
         d3.selectAll(".chr-box").each(function(d) {
           d3.select(this.parentNode).select('span').html(function() {
             // Finding the index of the connection in the dictionary
-            var indexConnection = findIndexConnection(connectionDictionary, selectedChromosomes[0], d);
-            var connectionAmount = 0;
-            var textToShow = d;
-            var style = '<em style="display: inline-block; text-align: right; width: 65px; margin-left: 10px">';
+            const indexConnection = findIndex(connectionDictionary[selectedChromosomes[0]], ['connection', d]);
+              // findIndexConnection(connectionDictionary, selectedChromosomes[0], d);
+            let connectionAmount = 0;
+            let textToShow = d.toString(); // Current chromosome id (e.g. N1, N2, N10)
+            const style = '<em style="display: inline-block; text-align: right; width: 65px; margin-left: 10px">';
             if (indexConnection === (-1)) {
-              textToShow += style + '0 blocks' + ' </em>';
+              textToShow += `${style}0 blocks</em>`;
             } else {
               connectionAmount = connectionDictionary[selectedChromosomes[0]][indexConnection].blockIDs.length;
+              textToShow += `${style}${connectionAmount.toString()}`;
               if (connectionAmount === 1) {
-                textToShow += style + connectionAmount.toString() + ' block' + ' </em>';
+                textToShow += ' block</em>';
               } else {
-                textToShow += style + connectionAmount.toString() + ' blocks' + ' </em>';
+                textToShow += ' blocks</em>';
               }
             }
 
@@ -568,7 +458,7 @@ var generateData = function generateData(error, gff, collinearity) {
         d3.selectAll(".chr-box").each(function() {
           if (!d3.select(this).property("checked")) {
             d3.select(this).property("checked", true);
-            selectedCheckbox.push(d3.select(this).property("value"));
+            // selectedCheckbox.push(d3.select(this).property("value"));
           }
         });
       } else {
@@ -581,18 +471,17 @@ var generateData = function generateData(error, gff, collinearity) {
           d3.select(this.parentNode).classed("disabled", false);
           d3.select(this.parentNode).select("span").text(d);
 
-          var cb = d3.select(this);
+          const cb = d3.select(this);
           cb.attr("disabled", null);
           if (d3.select(this).property("checked")) {
             d3.select(this).property("checked", false);
           }
         });
 
-        selectedCheckbox = [];
+        // selectedCheckbox = [];
       }
 
       // When Select/Deselect All is clicked, all chromosomes will show by default
-      showAllChromosomes = true;
       d3.select(".show-all > input").property("checked", true);
 
       // Calling genome view for updates
@@ -600,11 +489,11 @@ var generateData = function generateData(error, gff, collinearity) {
     });
 
   // SVG element that will include the circos plot
-  var svg = d3.select("body")
+  const svg = d3.select("body")
     .append("svg")
     .attr("id", "chart")
-    .attr("width", width)
-    .attr("height", height)
+    .attr("width", WIDTH)
+    .attr("height", HEIGHT)
     .style("float", "left")
     .style("margin-top", "50px");
 
@@ -627,52 +516,38 @@ var generateData = function generateData(error, gff, collinearity) {
   //
   // svg.select(".all").append("g").attr("clip-path", "url(#clip-block)");
 
+  setCircosObject();
 
-  // Loading the circos plot in the svg element
-  myCircos = new Circos({
-    container: '#chart',
-    width: width,
-    height: height
-  });
-
-  // Updating angle on input
-  d3.select("#nAngle")
-    .on("input", function() {
-      var draggedAngle = require('./generateGenomeView').draggedAngle();
-      updateAngle(+this.value, draggedAngle > 0 ? 360 - draggedAngle : 0);
-    });
-
-  // Initial starting angle of the text
-  updateAngle(chromosomeRotateAngle, 0);
+  // Initial starting angle of the genome view (0 degrees for default and dragging angle)
+  updateAngle(0, 0);
 
   // Updating filter on input
-  d3.select("#filter")
+  d3.select("#filter-block-size")
     .on("input", function() {
       updateFilter(+this.value, true);
     });
 
-  // Default filtering
-  updateFilter(filterValue, false);
+  // Default filtering (1 is min value and shouldUpdatePath = false)
+  updateFilter(1, false);
 
   generateGenomeView();
 };
 
-module.exports = {
-  blockDictionary: function() { return blockDictionary; },
-  blockKeys: function() { return blockKeys; },
-  chromosomeRotateAngle: function() { return chromosomeRotateAngle; },
-  coloredBlocks: function() { return coloredBlocks; },
-  filterValue: function() { return filterValue; },
-  filterSelect: function() { return filterSelect; },
-  fixSourceTargetCollinearity: fixSourceTargetCollinearity,
-  generateData: generateData,
-  geneDictionary: function() { return geneDictionary; },
-  gffPositionDictionary: function() { return gffPositionDictionary; },
-  highlightFlippedBlocks: function() { return highlightFlippedBlocks; },
-  myCircos: function() { return myCircos; },
-  selectedCheckbox: function() { return selectedCheckbox; },
-  showAllChromosomes: function() { return showAllChromosomes; },
-  updateAngle: updateAngle,
-  width: function() { return width; },
-  height: function() { return height; }
-};
+
+// Clean variables and send remaining with parameters
+// Other ones in variable.js file
+// ES6 strings later (search for + ")
+// Other constants as well (keep them together)
+//
+// Make removeBlockViewWithTransition general and use it in block View as well
+// Use lodash find instead of find functions
+
+
+// const, let
+// import
+// Clean variables requires inside function
+//
+// Replace tooltip and add more to blockView DONE (Check everything)
+//
+// Clean comments (delete selectedCheckbox and findBlockConnection)
+// Clean drag functions (maybe later?)

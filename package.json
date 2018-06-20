@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "webpack-dev-server --config webpack.config.js --watch-poll",
-    "build": "webpack --config webpack.config.js --optimize-minimize"
+    "build": "webpack --config webpack.config.prod.js --optimize-minimize"
   },
   "repository": {
     "type": "git",
@@ -16,9 +16,12 @@
   "private": true,
   "homepage": "https://bitbucket.org/jnunez17/synteny-browser/",
   "devDependencies": {
+    "babel-preset-env": "1.7.0",
     "babel-core": "6.26.3",
-    "babel-minify-webpack-plugin": "0.3.0",
+    "babel-loader": "7.1.4",
+    "babel-plugin-transform-object-rest-spread": "6.26.0",
     "lodash": "4.17.10",
+    "strip-loader": "0.1.2",
     "webpack": "3.11.0",
     "webpack-dev-server": "2.11.1"
   },
