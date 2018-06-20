@@ -550,8 +550,8 @@ export default function generateBlockView(data) {
                       <h4>ID: ${d.connection}</h4>
                       <h4>E-value: ${d.eValue}</h4>`;
             })
-            .style("left", (d3.event.pageX) + "px")
-            .style("top", (d3.event.pageY - 28) + "px");
+            .style("left", `${(d3.event.pageX)}px`)
+            .style("top", `${(d3.event.pageY - 28)}px`);
 
           if (d3.selectAll(nodes).attr("opacity") != 0.30) {
             d3.selectAll(nodes).attr("opacity", 0.30);
@@ -646,5 +646,5 @@ export default function generateBlockView(data) {
     .attr("text-anchor", "middle")
     .style("font-size", "16px")
     .style("font-style", "italic")
-    .text(sourceChromosomeID + ' vs. ' + targetChromosomeID + ' - Block ' + blockID + ' gene locations');
+    .text(`${sourceChromosomeID} vs. ${targetChromosomeID} - Block ${blockID} gene locations`);
 }

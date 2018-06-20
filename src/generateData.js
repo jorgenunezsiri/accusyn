@@ -39,20 +39,6 @@ import {
 // Constants
 import { WIDTH, HEIGHT } from './constants';
 
-
-/*function findBlockConnection(dictionary, source, target) {
-  return dictionary[source].find(function(element) {
-    return element.connection == target;
-  });
-}
-
-function findIndexConnection(dictionary, source, target) {
-  return dictionary[source].findIndex(function(element) {
-    return element.connection == target;
-  });
-}*/
-
-
 /**
  * Generates and preprocess data for the syteny browser
  *
@@ -63,8 +49,8 @@ function findIndexConnection(dictionary, source, target) {
  */
 export default function generateData(error, gff, collinearity) {
   if (error) return console.error(error);
-  console.log('GFF1: ', gff[1]);
-  // console.log('COLLINEARITY1: ', collinearity1[1]);
+
+  console.log("DATA LOADED !!!");
 
   const colors = d3.scaleOrdinal(schemeSet2); // Default color scheme
   const geneDictionary = {}; // Dictionary that includes the start and end position data for each gene
@@ -73,7 +59,7 @@ export default function generateData(error, gff, collinearity) {
 
   // For loop to update position dictionary with file data
   for (let i = 0; i < gff.length; i++) {
-    const currentChromosomeID = gff[i].sequenceID;
+    const currentChromosomeID = gff[i].chromosomeID;
     const start = parseInt(gff[i].start);
     const end = parseInt(gff[i].end);
 
@@ -84,16 +70,15 @@ export default function generateData(error, gff, collinearity) {
     }
 
     gffPositionDictionary[currentChromosomeID].end = end;
-    const currentGene = gff[i].attributes.split(';')[0].split('=')[1];
-    // console.log('CURRENT GENE: ', currentGene);
+    const currentGene =
+      gff[i].attributes ? gff[i].attributes.split(';')[0].split('=')[1] :
+      (gff[i].geneID ? gff[i].geneID : currentChromosomeID);
+
     geneDictionary[currentGene] = {
       start: start,
       end: end
     }
   }
-
-  console.log('GENES length: ', Object.keys(geneDictionary).length);
-  // GENES length:  107223
 
   // Setting gene dictionary with all the genes
   setGeneDictionary(geneDictionary);
@@ -113,95 +98,85 @@ export default function generateData(error, gff, collinearity) {
 
   // Setting the current order (default to ordered array of chromosomes)
   setCurrentChromosomeOrder(gffKeys.slice());
-  let howMany = 0;
 
   const blockDictionary = {}; // Dictionary to store the data for all blocks
   const connectionDictionary = {}; // Dictionary to store the data for all the connections between any source and target
   for (let i = 0; i < collinearity.length; i++) {
-    if (collinearity[i].source.includes('N') && collinearity[i].target.includes('N')) {
-      howMany++;
-      const currentBlock = collinearity[i].block;
+    const currentBlock = collinearity[i].block;
 
-      if (!(currentBlock in blockDictionary)) {
-        blockDictionary[currentBlock] = [];
-      }
+    if (!(currentBlock in blockDictionary)) {
+      blockDictionary[currentBlock] = [];
+    }
 
-      // Adding all the block connections in the dictionary
-      blockDictionary[currentBlock].push({
-        connection: collinearity[i].connection,
-        source: collinearity[i].source,
-        target: collinearity[i].target,
-        score: collinearity[i].score,
-        eValue: collinearity[i].eValueBlock,
-        eValueConnection: collinearity[i].eValueConnection,
-        isFlipped: collinearity[i].isFlipped
+    // Adding all the block connections in the dictionary
+    blockDictionary[currentBlock].push({
+      connection: collinearity[i].connection,
+      source: collinearity[i].source,
+      target: collinearity[i].target,
+      score: collinearity[i].score,
+      eValue: collinearity[i].eValueBlock,
+      eValueConnection: collinearity[i].eValueConnection,
+      isFlipped: collinearity[i].isFlipped
+    });
+
+    const IDs = fixSourceTargetCollinearity(collinearity[i]);
+    const sourceID = IDs.source;
+    const targetID = IDs.target;
+
+    // If source is not in the dictionary, create new array for the source
+    if (!(sourceID in connectionDictionary)) {
+      connectionDictionary[sourceID] = [];
+    }
+
+    // If target is not in the dictionary, create new array for the target
+    if (!(targetID in connectionDictionary)) {
+      connectionDictionary[targetID] = [];
+    }
+
+    let indexConnection = 0;
+    // If a connection is not found between source and target, then create it
+    if (!find(connectionDictionary[sourceID], ['connection', targetID])) {
+      connectionDictionary[sourceID].push({
+        blockIDs: [currentBlock],
+        connection: targetID,
+        connectionAmount: 1
       });
+    } else {
+      // If a connection is found, then find index, update connection amount,
+      // and add new blockID if not present
+      indexConnection = findIndex(connectionDictionary[sourceID], ['connection', targetID]);
+      connectionDictionary[sourceID][indexConnection].connectionAmount++;
 
-      const IDs = fixSourceTargetCollinearity(collinearity[i]);
-      const sourceID = IDs.source;
-      const targetID = IDs.target;
+      if (connectionDictionary[sourceID][indexConnection].blockIDs.indexOf(currentBlock) === (-1)) {
+        connectionDictionary[sourceID][indexConnection].blockIDs.push(currentBlock);
+      }
+    }
 
-      // If source is not in the dictionary, create new array for the source
-      if (!(sourceID in connectionDictionary)) {
-        connectionDictionary[sourceID] = [];
+    // If a connection is not found between target and source, then create it
+    if (!find(connectionDictionary[targetID], ['connection', sourceID])) {
+      connectionDictionary[targetID].push({
+        blockIDs: [currentBlock],
+        connection: sourceID,
+        connectionAmount: 1
+      });
+    } else {
+      // If a connection is found, then find index,
+      // update connection amount only if not same chromosome,
+      // and add new blockID if not present
+      indexConnection = findIndex(connectionDictionary[targetID], ['connection', sourceID]);
+
+      if (targetID != connectionDictionary[targetID][indexConnection].connection) {
+        connectionDictionary[targetID][indexConnection].connectionAmount++;
       }
 
-      // If target is not in the dictionary, create new array for the target
-      if (!(targetID in connectionDictionary)) {
-        connectionDictionary[targetID] = [];
-      }
-
-      let indexConnection = 0;
-      // If a connection is not found between source and target, then create it
-      if (!find(connectionDictionary[sourceID], ['connection', targetID])) {
-      // if (!findBlockConnection(connectionDictionary, sourceID, targetID)) {
-        connectionDictionary[sourceID].push({
-          blockIDs: [currentBlock],
-          connection: targetID,
-          connectionAmount: 1
-        });
-      } else {
-        // If a connection is found, then find index, update connection amount,
-        // and add new blockID if not present
-        indexConnection = findIndex(connectionDictionary[sourceID], ['connection', targetID]);
-        // findIndexConnection(connectionDictionary, sourceID, targetID);
-        connectionDictionary[sourceID][indexConnection].connectionAmount++;
-
-        if (connectionDictionary[sourceID][indexConnection].blockIDs.indexOf(currentBlock) === (-1)) {
-          connectionDictionary[sourceID][indexConnection].blockIDs.push(currentBlock);
-        }
-      }
-
-      // If a connection is not found between target and source, then create it
-      if (!find(connectionDictionary[targetID], ['connection', sourceID])) {
-      // if (!findBlockConnection(connectionDictionary, targetID, sourceID)) {
-        connectionDictionary[targetID].push({
-          blockIDs: [currentBlock],
-          connection: sourceID,
-          connectionAmount: 1
-        });
-      } else {
-        // If a connection is found, then find index,
-        // update connection amount only if not same chromosome,
-        // and add new blockID if not present
-        indexConnection = findIndex(connectionDictionary[targetID], ['connection', sourceID]);
-        // findIndexConnection(connectionDictionary, targetID, sourceID);
-
-        if (targetID != connectionDictionary[targetID][indexConnection].connection) {
-          connectionDictionary[targetID][indexConnection].connectionAmount++;
-        }
-
-        if (connectionDictionary[targetID][indexConnection].blockIDs.indexOf(currentBlock) === (-1)) {
-          connectionDictionary[targetID][indexConnection].blockIDs.push(currentBlock);
-        }
+      if (connectionDictionary[targetID][indexConnection].blockIDs.indexOf(currentBlock) === (-1)) {
+        connectionDictionary[targetID][indexConnection].blockIDs.push(currentBlock);
       }
     }
   }
 
   // Array that includes the keys from the blockDictionary
   const blockKeys = Object.keys(blockDictionary);
-
-  console.log('BLOCK DICT len: ', blockKeys.length, howMany);
 
   // Determining the block with maximum number of connections
   // (to be used in the filter input range)
@@ -322,9 +297,9 @@ export default function generateData(error, gff, collinearity) {
     .append("p")
     .attr("class", "filter-connections")
     .html(function() {
-      return '<label for="filter-block-size" style="display: inline-block; text-align: left; width: 115px">' +
-        '<span id="filter-block-size-value">...</span>' +
-        '</label>';
+      return `<label for="filter-block-size" style="display: inline-block; text-align: left; width: 115px">
+        <span id="filter-block-size-value">...</span>
+        </label>`;
     });
 
   d3.select(".filter-connections-div")
@@ -352,7 +327,6 @@ export default function generateData(error, gff, collinearity) {
   d3.select("#form-config").selectAll(".chr-box")
     .data(gffKeys)
     .on("change", function() {
-      // selectedCheckbox = [];
       const selectedChromosomes = [];
       const visitedChr = {}; // Visited chromosomes dictionary
       for (let i = 0; i < gffKeys.length; i++) {
@@ -369,7 +343,6 @@ export default function generateData(error, gff, collinearity) {
           // If chromosome is already checked, then it is visited
           visitedChr[d] = true;
           selectedChromosomes.push(cb.property("value"));
-          // selectedCheckbox.push(cb.property("value"));
         }
       });
 
@@ -389,7 +362,6 @@ export default function generateData(error, gff, collinearity) {
         for (let j = 0; j < gffKeys.length; j++) {
           // If a connection is found, mark current chromosome as visited
           if (find(connectionDictionary[selectedChromosomes[0]], ['connection', gffKeys[j]])) {
-          // if (findBlockConnection(connectionDictionary, selectedChromosomes[0], gffKeys[j])) {
             visitedChr[gffKeys[j]] = true;
           }
         }
@@ -398,7 +370,6 @@ export default function generateData(error, gff, collinearity) {
           d3.select(this.parentNode).select('span').html(function() {
             // Finding the index of the connection in the dictionary
             const indexConnection = findIndex(connectionDictionary[selectedChromosomes[0]], ['connection', d]);
-              // findIndexConnection(connectionDictionary, selectedChromosomes[0], d);
             let connectionAmount = 0;
             let textToShow = d.toString(); // Current chromosome id (e.g. N1, N2, N10)
             const style = '<em style="display: inline-block; text-align: right; width: 65px; margin-left: 10px">';
@@ -458,7 +429,6 @@ export default function generateData(error, gff, collinearity) {
         d3.selectAll(".chr-box").each(function() {
           if (!d3.select(this).property("checked")) {
             d3.select(this).property("checked", true);
-            // selectedCheckbox.push(d3.select(this).property("value"));
           }
         });
       } else {
@@ -477,8 +447,6 @@ export default function generateData(error, gff, collinearity) {
             d3.select(this).property("checked", false);
           }
         });
-
-        // selectedCheckbox = [];
       }
 
       // When Select/Deselect All is clicked, all chromosomes will show by default
@@ -531,23 +499,10 @@ export default function generateData(error, gff, collinearity) {
   updateFilter(1, false);
 
   generateGenomeView();
+
+  d3.select("#loader")
+    .style("display", "none");
+
+  d3.select("#pageContainer")
+    .style("display", "block");
 };
-
-
-// Clean variables and send remaining with parameters
-// Other ones in variable.js file
-// ES6 strings later (search for + ")
-// Other constants as well (keep them together)
-//
-// Make removeBlockViewWithTransition general and use it in block View as well
-// Use lodash find instead of find functions
-
-
-// const, let
-// import
-// Clean variables requires inside function
-//
-// Replace tooltip and add more to blockView DONE (Check everything)
-//
-// Clean comments (delete selectedCheckbox and findBlockConnection)
-// Clean drag functions (maybe later?)

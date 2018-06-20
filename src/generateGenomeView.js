@@ -208,14 +208,18 @@ export function generatePathGenomeView(transition) {
     currentSelectedBlock = {};
   }
 
-  // Update block-number-headline with current block size
-  d3.select(".block-number-headline")
+  function updateBlockNumberHeadline(size = 0) {
+    // Update block-number-headline with current block size
+    d3.select(".block-number-headline")
     .text(function() {
-      const blockSize = dataChords.length.toString();
+      const blockSize = (dataChords.length - size).toString();
       let textToShow = "Showing ";
       textToShow += blockSize === "1" ? `${blockSize} block` : `${blockSize} blocks`;
       return textToShow;
     });
+  }
+
+  updateBlockNumberHeadline();
 
   // Remove block view if user is filtering
   // and selected block is not present anymore
@@ -334,6 +338,9 @@ export function generatePathGenomeView(transition) {
 
           // Pushing block id to array to keep track
           currentRemovedBlocks.push(d.source.value.id);
+
+          // Updating block number
+          updateBlockNumberHeadline(currentRemovedBlocks.length);
         }
       }
     });
@@ -356,11 +363,11 @@ export function generatePathGenomeView(transition) {
 
     // Highlighting flipped chromosomes by default
     for (let i = 0; i < currentFlippedChromosomes.length; i++) {
-      // d3.select("g." + currentFlippedChromosomes[i]).attr("opacity", 0.6);
+      // d3.select(`g.${currentFlippedChromosomes[i]}`).attr("opacity", 0.6);
       d3.select(`g.${currentFlippedChromosomes[i]} path#arc-label${currentFlippedChromosomes[i]}`)
         .style("stroke", "#ea4848")
         .style("stroke-width", "1px");
-      // d3.select("g." + currentFlippedChromosomes[i]).style("stroke", "#ea4848");
+      // d3.select(`g.${currentFlippedChromosomes[i]}`).style("stroke", "#ea4848");
     }
   }
 
@@ -441,7 +448,7 @@ export default function generateGenomeView() {
     function updateChordsWhileDragging(chromosome, angleFromChromosome, extraAngle, transitionDuration, animation) {
       // Only update if chromosome (parameter) has chords
       // meaning that selection should not be empty
-      if (!d3.selectAll('path.chord.' + chromosome).empty()) {
+      if (!d3.selectAll(`path.chord.${chromosome}`).empty()) {
         const ribbon = d3.ribbon().radius(300);
         const isChrMouseDown = !animation && chromosome === currentChromosomeMouseDown;
 
@@ -450,8 +457,8 @@ export default function generateGenomeView() {
             .attr("opacity", 0.3);
         }
 
-        d3.selectAll('path.chord.' + chromosome)
-          .raise()
+        d3.selectAll(`path.chord.${chromosome}`)
+          .raise() // PLAY WITH THIS?
           .transition()
           .duration(transitionDuration)
           .attr("opacity", 0.9)
@@ -601,7 +608,7 @@ export default function generateGenomeView() {
 
         // Creating a clone of the current mouse down chromosome
         d3.selectAll(`g.${currentChromosomeMouseDown}-clone`).remove();
-        const copy = clone("g." + currentChromosomeMouseDown);
+        const copy = clone(`g.${currentChromosomeMouseDown}`);
         copy
           .lower()
           .attr("class", `${currentChromosomeMouseDown}-clone`)
@@ -624,10 +631,17 @@ export default function generateGenomeView() {
         lastAngle = 0;
         trueLastAngle = 0;
 
-        // Highlighting current mouse down chromosome
-        d3.select("g." + currentChromosomeMouseDown)
+        // Highlighting current mouse down chromosome and its chords
+        d3.select(`g.${currentChromosomeMouseDown}`)
           .style("stroke", "#ea4848")
           .style("stroke-width", "1px");
+
+        d3.selectAll('path.chord')
+          .attr("opacity", 0.3);
+
+        d3.selectAll(`path.chord.${currentChromosomeMouseDown}`)
+          .raise()
+          .attr("opacity", 0.9);
       })
       .on("drag", function(d) {
         if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "") return;
@@ -640,12 +654,12 @@ export default function generateGenomeView() {
         const angle = Math.atan2(y, x) * RADIANS_TO_DEGREES;
 
         // Selecting current mouse down chromosome
-        const current = d3.select("g." + currentChromosomeMouseDown);
+        const current = d3.select(`g.${currentChromosomeMouseDown}`);
         const currentAngle = (angle - offsetAngle);
 
         current
           .raise()
-          .attr("transform", 'rotate(' + currentAngle + ')')
+          .attr("transform", `rotate(${currentAngle})`)
           // While dragging no other events should point to it
           .style("pointer-events", "none");
 
@@ -664,7 +678,7 @@ export default function generateGenomeView() {
         let currentChromosomeOrder = getCurrentChromosomeOrder();
 
         // Turning off highlighting for current mouse down chromosome
-        d3.select("g." + currentChromosomeMouseDown)
+        d3.select(`g.${currentChromosomeMouseDown}`)
           .style("stroke", "none");
 
         let collidedChr = "";
@@ -911,10 +925,10 @@ export default function generateGenomeView() {
           // Before flipping, set all chords with the same opacity
           d3.selectAll("path.chord").attr("opacity", 0.7);
 
-          const currentId = d.id;
-          const currentPosition = currentFlippedChromosomes.indexOf(currentId);
+          const currentID = d.id;
+          const currentPosition = currentFlippedChromosomes.indexOf(currentID);
 
-          d3.selectAll("path.chord." + currentId)
+          d3.selectAll(`path.chord.${currentID}`)
             .raise()
             .transition()
             .duration(FLIPPING_CHROMOSOME_TIME)
@@ -927,14 +941,14 @@ export default function generateGenomeView() {
             shouldDo: true,
             from: "lightblue",
             time: FLIPPING_CHROMOSOME_TIME,
-            chr: currentId
+            chr: currentID
           };
 
           // If chromosome id is present, then remove it
           if (currentPosition !== (-1)) {
             currentFlippedChromosomes.splice(currentPosition, 1);
           } else {
-            currentFlippedChromosomes.push(currentId);
+            currentFlippedChromosomes.push(currentID);
           }
 
           console.log('CURRENT FLIPPED CHR: ', currentFlippedChromosomes);
