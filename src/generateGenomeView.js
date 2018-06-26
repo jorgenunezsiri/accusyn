@@ -208,15 +208,21 @@ export function generatePathGenomeView(transition) {
     currentSelectedBlock = {};
   }
 
-  function updateBlockNumberHeadline(size = 0) {
+  /**
+   * Updating the label showing the number of blocks
+   *
+   * @param  {number} [deletedBlocks=0] Number of deleted blocks
+   * @return {undefined}                undefined
+   */
+  function updateBlockNumberHeadline(deletedBlocks = 0) {
     // Update block-number-headline with current block size
     d3.select(".block-number-headline")
-    .text(function() {
-      const blockSize = (dataChords.length - size).toString();
-      let textToShow = "Showing ";
-      textToShow += blockSize === "1" ? `${blockSize} block` : `${blockSize} blocks`;
-      return textToShow;
-    });
+      .text(function() {
+        const blockSize = (dataChords.length - deletedBlocks).toString();
+        let textToShow = "Showing ";
+        textToShow += blockSize === "1" ? `${blockSize} block` : `${blockSize} blocks`;
+        return textToShow;
+      });
   }
 
   updateBlockNumberHeadline();
