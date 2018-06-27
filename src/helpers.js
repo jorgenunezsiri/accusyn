@@ -1,6 +1,6 @@
 import * as d3 from 'd3';
 
-import { generatePathGenomeView } from './generateGenomeView';
+import generateGenomeView from './genomeView/generateGenomeView';
 
 // Contants
 import {
@@ -98,7 +98,7 @@ export function lookForBlocksPositions(blockDictionary, geneDictionary, block) {
     maxSource: maxSource,
     minTarget: minTarget,
     maxTarget: maxTarget
-  }
+  };
 };
 
 /**
@@ -121,6 +121,26 @@ export function removeBlockView(transitionTime = 0) {
 };
 
 /**
+ * Sorts GFF keys
+ *
+ * @param  {Array<string>} gffKeys Array that includes the keys from the gff dictionary
+ * @return {Array<string>}         Sorted gff keys
+ */
+export function sortGffKeys(gffKeys) {
+  const gffCopy = gffKeys.slice();
+
+  gffCopy.sort(function compare(a, b) {
+    a = parseInt(a.replace(/[A-Za-z]/g, ""));
+    b = parseInt(b.replace(/[A-Za-z]/g, ""));
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+  });
+
+  return gffCopy;
+};
+
+/**
  * Updates the angle of the genome view
  *
  * @param  {number} nAngle    Current angle between 0 and 360
@@ -138,21 +158,49 @@ export function updateAngle(nAngle = 0, nDragging = 0) {
 };
 
 /**
- *  Updates the filter range value for block size
+ * Updating the label showing the number of blocks
  *
- * @param  {number} value             Filtering value for connection block size
- * @param  {boolean} shouldUpdatePath True if should update paths in genome
- *                                    view, false otherwise
+ * @param  {Array<Object>} dataChords Plotting information for each block chord
  * @return {undefined}                undefined
  */
-export function updateFilter(value = 1, shouldUpdatePath = false) {
+export function updateBlockNumberHeadline(dataChords) {
+  // Update block-number-headline with current block size
+  d3.select(".block-number-headline")
+    .text(function() {
+      const blockSize = dataChords.length.toString();
+      let textToShow = "Showing ";
+      textToShow += blockSize === "1" ? `${blockSize} block` : `${blockSize} blocks`;
+      return textToShow;
+    });
+};
+
+/**
+ *  Updates the filter range value for block size
+ *
+ * @param  {boolean} shouldUpdateBlockCollisions True if should update block collisions
+ *                                               in genome view, false otherwise
+ * @param  {boolean} shouldUpdateLayout          True if Circos layout should be updated
+ *                                               (i.e. chromosome order changed)
+ * @param  {boolean} shouldUpdatePath            True if should update paths in genome
+ *                                               view, false otherwise
+ * @param  {number}  value                       Filtering value for connection block size
+ * @return {undefined}                           undefined
+ */
+export function updateFilter({
+  shouldUpdateBlockCollisions = false,
+  shouldUpdateLayout = false,
+  shouldUpdatePath = false,
+  value = 1
+}) {
   // Adjust the text on the filter range slider
   d3.select("#filter-block-size-value").text(value === 1 ? `${value} connection` : `${value} connections`);
   d3.select("#filter-block-size").property("value", value);
 
   if (shouldUpdatePath) {
-    generatePathGenomeView({
-      shouldDo: false
+    generateGenomeView({
+      "transition": { shouldDo: false },
+      "shouldUpdateBlockCollisions": shouldUpdateBlockCollisions,
+      "shouldUpdateLayout": shouldUpdateLayout
     });
   }
 };

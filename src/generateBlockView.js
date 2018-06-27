@@ -21,11 +21,9 @@ import {
 } from './helpers';
 
 // Variables getters and setters
-import {
-  getBlockDictionary,
-  getGeneDictionary,
-  getGffDictionary
-} from './variables';
+import { getBlockDictionary } from './variables/blockDictionary';
+import { getGeneDictionary } from './variables/geneDictionary';
+import { getGffDictionary } from './variables/gffDictionary';
 
 // Contants
 import {
@@ -523,18 +521,10 @@ export default function generateBlockView(data) {
           .attr("stroke", CONNECTION_COLOR);
       }
 
-      // Add the circos tooltip
+      // Add the Circos tooltip
       const tooltipDiv = d3.select("#block-view-container").append("div")
         .attr("class", "circos-tooltip")
         .style("opacity", 0);
-
-      /*svgBlock.selectAll("path")
-        .on("mouseover", function(d) {
-
-        })
-        .on("mouseout", function(d) {
-
-        });*/
 
       svgBlock.selectAll("path.line")
         .on("mouseover", function(d, i, nodes) {
@@ -609,9 +599,8 @@ export default function generateBlockView(data) {
 
     console.log('TOTAL TIME: ', COLOR_CHANGE_TIME + (TRANSITION_NORMAL_TIME * MAX_INDEX_TRANSITION) + TRANSITION_FLIPPING_TIME);
     if (onInputChange) {
-      setTimeout(function() {
-        drawPathBlockView();
-      }, (COLOR_CHANGE_TIME + (TRANSITION_NORMAL_TIME * MAX_INDEX_TRANSITION) + TRANSITION_FLIPPING_TIME));
+      setTimeout(drawPathBlockView,
+        (COLOR_CHANGE_TIME + (TRANSITION_NORMAL_TIME * MAX_INDEX_TRANSITION) + TRANSITION_FLIPPING_TIME));
     } else {
       drawPathBlockView();
     }

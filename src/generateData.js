@@ -17,24 +17,26 @@ import * as d3 from 'd3';
 import find from 'lodash/find';
 import findIndex from 'lodash/findIndex';
 
-import generateGenomeView, { generatePathGenomeView } from './generateGenomeView';
+import generateGenomeView from './genomeView/generateGenomeView';
 import { schemeSet2 } from 'd3-scale-chromatic';
 
 import {
   fixSourceTargetCollinearity,
   lookForBlocksPositions,
+  sortGffKeys,
   updateAngle,
   updateFilter
 } from './helpers';
 
 // Variables getters and setters
+import { setBlockDictionary } from './variables/blockDictionary';
+import { setCircosObject } from './variables/myCircos';
 import {
-  setBlockDictionary,
-  setCircosObject,
   setCurrentChromosomeOrder,
-  setGeneDictionary,
-  setGffDictionary
-} from './variables';
+  setDefaultChromosomeOrder
+} from './variables/currentChromosomeOrder';
+import { setGeneDictionary } from './variables/geneDictionary';
+import { setGffDictionary } from './variables/gffDictionary';
 
 // Constants
 import { WIDTH, HEIGHT } from './constants';
@@ -87,17 +89,11 @@ export default function generateData(error, gff, collinearity) {
   setGffDictionary(gffPositionDictionary);
 
   // Obtaining keys from dictionary and sorting them in ascending order
-  gffKeys = Object.keys(gffPositionDictionary);
-  gffKeys.sort(function compare(a, b) {
-    a = parseInt(a.split('N')[1]);
-    b = parseInt(b.split('N')[1]);
-    if (a < b) return -1;
-    if (a > b) return 1;
-    return 0;
-  });
+  gffKeys = sortGffKeys(Object.keys(gffPositionDictionary)).slice();
 
   // Setting the current order (default to ordered array of chromosomes)
   setCurrentChromosomeOrder(gffKeys.slice());
+  setDefaultChromosomeOrder(gffKeys.slice());
 
   const blockDictionary = {}; // Dictionary to store the data for all blocks
   const connectionDictionary = {}; // Dictionary to store the data for all the connections between any source and target
@@ -207,18 +203,64 @@ export default function generateData(error, gff, collinearity) {
     .append("input")
     .attr("type", "checkbox")
     .attr("name", "show-all")
-    .attr("value", "Show All")
+    .attr("value", "Show all")
     .property("checked", true); // Show All is checked by default
 
   d3.select("#form-config").select('p.show-all')
     .append("span")
-    .text("Show All");
+    .text("Show all");
 
   d3.select("p.show-all > input")
     .on("change", function() {
       // Calling genome view for updates
-      generateGenomeView();
+      generateGenomeView({});
     });
+
+  d3.select("#form-config")
+    .append("h3")
+    .text("Layout");
+
+  d3.select("#form-config")
+    .append("div")
+    .attr("class", "show-best-layout")
+    .attr("title", "If selected, the last saved layout will be shown by default.")
+    .append("input")
+    .attr("type", "checkbox")
+    .attr("name", "show-best-layout")
+    .attr("value", "Show saved layout")
+    .property("checked", true); // Show best layout is checked by default
+
+  d3.select("#form-config").select('.show-best-layout')
+    .append("span")
+    .text("Show saved layout");
+
+  d3.select("div.show-best-layout > input")
+    .on("change", function() {
+      if (d3.select(this).property("checked")) {
+        // Calling genome view for updates
+        generateGenomeView({
+          "transition": { shouldDo: false },
+          "shouldUpdateBlockCollisions": true,
+          "shouldUpdateLayout": true
+        });
+      }
+    });
+
+  d3.select("#form-config")
+    .append("p")
+    .attr("class", "save-layout")
+    .attr("title", "Save layout")
+    .append("input")
+    .attr("type", "button")
+    .attr("value", "Save layout");
+
+  d3.select("#form-config")
+    .append("p")
+    .attr("class", "reset-layout")
+    .attr("title", "Reset layout")
+    .append("input")
+    .attr("type", "button")
+    .attr("value", "Reset layout");
 
   d3.select("#form-config")
     .append("h3")
@@ -230,6 +272,19 @@ export default function generateData(error, gff, collinearity) {
     .style("font-weight", "normal");
 
   d3.select("#form-config")
+    .append("h4")
+    .attr("class", "block-collision-headline")
+    .style("font-weight", "normal");
+
+  d3.select("#form-config")
+    .append("div")
+    .attr("class", "best-guess")
+    .attr("title", "Minimize collisions")
+    .append("input")
+    .attr("type", "button")
+    .attr("value", "Minimize collisions");
+
+  d3.select("#form-config")
     .append("p")
     .attr("class", "color-blocks")
     .attr("title", "If selected, all connections will be colored.")
@@ -237,7 +292,7 @@ export default function generateData(error, gff, collinearity) {
     .attr("type", "checkbox")
     .attr("name", "color-blocks")
     .attr("value", "Color blocks")
-    .property("checked", false); // Color block is not checked by default
+    .property("checked", false); // Color blocks is not checked by default
 
   d3.select("#form-config").select('p.color-blocks')
     .append("span")
@@ -245,8 +300,10 @@ export default function generateData(error, gff, collinearity) {
 
   d3.select("p.color-blocks > input")
     .on("change", function() {
-      // Calling path genome view for updates
-      generatePathGenomeView();
+      // Calling genome view for updates
+      generateGenomeView({
+        "shouldUpdateLayout": false
+      });
     });
 
   d3.select("#form-config")
@@ -257,7 +314,7 @@ export default function generateData(error, gff, collinearity) {
     .attr("type", "checkbox")
     .attr("name", "highlight-flipped-blocks")
     .attr("value", "Highlight flipped blocks")
-    .property("checked", false); // Color block is not checked by default
+    .property("checked", false); // Highligh flipped blocks is not checked by default
 
   d3.select("#form-config").select('p.highlight-flipped-blocks')
     .append("span")
@@ -265,8 +322,10 @@ export default function generateData(error, gff, collinearity) {
 
   d3.select("p.highlight-flipped-blocks > input")
     .on("change", function() {
-      // Calling path genome view for updates
-      generatePathGenomeView();
+      // Calling genome view for updates
+      generateGenomeView({
+        "shouldUpdateLayout": false
+      });
     });
 
   d3.select("#form-config")
@@ -287,9 +346,10 @@ export default function generateData(error, gff, collinearity) {
   d3.select(".filter-connections-div")
     .select("select")
     .on("change", function() {
-      // Calling path genome view for updates
-      generatePathGenomeView({
-        shouldDo: false
+      // Calling genome view for updates
+      generateGenomeView({
+        "transition": { shouldDo: false },
+        "shouldUpdateLayout": false
       });
     });
 
@@ -311,7 +371,9 @@ export default function generateData(error, gff, collinearity) {
     });
 
   d3.select("#form-config")
-    .selectAll("p:not(.show-all):not(.filter-connections):not(.color-blocks):not(.highlight-flipped-blocks)")
+    .selectAll(
+      "p:not(.show-all):not(.filter-connections):not(.color-blocks):not(.highlight-flipped-blocks):not(.save-layout):not(.reset-layout)"
+    )
     .data(gffKeys).enter()
     .append("p")
     .append("input")
@@ -393,14 +455,14 @@ export default function generateData(error, gff, collinearity) {
             d3.select(this.parentNode).classed("disabled", false);
           } else {
             // Only disable not visited chromosomes
-            d3.select(this).attr("disabled", "true");
+            d3.select(this).attr("disabled", true);
             d3.select(this.parentNode).classed("disabled", true);
           }
         });
       }
 
       // Calling genome view for updates
-      generateGenomeView();
+      generateGenomeView({});
     });
 
   d3.select("#form-config").selectAll("p:not(.show-all):not(.filter-connections)")
@@ -453,10 +515,10 @@ export default function generateData(error, gff, collinearity) {
       d3.select(".show-all > input").property("checked", true);
 
       // Calling genome view for updates
-      generateGenomeView();
+      generateGenomeView({});
     });
 
-  // SVG element that will include the circos plot
+  // SVG element that will include the Circos plot
   const svg = d3.select("body")
     .append("svg")
     .attr("id", "chart")
@@ -489,17 +551,36 @@ export default function generateData(error, gff, collinearity) {
   // Initial starting angle of the genome view (0 degrees for default and dragging angle)
   updateAngle(0, 0);
 
+  const callFullUpdateFilter = (value) => updateFilter({
+    "value": value,
+    "shouldUpdatePath": true,
+    "shouldUpdateBlockCollisions": true,
+    "shouldUpdateLayout": true
+  });
+
   // Updating filter on input
   d3.select("#filter-block-size")
     .on("input", function() {
-      updateFilter(+this.value, true);
-    });
+      d3.select(".block-collision-headline")
+        .text("Updating block collisions ...");
+
+      updateFilter({
+        "value": +this.value,
+        "shouldUpdatePath": true,
+        "shouldUpdateBlockCollisions": false,
+        "shouldUpdateLayout": false
+      });
+    })
+    .on("mouseup", function() { callFullUpdateFilter(+this.value); })
+    .on("keyup", function() { callFullUpdateFilter(+this.value); });
 
   // Default filtering (1 is min value and shouldUpdatePath = false)
-  updateFilter(1, false);
+  updateFilter({ "value": 1, "shouldUpdatePath": false });
 
-  generateGenomeView();
+  // First load of the genome view
+  generateGenomeView({});
 
+  // Displaying all the content after everything is loaded
   d3.select("#loader")
     .style("display", "none");
 
