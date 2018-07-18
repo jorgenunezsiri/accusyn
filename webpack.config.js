@@ -26,7 +26,10 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['babel-preset-env']
+            // babel-loader is told to use the babel-preset-env package installed earlier,
+            // to establish the transpile parameters set in the .babelrc file.
+            // babel-preset-react is used to transpile jsx correctly
+            presets: ['babel-preset-env', 'babel-preset-react']
           }
         }
       },

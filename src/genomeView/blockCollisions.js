@@ -3,6 +3,13 @@ import {
   select as d3Select,
   selectAll as d3SelectAll
 } from 'd3';
+
+// React
+import React from 'react';
+import ReactDOM from 'react-dom';
+import AlertWithTimeout from './../reactComponents/Alert';
+
+// Lodash
 import cloneDeep from 'lodash/cloneDeep';
 import findIndex from 'lodash/findIndex';
 import isEqual from 'lodash/isEqual';
@@ -546,8 +553,25 @@ export function callSwapPositionsAnimation(dataChromosomes, bestSolution, update
 
       // Calling the actual animation
       swapPositionsAnimation(dataChromosomes, bestSolution, swapPositions);
+
+      ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
+      ReactDOM.render(
+        <AlertWithTimeout
+          message = {"The layout was successfully updated."}
+        />,
+        document.getElementById('alert-container')
+      );
     }
   } else if (updateWhenSame) {
+    ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
+    ReactDOM.render(
+      <AlertWithTimeout
+        color = "danger"
+        message = {"No better layout was found this time. Feel free to try again!"}
+      />,
+      document.getElementById('alert-container')
+    );
+
     // If they are the same and I can update (the flag is true),
     // it means they have the same number of collisions.
     // Re-render to keep everything untouched.
@@ -660,7 +684,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
 
     if (collisionCount > bestEnergy) {
       // Disable checkbox because saved solution is worse than actual one
-      d3Select('div.show-best-layout > input').property("checked", false);
+      d3Select('p.show-best-layout > input').property("checked", false);
     }
   }
 

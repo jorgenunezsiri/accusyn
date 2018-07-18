@@ -410,8 +410,8 @@ function onEndDragging(dataChromosomes) {
     return;
   }
 
-  // TODO: Find a workaround for this?
-  d3.select('div.show-best-layout > input').property("checked", false);
+  // Disable checkbox because dragging might lead to a worse solution
+  d3.select('p.show-best-layout > input').property("checked", false);
 
   const oldChrOrder = currentChromosomeOrder.slice();
 

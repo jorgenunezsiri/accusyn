@@ -29,8 +29,8 @@ const CIRCOS_CONF = {
 // Genome view transitions
 const DEFAULT_GENOME_TRANSITION_TIME = 250;
 const FLIPPING_CHROMOSOME_TIME = 400;
-const TRANSITION_DRAG_TIME = 125;
-const TRANSITION_SWAPPING_TIME = 250;
+const TRANSITION_DRAG_TIME = 100;
+const TRANSITION_SWAPPING_TIME = 200;
 
 // Block view
 const OFFSET_DOMAIN = 50000; // Offset to be used for the scales domain

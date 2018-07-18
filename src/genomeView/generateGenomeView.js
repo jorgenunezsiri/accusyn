@@ -15,6 +15,12 @@ Function file: generateGenomeView.js
 
 import * as d3 from 'd3';
 
+// React
+import React from 'react';
+import ReactDOM from 'react-dom';
+import AlertWithTimeout from './../reactComponents/Alert';
+
+// Lodash
 import cloneDeep from 'lodash/cloneDeep';
 import defaultsDeep from 'lodash/defaultsDeep';
 import isEqual from 'lodash/isEqual';
@@ -194,7 +200,7 @@ function generateCircosLayout() {
         setTimeout(() => generateGenomeView({
           "transition": transition,
           "shouldUpdateBlockCollisions": true,
-          "shouldUpdateLayout": false
+          "shouldUpdateLayout": true
         }), FLIPPING_CHROMOSOME_TIME + (FLIPPING_CHROMOSOME_TIME / 2));
       },
       'mousedown.chr': function(d) {
@@ -289,13 +295,13 @@ function generatePathGenomeView({
         const { id: sourceID } = d.source;
         const { id: targetID } = d.target;
         const { id: blockID, score, eValue, length, isFlipped } = d.source.value;
-        return `<h4>${sourceID} ➤ ${targetID}</h4>
-          <h4><u>Block information</u></h4>
-          <h4>ID: ${blockID}</h4>
-          <h4>Score: ${score}</h4>
-          <h4>E-value: ${eValue}</h4>
-          <h4>Size: ${length}</h4>
-          <h4>Flipped: ${(isFlipped ? "Yes" : "No")}</h4>`;
+        return `<h6>${sourceID} ➤ ${targetID}</h6>
+          <h6><u>Block information</u></h6>
+          <h6>ID: ${blockID}</h6>
+          <h6>Score: ${score}</h6>
+          <h6>E-value: ${eValue}</h6>
+          <h6>Size: ${length}</h6>
+          <h6>Flipped: ${(isFlipped ? "Yes" : "No")}</h6>`;
       }
 
       return;
@@ -393,7 +399,7 @@ function generatePathGenomeView({
 
   // Show best / saved layout checkbox
   let showBestPossibleLayout =
-    d3.select("div.show-best-layout > input").property("checked");
+    d3.select("p.show-best-layout > input").property("checked");
 
   if (shouldUpdateLayout && showBestPossibleLayout) {
     const { currentPosition, key } = loopUpPositionCollisionsDictionary(dataChromosomes, dataChords);
@@ -416,16 +422,24 @@ function generatePathGenomeView({
   // Save layout button
   d3.select(".save-layout > input")
     .on("click", function() {
-      getBlockCollisions(dataChromosomes, dataChords).then((collisionCount) =>
-        saveToCollisionsDictionary(dataChromosomes, collisionCount, dataChords)
-      );
+      getBlockCollisions(dataChromosomes, dataChords).then((collisionCount) => {
+        saveToCollisionsDictionary(dataChromosomes, collisionCount, dataChords);
+
+        ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
+        ReactDOM.render(
+          <AlertWithTimeout
+            message={"The layout was successfully saved."}
+          />,
+          document.getElementById('alert-container')
+        );
+      });
     });
 
   // Reset layout button
   d3.select(".reset-layout > input")
     .on("click", function() {
-      // TODO: Find a workaround for this?
-      d3.select('div.show-best-layout > input').property("checked", false);
+      // Disable checkbox because resetting might lead to a worse solution
+      d3.select('p.show-best-layout > input').property("checked", false);
 
       const localDataChromosomes = cloneDeep(dataChromosomes);
       const oldChromosomeOrder = toChromosomeOrder(localDataChromosomes);

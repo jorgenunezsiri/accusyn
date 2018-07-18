@@ -1,3 +1,28 @@
+@import "~bootstrap/dist/css/bootstrap.min.css";
+
+.container {
+  position: relative;
+}
+
+/* Container for bootstrap alert */
+.alert {
+  position: absolute;
+  top: 0;
+}
+
+/* Button for bootstrap alert */
+button.close > span {
+  font-size: 24px;
+}
+
+p, span {
+  font-size: 12px;
+}
+
+p > input {
+  margin-right: 4px;
+}
+
 #form-config p {
   color: black;
 }

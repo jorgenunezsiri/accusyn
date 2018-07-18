@@ -533,12 +533,12 @@ export default function generateBlockView(data) {
             .style("opacity", .9);
 
           tooltipDiv.html(function() {
-              return `<h4 style="margin-bottom: 0;">${d.source.id}</h4>
+              return `<h6 style="margin-bottom: 0;">${d.source.id}</h6>
                       ➤
-                      <h4 style="margin-top: 0;">${d.target.id}</h4>
-                      <h4><u>Connection information</u></h4>
-                      <h4>ID: ${d.connection}</h4>
-                      <h4>E-value: ${d.eValue}</h4>`;
+                      <h6 style="margin-top: 0;">${d.target.id}</h6>
+                      <h6><u>Connection information</u></h6>
+                      <h6>ID: ${d.connection}</h6>
+                      <h6>E-value: ${d.eValue}</h6>`;
             })
             .style("left", `${(d3.event.pageX)}px`)
             .style("top", `${(d3.event.pageY - 28)}px`);

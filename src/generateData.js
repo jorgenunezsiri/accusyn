@@ -193,7 +193,8 @@ export default function generateData(error, gff, collinearity) {
   // Updating the style of the configuration panel
   d3.select("#config")
     .style("display", "block")
-    .style("margin-left", "10px")
+    .style("margin-left", "20px")
+    .style("margin-top", "20px")
     .style("width", `${WIDTH / 3}px`);
 
   d3.select("#form-config")
@@ -217,11 +218,11 @@ export default function generateData(error, gff, collinearity) {
     });
 
   d3.select("#form-config")
-    .append("h3")
+    .append("h5")
     .text("Layout");
 
   d3.select("#form-config")
-    .append("div")
+    .append("p")
     .attr("class", "show-best-layout")
     .attr("title", "If selected, the last saved layout will be shown by default.")
     .append("input")
@@ -234,7 +235,7 @@ export default function generateData(error, gff, collinearity) {
     .append("span")
     .text("Show saved layout");
 
-  d3.select("div.show-best-layout > input")
+  d3.select("p.show-best-layout > input")
     .on("change", function() {
       if (d3.select(this).property("checked")) {
         // Calling genome view for updates
@@ -263,23 +264,24 @@ export default function generateData(error, gff, collinearity) {
     .attr("value", "Reset layout");
 
   d3.select("#form-config")
-    .append("h3")
+    .append("h5")
     .text("Connections");
 
   d3.select("#form-config")
-    .append("h4")
+    .append("h6")
     .attr("class", "block-number-headline")
     .style("font-weight", "normal");
 
   d3.select("#form-config")
-    .append("h4")
+    .append("h6")
     .attr("class", "block-collision-headline")
     .style("font-weight", "normal");
 
   d3.select("#form-config")
-    .append("div")
+    .append("p")
     .attr("class", "best-guess")
     .attr("title", "Minimize collisions")
+    .style("margin-top", "15px")
     .append("input")
     .attr("type", "button")
     .attr("value", "Minimize collisions");
@@ -302,6 +304,7 @@ export default function generateData(error, gff, collinearity) {
     .on("change", function() {
       // Calling genome view for updates
       generateGenomeView({
+        "shouldUpdateBlockCollisions": false,
         "shouldUpdateLayout": false
       });
     });
@@ -324,6 +327,7 @@ export default function generateData(error, gff, collinearity) {
     .on("change", function() {
       // Calling genome view for updates
       generateGenomeView({
+        "shouldUpdateBlockCollisions": false,
         "shouldUpdateLayout": false
       });
     });
@@ -346,10 +350,10 @@ export default function generateData(error, gff, collinearity) {
   d3.select(".filter-connections-div")
     .select("select")
     .on("change", function() {
-      // Calling genome view for updates
+      // Calling genome view for updates with default transition
       generateGenomeView({
-        "transition": { shouldDo: false },
-        "shouldUpdateLayout": false
+        "shouldUpdateBlockCollisions": true,
+        "shouldUpdateLayout": true
       });
     });
 
@@ -357,7 +361,7 @@ export default function generateData(error, gff, collinearity) {
     .append("p")
     .attr("class", "filter-connections")
     .html(function() {
-      return `<label for="filter-block-size" style="display: inline-block; text-align: left; width: 115px">
+      return `<label for="filter-block-size" style="display: inline-block; text-align: left; width: 125px">
         <span id="filter-block-size-value">...</span>
         </label>`;
     });
@@ -371,9 +375,9 @@ export default function generateData(error, gff, collinearity) {
     });
 
   d3.select("#form-config")
-    .selectAll(
-      "p:not(.show-all):not(.filter-connections):not(.color-blocks):not(.highlight-flipped-blocks):not(.save-layout):not(.reset-layout)"
-    )
+    .append("div")
+    .attr("class", "chr-boxes")
+    .selectAll("div.chr-boxes > p")
     .data(gffKeys).enter()
     .append("p")
     .append("input")
