@@ -66,7 +66,7 @@ const processCollinearity = function processCollinearity(fileName, callback) {
   let isFlipped = 'no';
 
   return d3.text(fileName, function(data) {
-    const result = data.split('\n').reduce((dataInside, current, i) => {
+    const result = data.split('\n').reduce((dataInside, current) => {
       const trimmedCurrent = current.trim();
 
       // If the string is not empty

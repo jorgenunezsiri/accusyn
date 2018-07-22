@@ -72,7 +72,7 @@ import {
   DEFAULT_GENOME_TRANSITION_TIME,
   FLIPPING_CHROMOSOME_TIME,
   REMOVE_BLOCK_VIEW_TRANSITION_TIME
-} from './../constants';
+} from './../variables/constants';
 
 // Local variables
 const currentFlippedChromosomes = []; // Array that stores the current set of chromosomes with flipped locations
@@ -117,7 +117,7 @@ function getDataChromosomes() {
   const selectedCheckbox = getSelectedCheckboxes();
 
   // To keep track of the Show All input state
-  const showAllChromosomes = d3.select("p.show-all > input").property("checked");
+  const showAllChromosomes = d3.select("p.show-all input").property("checked");
 
   const dataChromosomes = []; // Local data chromosomes array
 
@@ -217,6 +217,31 @@ function generateCircosLayout() {
 }
 
 /**
+ * Unhighlights current selected block
+ *
+ * @return {undefined} undefined
+ */
+function unhighlightCurrentSelectedBlock() {
+  // Hide tooltip
+  d3.select('.circos-tooltip')
+    .transition()
+    .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
+    .style("opacity", 0);
+
+  // Setting opacity 0.7 to all chords
+  d3.selectAll('path.chord')
+    .transition()
+    .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
+    .attr("opacity", 0.7);
+
+  // Removing block view
+  removeBlockView(REMOVE_BLOCK_VIEW_TRANSITION_TIME);
+
+  // Resetting current selected block object
+  currentSelectedBlock = {};
+}
+
+/**
  * Generates all the chords and renders the Circos plot with the
  * current configuration
  *
@@ -236,11 +261,11 @@ function generatePathGenomeView({
   transitionRemove
 }) {
   // To keep track of the value of the color blocks checkbox
-  const coloredBlocks = d3.select("p.color-blocks > input").property("checked");
+  const coloredBlocks = d3.select("p.color-blocks input").property("checked");
   const gffPositionDictionary = getGffDictionary();
 
   // To keep track of the value of highlight flipped blocks checkbox
-  const highlightFlippedBlocks = d3.select("p.highlight-flipped-blocks > input").property("checked");
+  const highlightFlippedBlocks = d3.select("p.highlight-flipped-blocks input").property("checked");
 
   const myCircos = getCircosObject();
 
@@ -262,7 +287,7 @@ function generatePathGenomeView({
     setTimeout(() => updateBlockCollisionHeadline(dataChromosomes, dataChords),
       DEFAULT_GENOME_TRANSITION_TIME + (DEFAULT_GENOME_TRANSITION_TIME / 2));
 
-    d3.select(".block-collision-headline")
+    d3.select(".block-collisions-headline")
       .text("Updating block collisions ...");
   }
 
@@ -307,6 +332,9 @@ function generatePathGenomeView({
       return;
     },
     events: {
+      'click.block': function() {
+        unhighlightCurrentSelectedBlock();
+      },
       'mouseover.block': function(d, i, nodes) {
         // Only update block view if the user is not dragging
         const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
@@ -328,30 +356,15 @@ function generatePathGenomeView({
         // To prevent default right click action
         event.preventDefault();
 
-        // Hide tooltip and node when right clicking block
-        d3.select('.circos-tooltip')
-          .transition()
-          .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
-          .style("opacity", 0);
+        unhighlightCurrentSelectedBlock();
 
-        // Setting opacity 0.7 to all chords, except current node with 0
-        d3.selectAll('path.chord')
-          .transition()
-          .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
-          .attr("opacity", 0.7);
-
+        // Hiding and removing node when right clicking block
         d3.select(nodes[i])
           .raise()
           .transition()
           .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
           .style("opacity", 0)
           .remove();
-
-        // Removing block view
-        removeBlockView(REMOVE_BLOCK_VIEW_TRANSITION_TIME);
-
-        // Resetting current selected block object
-        currentSelectedBlock = {};
 
         const { id: currentID } = d.source.value;
         const currentPosition = findIndex(dataChords, ['source.value.id', currentID]);
@@ -399,7 +412,7 @@ function generatePathGenomeView({
 
   // Show best / saved layout checkbox
   let showBestPossibleLayout =
-    d3.select("p.show-best-layout > input").property("checked");
+    d3.select("p.show-best-layout input").property("checked");
 
   if (shouldUpdateLayout && showBestPossibleLayout) {
     const { currentPosition, key } = loopUpPositionCollisionsDictionary(dataChromosomes, dataChords);
@@ -439,7 +452,7 @@ function generatePathGenomeView({
   d3.select(".reset-layout > input")
     .on("click", function() {
       // Disable checkbox because resetting might lead to a worse solution
-      d3.select('p.show-best-layout > input').property("checked", false);
+      d3.select('p.show-best-layout input').property("checked", false);
 
       const localDataChromosomes = cloneDeep(dataChromosomes);
       const oldChromosomeOrder = toChromosomeOrder(localDataChromosomes);
@@ -487,7 +500,7 @@ export default function generateGenomeView({
     d3.select('.filter-connections-div #filter-block-size').property("value")) || 1;
 
   // To keep track of the Show All input state
-  const showAllChromosomes = d3.select("p.show-all > input").property("checked");
+  const showAllChromosomes = d3.select("p.show-all input").property("checked");
 
   const blockDictionary = getBlockDictionary();
   // Array that includes the keys from the blockDictionary
@@ -611,7 +624,7 @@ export default function generateGenomeView({
     currentSelectedBlock = {};
   }
 
-  // Updating the label showing the number of blocks
+  // Updating the label showing the number of blocks and flipped blocks
   updateBlockNumberHeadline(dataChords);
 
   d3.select(".best-guess > input")
@@ -640,7 +653,7 @@ export default function generateGenomeView({
   // NOTE: When filtering there is NO transition
   const condition = ((transition && !transition.shouldDo && !foundCurrentSelectedBlock) ||
       !foundCurrentSelectedBlock) &&
-    !d3.select("body").select("#block-view-container").empty();
+    !d3.select("#block-view-container").empty();
 
   const transitionRemove = (selectedCheckbox.length === 0 && !showAllChromosomes);
 

@@ -1,0 +1,43 @@
+// _blockView.scss partial file
+
+#block-view-container {
+  float: left;
+  margin-left: 50px;
+  margin-top: 50px;
+
+  .rect-clip-block {
+    fill: none;
+    pointer-events: all;
+  }
+
+  .axis-label {
+    font-size: 16px;
+    text-anchor: middle;
+  }
+
+  .outer-clickable-content {
+    display: flex;
+    justify-content: space-between;
+    margin-top: -30px;
+  }
+
+  p {
+    &.reset-button {
+      font-size: 14px;
+      margin-left: 20px;
+
+      > button {
+        padding: 0 15px;
+      }
+    }
+
+    &.flip-orientation {
+      margin-right: 25px;
+    }
+
+    &.flip-hint {
+      margin-right: 25px;
+      text-align: right;
+    }
+  }
+}

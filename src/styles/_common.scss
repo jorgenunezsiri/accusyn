@@ -1,61 +1,61 @@
-@import "~bootstrap/dist/css/bootstrap.min.css";
+// _common.scss partial file
+
+input[type="range"],
+input[type="button"],
+input[type="checkbox"],
+button {
+  cursor: pointer;
+}
+
+p, span, h6 {
+  font-size: 14px;
+}
+
+h6 {
+  font-weight: normal;
+}
+
+p {
+  // Default font color
+  color: black;
+
+  label, span {
+    color: black;
+    margin: 0;
+  }
+}
+
+label {
+  // To add spacing to any span adjacent to an input checkbox inside a label
+  input[type="checkbox"] + span {
+    cursor: pointer;
+    padding-left: 4px;
+  }
+}
 
 .container {
   position: relative;
 }
 
-/* Container for bootstrap alert */
+// Container for bootstrap alert
 .alert {
   position: absolute;
-  top: 0;
+  top: 10px;
 }
 
-/* Button for bootstrap alert */
+// Button for bootstrap alert
 button.close > span {
   font-size: 24px;
 }
 
-p, span {
-  font-size: 12px;
-}
-
-p > input {
-  margin-right: 4px;
-}
-
-#form-config p {
-  color: black;
-}
-
-#form-config p.disabled {
-  color: gainsboro;
-}
-
-input[type="range"],
-input[type="button"],
-button {
-  cursor: pointer;
-}
-
-p.filter-connections:nth-child(1),
-p.filter-connections:nth-child(2),
-p.filter-connections:nth-child(3) {
-  display: inline-block;
-  margin: 0;
-}
-
-p.filter-connections:nth-child(2),
-p.filter-connections:nth-child(3) {
-  margin: 0 0 0 10px;
-}
-
-/* Styles for spinning animation */
+// Styles for spinning animation
 #loader {
   -webkit-animation: spin 2s linear infinite;
   animation: spin 2s linear infinite;
   border: 16px solid #f3f3f3;
   border-radius: 50%;
   border-top: 16px solid #3498db;
+  border-bottom: 16px solid #3498db;
   height: 150px;
   left: 50%;
   margin: -75px 0 0 -75px;

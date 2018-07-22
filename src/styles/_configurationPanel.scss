@@ -1,0 +1,48 @@
+// _configurationPanel.scss partial file
+
+#config {
+  float: left;
+  margin: 20px 0 0 20px;
+}
+
+#form-config {
+  .disabled {
+    color: gainsboro;
+  }
+
+  p.reset-layout, p.save-layout {
+    display: inline-block;
+
+    > input {
+      padding: 0 15px;
+    }
+  }
+
+  p.save-layout {
+    margin-right: 10px;
+  }
+
+  p.filter-connections {
+    &:nth-child(1), &:nth-child(2), &:nth-child(3) {
+      display: inline-block;
+      margin: 0;
+    }
+
+    &:nth-child(2), &:nth-child(3) {
+      margin: 0 0 0 10px;
+    }
+
+    &:nth-child(4) {
+      margin: 5px 0;
+    }
+  }
+
+  .chr-boxes {
+    span.chr-box-extra > em {
+      display: inline-block;
+      margin-left: 10px;
+      text-align: right;
+      width: 65px;
+    }
+  }
+}

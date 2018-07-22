@@ -35,7 +35,7 @@ import {
   TRANSITION_NORMAL_TIME,
   TRANSITION_FLIPPING_TIME,
   TRANSITION_HEIGHT_DIVISION_MULTIPLE
-} from './constants';
+} from './variables/constants';
 
 /**
  * Generates block view for the current highlighted block in the genome view
@@ -93,7 +93,7 @@ export default function generateBlockView(data) {
   }
 
   // Remove block view if it is present
-  if (!d3.select("body").select("#block-view-container").empty()) {
+  if (!d3.select("#block-view-container").empty()) {
     removeBlockView();
   }
 
@@ -149,15 +149,27 @@ export default function generateBlockView(data) {
   }
 
   // Append block view container to the body of the page
-  d3.select("body").append("div")
-    .attr("id", "block-view-container")
-    .style("float", "left")
-    .style("margin-left", "50px")
-    .style("margin-top", "50px");
+  d3.select("#page-container")
+    .append("div")
+    .attr("id", "block-view-container");
 
+  const svgBlock = d3.select("#block-view-container")
+    .append("svg")
+    .attr("class", "block-view")
+    .attr("width", widthBlock + margin.left + margin.right)
+    .attr("height", heightBlock + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+  // Reset button
   d3.select("#block-view-container")
+    .append("div")
+    .attr("class", "outer-content")
+    .append("div")
+    .attr("class", "outer-clickable-content")
+    .append("p")
+    .attr("class", "reset-button")
     .append("button")
-    .style("position", "absolute")
     .attr("title", "Resets the block view to its original scale.")
     .text("Reset")
     .on("click", function() {
@@ -168,48 +180,40 @@ export default function generateBlockView(data) {
         onInputChange = false;
       }
 
-      d3.select("#block-view-container input.flip-orientation")
+      d3.select("#block-view-container p.flip-orientation input")
         .property("checked", false);
 
       // Resetting by calling path block view
       generatePathBlockView();
     });
 
-  const svgBlock = d3.select("#block-view-container")
-    .append("svg")
-    .attr("class", "block-view")
-    .attr("width", widthBlock + margin.left + margin.right)
-    .attr("height", heightBlock + margin.top + margin.bottom)
-    .append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
-
-  d3.select("#block-view-container")
+  // Flip orientation checkbox
+  d3.select("#block-view-container .outer-clickable-content")
     .append("p")
-    .style("text-align", "right")
-    .style("margin", "-40px 30px 0 0")
-    .append("input")
     .attr("class", "flip-orientation")
+    .append("label")
+    .append("input")
     .attr("type", "checkbox")
     .attr("name", "flip-orientation")
     .attr("value", "flip-orientation")
     .property("checked", false);
 
   d3.select("#block-view-container")
-    .select("p")
+    .select("p.flip-orientation > label")
     .append("span")
     .text("Flip Orientation");
 
-  d3.select("#block-view-container")
+  // Flip hint
+  d3.select("#block-view-container .outer-content")
     .append("p")
     .attr("class", "flip-hint")
     .style("opacity", 0)
-    .style("margin-top", "10px")
     .html(function() {
       return '<em>Hint: This block is perfectly inverted.</em>';
     });
 
   d3.select("#block-view-container")
-    .select(".flip-orientation")
+    .select("p.flip-orientation input")
     .on("change", function() {
       isFlipped = d3.select(this).property("checked");
       onInputChange = true;
@@ -220,10 +224,9 @@ export default function generateBlockView(data) {
 
   // Rectangle that has the block view size to catch any zoom event
   const zoomView = svgBlock.append("rect")
+    .attr("class", "rect-clip-block")
     .attr("width", widthBlock)
-    .attr("height", heightBlock)
-    .style("fill", "none")
-    .style("pointer-events", "all");
+    .attr("height", heightBlock);
 
   // Defining a clip-path so that lines always stay inside the block view,
   // thus paths will be clipped when zooming
@@ -408,10 +411,6 @@ export default function generateBlockView(data) {
         console.log('SUMMING: ', summing);
         console.log('\n');
 
-        // if (!summing && transitionHeightDivision == 1) {
-        //   break;
-        // }
-
         // More info: https://stackoverflow.com/a/37728255
         (function(indexTransition, transitionTime, transitionHeightDivision) {
           setTimeout(function() {
@@ -522,15 +521,12 @@ export default function generateBlockView(data) {
       }
 
       // Add the Circos tooltip
-      const tooltipDiv = d3.select("#block-view-container").append("div")
-        .attr("class", "circos-tooltip")
+      const tooltipDiv = d3.select("div.circos-tooltip")
         .style("opacity", 0);
 
       svgBlock.selectAll("path.line")
         .on("mouseover", function(d, i, nodes) {
-          tooltipDiv.transition()
-            // .duration(200)
-            .style("opacity", .9);
+          tooltipDiv.transition().style("opacity", .9);
 
           tooltipDiv.html(function() {
               return `<h6 style="margin-bottom: 0;">${d.source.id}</h6>
@@ -550,7 +546,7 @@ export default function generateBlockView(data) {
         })
         .on("mouseout", function(d, i, nodes) {
           tooltipDiv.transition()
-            //.duration(500)
+            .duration(500)
             .style("opacity", 0);
 
           if (d3.selectAll(nodes).attr("opacity") != 1) {
@@ -610,30 +606,26 @@ export default function generateBlockView(data) {
 
   // Add the Y0 Axis label text
   svgBlock.append("text")
+    .attr("class", "axis-label")
     .attr("transform", "rotate(-90)")
     .attr("y", 0 - margin.left)
     .attr("x", 0 - (heightBlock / 2))
     .attr("dy", "1em")
-    .style("font-size", "16px")
-    .style("text-anchor", "middle")
     .text(targetChromosomeID);
 
   // Add the Y1 Axis label text
   svgBlock.append("text")
+    .attr("class", "axis-label")
     .attr("transform", "rotate(90)")
     .attr("y", 0 - widthBlock - margin.right)
     .attr("x", (heightBlock / 2))
     .attr("dy", "1em")
-    .style("font-size", "16px")
-    .style("text-anchor", "middle")
     .text(sourceChromosomeID);
 
   // Add the Chart title
   svgBlock.append("text")
+    .attr("class", "axis-label")
     .attr("x", (widthBlock / 2))
     .attr("y", 0 - (margin.top / 3))
-    .attr("text-anchor", "middle")
-    .style("font-size", "16px")
-    .style("font-style", "italic")
     .text(`${sourceChromosomeID} vs. ${targetChromosomeID} - Block ${blockID} gene locations`);
 }

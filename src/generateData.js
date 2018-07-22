@@ -39,7 +39,7 @@ import { setGeneDictionary } from './variables/geneDictionary';
 import { setGffDictionary } from './variables/gffDictionary';
 
 // Constants
-import { WIDTH, HEIGHT } from './constants';
+import { WIDTH, HEIGHT } from './variables/constants';
 
 /**
  * Generates and preprocess data for the syteny browser
@@ -107,6 +107,7 @@ export default function generateData(error, gff, collinearity) {
     // Adding all the block connections in the dictionary
     blockDictionary[currentBlock].push({
       connection: collinearity[i].connection,
+      // source and target are being used in the blockView for complete reference
       source: collinearity[i].source,
       target: collinearity[i].target,
       score: collinearity[i].score,
@@ -116,8 +117,8 @@ export default function generateData(error, gff, collinearity) {
     });
 
     const IDs = fixSourceTargetCollinearity(collinearity[i]);
-    const sourceID = IDs.source;
-    const targetID = IDs.target;
+    const sourceID = IDs.source; // Source chromosome
+    const targetID = IDs.target; // Target chromosome
 
     // If source is not in the dictionary, create new array for the source
     if (!(sourceID in connectionDictionary)) {
@@ -193,49 +194,122 @@ export default function generateData(error, gff, collinearity) {
   // Updating the style of the configuration panel
   d3.select("#config")
     .style("display", "block")
-    .style("margin-left", "20px")
-    .style("margin-top", "20px")
     .style("width", `${WIDTH / 3}px`);
 
+  // Information title
+  d3.select("#form-config")
+    .append("h5")
+    .text("Information");
+
+  // Block number headline
+  d3.select("#form-config")
+    .append("h6")
+    .attr("class", "block-number-headline");
+
+  // Flipped blocks headline
+  d3.select("#form-config")
+    .append("h6")
+    .attr("class", "flipped-blocks-headline");
+
+  // Block collisions headline
+  d3.select("#form-config")
+    .append("h6")
+    .attr("class", "block-collisions-headline");
+
+  // Layout title
+  d3.select("#form-config")
+    .append("h5")
+    .text("Layout");
+
+  // Color blocks checkbox
+  d3.select("#form-config")
+    .append("p")
+    .attr("class", "color-blocks")
+    .attr("title", "If selected, all connections will be colored.")
+    .append("label")
+    .append("input")
+    .attr("type", "checkbox")
+    .attr("name", "color-blocks")
+    .attr("value", "Color blocks")
+    .property("checked", false); // Color blocks is not checked by default
+
+  d3.select("#form-config").select("p.color-blocks > label")
+    .append("span")
+    .text("Color blocks");
+
+  d3.select("p.color-blocks input")
+    .on("change", function() {
+      // Calling genome view for updates
+      generateGenomeView({
+        "shouldUpdateBlockCollisions": false,
+        "shouldUpdateLayout": false
+      });
+    });
+
+  // Highlight flipped blocks checkbox
+  d3.select("#form-config")
+    .append("p")
+    .attr("class", "highlight-flipped-blocks")
+    .attr("title", "If selected, all connections with flipped blocks will be highlighted.")
+    .append("label")
+    .append("input")
+    .attr("type", "checkbox")
+    .attr("name", "highlight-flipped-blocks")
+    .attr("value", "Highlight flipped blocks")
+    .property("checked", false); // Highligh flipped blocks is not checked by default
+
+  d3.select("#form-config").select("p.highlight-flipped-blocks > label")
+    .append("span")
+    .text("Highlight flipped blocks");
+
+  d3.select("p.highlight-flipped-blocks input")
+    .on("change", function() {
+      // Calling genome view for updates
+      generateGenomeView({
+        "shouldUpdateBlockCollisions": false,
+        "shouldUpdateLayout": false
+      });
+    });
+
+  // Show all checkbox
   d3.select("#form-config")
     .append("p")
     .attr("class", "show-all")
     .attr("title", "If selected, all chromosomes will show.")
+    .append("label")
     .append("input")
     .attr("type", "checkbox")
     .attr("name", "show-all")
     .attr("value", "Show all")
     .property("checked", true); // Show All is checked by default
 
-  d3.select("#form-config").select('p.show-all')
+  d3.select("#form-config").select("p.show-all > label")
     .append("span")
-    .text("Show all");
+    .text("Show all chromosomes");
 
-  d3.select("p.show-all > input")
+  d3.select("p.show-all input")
     .on("change", function() {
       // Calling genome view for updates
       generateGenomeView({});
     });
 
-  d3.select("#form-config")
-    .append("h5")
-    .text("Layout");
-
+  // Show saved layout checkbox
   d3.select("#form-config")
     .append("p")
     .attr("class", "show-best-layout")
     .attr("title", "If selected, the last saved layout will be shown by default.")
+    .append("label")
     .append("input")
     .attr("type", "checkbox")
     .attr("name", "show-best-layout")
     .attr("value", "Show saved layout")
     .property("checked", true); // Show best layout is checked by default
 
-  d3.select("#form-config").select('.show-best-layout')
+  d3.select("#form-config").select(".show-best-layout > label")
     .append("span")
     .text("Show saved layout");
 
-  d3.select("p.show-best-layout > input")
+  d3.select("p.show-best-layout input")
     .on("change", function() {
       if (d3.select(this).property("checked")) {
         // Calling genome view for updates
@@ -247,91 +321,7 @@ export default function generateData(error, gff, collinearity) {
       }
     });
 
-  d3.select("#form-config")
-    .append("p")
-    .attr("class", "save-layout")
-    .attr("title", "Save layout")
-    .append("input")
-    .attr("type", "button")
-    .attr("value", "Save layout");
-
-  d3.select("#form-config")
-    .append("p")
-    .attr("class", "reset-layout")
-    .attr("title", "Reset layout")
-    .append("input")
-    .attr("type", "button")
-    .attr("value", "Reset layout");
-
-  d3.select("#form-config")
-    .append("h5")
-    .text("Connections");
-
-  d3.select("#form-config")
-    .append("h6")
-    .attr("class", "block-number-headline")
-    .style("font-weight", "normal");
-
-  d3.select("#form-config")
-    .append("h6")
-    .attr("class", "block-collision-headline")
-    .style("font-weight", "normal");
-
-  d3.select("#form-config")
-    .append("p")
-    .attr("class", "best-guess")
-    .attr("title", "Minimize collisions")
-    .style("margin-top", "15px")
-    .append("input")
-    .attr("type", "button")
-    .attr("value", "Minimize collisions");
-
-  d3.select("#form-config")
-    .append("p")
-    .attr("class", "color-blocks")
-    .attr("title", "If selected, all connections will be colored.")
-    .append("input")
-    .attr("type", "checkbox")
-    .attr("name", "color-blocks")
-    .attr("value", "Color blocks")
-    .property("checked", false); // Color blocks is not checked by default
-
-  d3.select("#form-config").select('p.color-blocks')
-    .append("span")
-    .text("Color blocks");
-
-  d3.select("p.color-blocks > input")
-    .on("change", function() {
-      // Calling genome view for updates
-      generateGenomeView({
-        "shouldUpdateBlockCollisions": false,
-        "shouldUpdateLayout": false
-      });
-    });
-
-  d3.select("#form-config")
-    .append("p")
-    .attr("class", "highlight-flipped-blocks")
-    .attr("title", "If selected, all connections will highlight flipped blocks.")
-    .append("input")
-    .attr("type", "checkbox")
-    .attr("name", "highlight-flipped-blocks")
-    .attr("value", "Highlight flipped blocks")
-    .property("checked", false); // Highligh flipped blocks is not checked by default
-
-  d3.select("#form-config").select('p.highlight-flipped-blocks')
-    .append("span")
-    .text("Highlight flipped blocks");
-
-  d3.select("p.highlight-flipped-blocks > input")
-    .on("change", function() {
-      // Calling genome view for updates
-      generateGenomeView({
-        "shouldUpdateBlockCollisions": false,
-        "shouldUpdateLayout": false
-      });
-    });
-
+  // Filter connections input range
   d3.select("#form-config")
     .append("div")
     .attr("class", "filter-connections-div")
@@ -374,25 +364,90 @@ export default function generateData(error, gff, collinearity) {
         ${maxBlockSize.toString()} id="filter-block-size">`;
     });
 
+  // Filter angle input range
+  d3.select("#form-config")
+    .append("div")
+    .attr("class", "filter-angle-div")
+    .html(function() {
+      return `
+        <label for="nAngle-genome-view" style="display: inline-block; margin-bottom: 0; text-align: left; width: 110px">
+           <span>Rotate = </span>
+           <span id="nAngle-genome-view-value">…</span>
+         </label>
+         <p>
+           <input type="range" min="0" max="360" id="nAngle-genome-view" style="margin-left: 45px; width: 195px">
+         </p>
+      `;
+    });
+
+  // Save layout button
+  d3.select("#form-config")
+    .append("p")
+    .attr("class", "save-layout")
+    .attr("title", "Save layout")
+    .append("input")
+    .attr("type", "button")
+    .attr("value", "Save");
+
+  // Reset layout button
+  d3.select("#form-config")
+    .append("p")
+    .attr("class", "reset-layout")
+    .attr("title", "Reset layout")
+    .append("input")
+    .attr("type", "button")
+    .attr("value", "Reset");
+
+  // Minimize collisions button
+  d3.select("#form-config")
+    .append("p")
+    .attr("class", "best-guess")
+    .attr("title", "Minimize collisions")
+    .append("input")
+    .attr("type", "button")
+    .attr("value", "Minimize collisions");
+
+  // Connections title
+  d3.select("#form-config")
+    .append("h5")
+    .text("Connections");
+
+  // Chromosome checkboxes
   d3.select("#form-config")
     .append("div")
     .attr("class", "chr-boxes")
-    .selectAll("div.chr-boxes > p")
+    .selectAll("div.chr-boxes > div.chr-box-inner-content")
     .data(gffKeys).enter()
-    .append("p")
+    .append("div")
+    .attr("class", "chr-box-inner-content")
+    .append("label")
     .append("input")
-    .attr("class", "chr-box")
-    .attr("type", "checkbox")
-    .attr("name", function(d) {
-      return d;
+    .attr("class", function(chrKey) {
+      return `chr-box ${chrKey}`;
     })
-    .attr("value", function(d) {
-      return d;
+    .attr("type", "checkbox")
+    .attr("name", function(chrKey) {
+      return chrKey;
+    })
+    .attr("value", function(chrKey) {
+      return chrKey;
     });
 
+  d3.select("#form-config")
+    .selectAll("div.chr-box-inner-content > label")
+    .append("span")
+    .attr("class", "chr-box-text")
+    .text(function(chrKey) {
+      return chrKey;
+    });
+
+  d3.select("#form-config")
+    .selectAll("div.chr-box-inner-content")
+    .append("span")
+    .attr("class", "chr-box-extra");
+
   d3.select("#form-config").selectAll(".chr-box")
-    .data(gffKeys)
-    .on("change", function() {
+    .on("change", function(chrClicked) {
       const selectedChromosomes = [];
       const visitedChr = {}; // Visited chromosomes dictionary
       for (let i = 0; i < gffKeys.length; i++) {
@@ -401,7 +456,8 @@ export default function generateData(error, gff, collinearity) {
 
       d3.selectAll(".chr-box").each(function(d) {
         d3.select(this.parentNode).classed("disabled", false);
-        d3.select(this.parentNode).select("span").text(d);
+        d3.select(this.parentNode).select("span.chr-box-text").text(d);
+        d3.select(this.parentNode.parentNode).select("span.chr-box-extra").text("");
 
         const cb = d3.select(this);
         cb.attr("disabled", null);
@@ -433,27 +489,28 @@ export default function generateData(error, gff, collinearity) {
         }
 
         d3.selectAll(".chr-box").each(function(d) {
-          d3.select(this.parentNode).select('span').html(function() {
+          d3.select(this.parentNode.parentNode).select("span.chr-box-extra").html(function() {
             // Finding the index of the connection in the dictionary
             const indexConnection = findIndex(connectionDictionary[selectedChromosomes[0]], ['connection', d]);
             let connectionAmount = 0;
-            let textToShow = d.toString(); // Current chromosome id (e.g. N1, N2, N10)
-            const style = '<em style="display: inline-block; text-align: right; width: 65px; margin-left: 10px">';
+            let textToShow = "";
             if (indexConnection === (-1)) {
-              textToShow += `${style}0 blocks</em>`;
+              textToShow += `<em class="disabled">0 blocks</em>`;
             } else {
               connectionAmount = connectionDictionary[selectedChromosomes[0]][indexConnection].blockIDs.length;
-              textToShow += `${style}${connectionAmount.toString()}`;
+              textToShow += `<em>${connectionAmount.toString()} `;
               if (connectionAmount === 1) {
-                textToShow += ' block</em>';
+                textToShow += 'block';
               } else {
-                textToShow += ' blocks</em>';
+                textToShow += 'blocks';
               }
+              textToShow += '</em>';
             }
 
             return textToShow;
           });
 
+          // d is the current chromosome id (e.g. N1, N2, N10)
           if (visitedChr[d]) {
             d3.select(this).attr("disabled", null);
             d3.select(this.parentNode).classed("disabled", false);
@@ -469,26 +526,21 @@ export default function generateData(error, gff, collinearity) {
       generateGenomeView({});
     });
 
-  d3.select("#form-config").selectAll("p:not(.show-all):not(.filter-connections)")
-    .append("span")
-    .text(function(d) {
-      return d;
-    });
-
+  // Select all button
   d3.select("#form-config")
     .append("p")
     .attr("class", "select-all")
     .attr("title", "Selects all the connections.")
     .append("input")
     .attr("type", "button")
-    .attr("value", "Select All");
+    .attr("value", "Select all");
 
   d3.select("#form-config")
     .select(".select-all > input")
     .on("click", function() {
-      if (d3.select(this).property("value") == "Select All") {
-        // Changing the value and title to Deselect All
-        d3.select(this).property("value", "Deselect All");
+      if (d3.select(this).property("value") === "Select all") {
+        // Changing the value and title to Deselect all
+        d3.select(this).property("value", "Deselect all");
         d3.select("p.select-all").attr("title", "Deselects all the connections.");
 
         // Selecting all checkboxes
@@ -498,14 +550,15 @@ export default function generateData(error, gff, collinearity) {
           }
         });
       } else {
-        // Changing the value and title to Select All
-        d3.select(this).property("value", "Select All");
+        // Changing the value and title to Select all
+        d3.select(this).property("value", "Select all");
         d3.select("p.select-all").attr("title", "Selects all the connections.");
 
         // All checkboxes are returned to their original state
         d3.selectAll(".chr-box").each(function(d) {
           d3.select(this.parentNode).classed("disabled", false);
-          d3.select(this.parentNode).select("span").text(d);
+          d3.select(this.parentNode).select("span.chr-box-text").text(d);
+          d3.select(this.parentNode.parentNode).select("span.chr-box-extra").text("");
 
           const cb = d3.select(this);
           cb.attr("disabled", null);
@@ -516,20 +569,18 @@ export default function generateData(error, gff, collinearity) {
       }
 
       // When Select/Deselect All is clicked, all chromosomes will show by default
-      d3.select(".show-all > input").property("checked", true);
+      d3.select(".show-all input").property("checked", true);
 
       // Calling genome view for updates
       generateGenomeView({});
     });
 
   // SVG element that will include the Circos plot
-  const svg = d3.select("body")
+  const svg = d3.select("#page-container")
     .append("svg")
-    .attr("id", "chart")
+    .attr("id", "genome-view")
     .attr("width", WIDTH)
-    .attr("height", HEIGHT)
-    .style("float", "left")
-    .style("margin-top", "50px");
+    .attr("height", HEIGHT);
 
   // svg
   //   .call(d3.zoom().on("zoom", function() {
@@ -550,22 +601,29 @@ export default function generateData(error, gff, collinearity) {
   //
   // svg.select(".all").append("g").attr("clip-path", "url(#clip-block)");
 
+  // Setting initial Circos object
   setCircosObject();
 
   // Initial starting angle of the genome view (0 degrees for default and dragging angle)
   updateAngle(0, 0);
 
+  /**
+   * Calling updateFilter with all parameters
+   *
+   * @param  {number} value    Connection value from input range
+   * @return {undefined}       undefined
+   */
   const callFullUpdateFilter = (value) => updateFilter({
-    "value": value,
-    "shouldUpdatePath": true,
     "shouldUpdateBlockCollisions": true,
-    "shouldUpdateLayout": true
+    "shouldUpdateLayout": true,
+    "shouldUpdatePath": true,
+    "value": value
   });
 
   // Updating filter on input
   d3.select("#filter-block-size")
     .on("input", function() {
-      d3.select(".block-collision-headline")
+      d3.select(".block-collisions-headline")
         .text("Updating block collisions ...");
 
       updateFilter({
@@ -588,6 +646,6 @@ export default function generateData(error, gff, collinearity) {
   d3.select("#loader")
     .style("display", "none");
 
-  d3.select("#pageContainer")
+  d3.select("#page-container")
     .style("display", "block");
 };

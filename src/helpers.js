@@ -6,7 +6,7 @@ import generateGenomeView from './genomeView/generateGenomeView';
 import {
   WIDTH,
   HEIGHT
-} from './constants';
+} from './variables/constants';
 
 /**
  * Fixes current IDs in collinearity file by removing 0 when
@@ -109,14 +109,14 @@ export function lookForBlocksPositions(blockDictionary, geneDictionary, block) {
  */
 export function removeBlockView(transitionTime = 0) {
   if (transitionTime > 0) {
-    d3.select("body").select("#block-view-container")
+    d3.select("#block-view-container")
       .style("opacity", 1)
       .transition()
       .duration(transitionTime)
       .style("opacity", 0)
       .remove();
   } else {
-    d3.select("body").select("#block-view-container").remove();
+    d3.select("#block-view-container").remove();
   }
 };
 
@@ -158,7 +158,7 @@ export function updateAngle(nAngle = 0, nDragging = 0) {
 };
 
 /**
- * Updating the label showing the number of blocks
+ * Updating the label showing the number of blocks and flipped blocks
  *
  * @param  {Array<Object>} dataChords Plotting information for each block chord
  * @return {undefined}                undefined
@@ -168,8 +168,25 @@ export function updateBlockNumberHeadline(dataChords) {
   d3.select(".block-number-headline")
     .text(function() {
       const blockSize = dataChords.length.toString();
-      let textToShow = "Showing ";
-      textToShow += blockSize === "1" ? `${blockSize} block` : `${blockSize} blocks`;
+      let textToShow = "";
+      textToShow += blockSize === "1" ? `${blockSize} block` :
+        `${blockSize} blocks`;
+      return textToShow;
+    });
+
+  // Update flipped-blocks-headline with current flipped block size
+  const flippedBlockSize = dataChords.reduce((total, current) => {
+    const { isFlipped } = current.source.value;
+    if (isFlipped) total++;
+    return total;
+  }, 0);
+
+  d3.select(".flipped-blocks-headline")
+    .text(function() {
+      const blockSize = flippedBlockSize.toString();
+      let textToShow = "";
+      textToShow += blockSize === "1" ? `${blockSize} flipped block` :
+        `${blockSize} flipped blocks`;
       return textToShow;
     });
 };

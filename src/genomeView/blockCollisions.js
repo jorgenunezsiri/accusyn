@@ -34,7 +34,7 @@ import {
   GENOME_INNER_RADIUS,
   RADIANS_TO_DEGREES,
   TRANSITION_SWAPPING_TIME
-} from './../constants';
+} from './../variables/constants';
 
 /**
  * Determines if line from angle R1 to R2 intersects with line from angle R3 to R4
@@ -133,10 +133,10 @@ export async function updateBlockCollisionHeadline(dataChromosomes, dataChords) 
 
   console.log("COLLISION COUNT: " + collisionCount);
 
-  // Update block-collision-headline with current collision count
-  d3Select(".block-collision-headline")
+  // Update block-collisions-headline with current collision count
+  d3Select(".block-collisions-headline")
     .text(function() {
-      let textToShow = "Showing ";
+      let textToShow = "";
       textToShow += collisionCount.toString() === "1" ?
         `${collisionCount} block collision` : `${collisionCount} block collisions`;
       return textToShow;
@@ -684,7 +684,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
 
     if (collisionCount > bestEnergy) {
       // Disable checkbox because saved solution is worse than actual one
-      d3Select('p.show-best-layout > input').property("checked", false);
+      d3Select('p.show-best-layout input').property("checked", false);
     }
   }
 

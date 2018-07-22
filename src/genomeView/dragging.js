@@ -21,7 +21,7 @@ import {
   TRANSITION_DRAG_TIME,
   WIDTH,
   HEIGHT
-} from './../constants';
+} from './../variables/constants';
 
 // Dragging variables
 let angleValue = 0; // Stores the angle width of the current mouse down chr
@@ -313,7 +313,7 @@ function onStartDragging(dataChromosomes) {
     .attr("opacity", 0.9);
 
   // TODO: CREATE FUNCTION FOR THIS !!!
-  d3.select(".block-collision-headline")
+  d3.select(".block-collisions-headline")
     .text("Updating block collisions ...");
 }
 
@@ -411,7 +411,7 @@ function onEndDragging(dataChromosomes) {
   }
 
   // Disable checkbox because dragging might lead to a worse solution
-  d3.select('p.show-best-layout > input').property("checked", false);
+  d3.select('p.show-best-layout input').property("checked", false);
 
   const oldChrOrder = currentChromosomeOrder.slice();
 

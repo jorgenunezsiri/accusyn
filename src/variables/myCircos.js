@@ -1,10 +1,10 @@
-import { Circos } from './../circos';
+import { Circos } from './../vendor/circos';
 
 // Contants
 import {
   WIDTH,
   HEIGHT
-} from './../constants';
+} from './../variables/constants';
 
 let _myCircos = null; // Circos variable
 
@@ -25,7 +25,7 @@ export function getCircosObject() {
 export function setCircosObject() {
   // Loading the Circos plot in the svg element
   _myCircos = new Circos({
-      container: '#chart',
+      container: '#genome-view',
       width: WIDTH,
       height: HEIGHT
     });

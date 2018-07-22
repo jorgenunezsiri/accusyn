@@ -6,7 +6,7 @@ module.exports = {
   entry: [
     'babel-polyfill',
     './src/index.js',
-    './src/index.css'
+    './src/styles/index.scss'
   ],
   output: {
     filename: 'bundle.js',
@@ -34,12 +34,16 @@ module.exports = {
         }
       },
       {
-        test: /\.css$/,
+        test: /\.scss$/,
         use: ExtractTextPlugin.extract({
-          loader: 'css-loader',
-          options: {
-            minimize: false
-          }
+          use: [{
+            loader: 'css-loader',
+            options: {
+              minimize: false
+            }
+          }, {
+            loader: 'sass-loader'
+          }]
         })
       }
     ]

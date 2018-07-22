@@ -18687,7 +18687,7 @@ exports = module.exports = __webpack_require__(459)();
 
 
 // module
-exports.push([module.i, "div.circos-tooltip {\n  position: absolute;\n  text-align: center;\n  padding: 5px 10px;\n  background: #111111;\n  color: white;\n  border: 0px;\n  pointer-events: none;\n  z-index: 1000;\n}\n", ""]);
+exports.push([module.i, "div.circos-tooltip {\n  position: absolute;\n  text-align: center;\n  padding: 10px 10px 5px;\n  background: #111111;\n  color: white;\n  border: 0px;\n  pointer-events: none;\n  z-index: 1000;\n}\n", ""]);
 
 // exports
 

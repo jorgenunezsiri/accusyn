@@ -1,0 +1,8 @@
+// Vendor file: Bootstrap
+@import "~bootstrap/scss/bootstrap";
+
+// Local files: common, configurationPanel, genomeView, blockView
+@import "common";
+@import "configurationPanel";
+@import "genomeView";
+@import "blockView";
