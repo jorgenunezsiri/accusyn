@@ -1,6 +1,6 @@
 import csv
 
-infile = open('../build/files/Bnapus_genes_v3.1.gff3', 'r')
+infile = open('../build/files/bnapus.gff3', 'r')
 
 chromosomes = []
 mRNA = []

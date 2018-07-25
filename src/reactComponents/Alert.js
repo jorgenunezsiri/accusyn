@@ -6,7 +6,7 @@ import PropTypes from 'prop-types';
  * AlertWithTimeout component
  *
  * @param  {Object} props - Component props
- * @return {Object} React element
+ * @return {ReactElement} React element
  * @extends React.Component
  * @public
  */
@@ -62,6 +62,6 @@ AlertWithTimeout.propTypes = {
   alertTimeout: PropTypes.number,
   color: PropTypes.string,
   message: PropTypes.string
-}
+};
 
 export default AlertWithTimeout;

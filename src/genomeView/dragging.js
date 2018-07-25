@@ -311,10 +311,6 @@ function onStartDragging(dataChromosomes) {
   d3.selectAll(`path.chord.${currentChromosomeMouseDown}`)
     .raise()
     .attr("opacity", 0.9);
-
-  // TODO: CREATE FUNCTION FOR THIS !!!
-  d3.select(".block-collisions-headline")
-    .text("Updating block collisions ...");
 }
 
 /**
@@ -328,6 +324,13 @@ function onDragging(dataChromosomes) {
   console.log('CURRENT MOUSE DOWN: ', currentChromosomeMouseDown);
 
   if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "") return;
+
+  // TODO: CREATE FUNCTION FOR THIS !!!
+  d3.select(".block-collisions-headline")
+    .text("Updating block collisions ...");
+
+  d3.select(".superimposed-block-collisions-headline")
+    .text("Updating superimposed collisions ...");
 
   // Selecting current mouse down chromosome
   const current = d3.select(`g.${currentChromosomeMouseDown}`);
@@ -347,11 +350,11 @@ function onDragging(dataChromosomes) {
 
   // Updating chords while dragging
   updateChordsWhileDragging({
-    "chromosome": currentChromosomeMouseDown,
-    "currentChromosomeMouseDown": currentChromosomeMouseDown,
-    "dataChromosomes": dataChromosomes,
-    "extraAngle": lastAngle,
-    "transitionDuration": 0
+    chromosome: currentChromosomeMouseDown,
+    currentChromosomeMouseDown: currentChromosomeMouseDown,
+    dataChromosomes: dataChromosomes,
+    extraAngle: lastAngle,
+    transitionDuration: 0
   });
 }
 
@@ -403,8 +406,8 @@ function onEndDragging(dataChromosomes) {
     // Drawing genome view without removing block view
     // and updating block collisions
     generateGenomeView({
-      "transition": { shoulDo: false },
-      "shouldUpdateBlockCollisions": true
+      transition: { shoulDo: false },
+      shouldUpdateBlockCollisions: true
     });
 
     return;
@@ -430,9 +433,9 @@ function onEndDragging(dataChromosomes) {
     setCurrentChromosomeOrder(currentChromosomeOrder);
 
     for (let i = currentIndexToDelete; currentChromosomeOrder[i] !== currentChromosomeMouseDown; i--) {
-      if (i == currentIndexToDelete && oldChrOrder[i + 1] == currentChromosomeOrder[i]) {
-        // console.log('HERE FOR LOOP: ', oldChrOrder[i + 1], currentChromosomeOrder[i]);
-        if (i - 1 === (-1)) i = 19;
+      if (i === currentIndexToDelete && oldChrOrder[i + 1] === currentChromosomeOrder[i]) {
+        console.log('HERE FOR LOOP: ', oldChrOrder[i + 1], currentChromosomeOrder[i]);
+        if (i - 1 === (-1)) i = currentChromosomeOrder.length;
 
         continue;
       }
@@ -443,7 +446,7 @@ function onEndDragging(dataChromosomes) {
         selectDrag.push(currentChromosomeOrder[i]);
       }
 
-      if (i - 1 === (-1)) i = 19;
+      if (i - 1 === (-1)) i = currentChromosomeOrder.length;
     }
   }
 
@@ -532,15 +535,15 @@ function onEndDragging(dataChromosomes) {
         console.log('TRUE LAST ANGLE: ', trueLastAngle);
 
         updateChordsWhileDragging({
-          "angleValue": angleValue,
-          "angleFromChromosome": trueLastAngle,
-          "chromosome": selectDrag[index],
-          "currentChromosomeMouseDown": currentChromosomeMouseDown,
-          "dataChromosomes": dataChromosomes,
-          "extraAngle": rotatingAngle,
-          "hasMovedDragging": hasMovedDragging,
-          "selectDrag": selectDrag,
-          "transitionDuration": TRANSITION_DRAG_TIME
+          angleValue: angleValue,
+          angleFromChromosome: trueLastAngle,
+          chromosome: selectDrag[index],
+          currentChromosomeMouseDown: currentChromosomeMouseDown,
+          dataChromosomes: dataChromosomes,
+          extraAngle: rotatingAngle,
+          hasMovedDragging: hasMovedDragging,
+          selectDrag: selectDrag,
+          transitionDuration: TRANSITION_DRAG_TIME
         });
 
         hasMovedDragging[selectDrag[index]] = true;
@@ -565,8 +568,8 @@ function onEndDragging(dataChromosomes) {
     // Drawing genome view without removing block view
     // and updating block collisions
     generateGenomeView({
-      "transition": { shoulDo: false },
-      "shouldUpdateBlockCollisions": true
+      transition: { shoulDo: false },
+      shouldUpdateBlockCollisions: true
     });
 
     // Resetting current mouse down chr

@@ -112,6 +112,7 @@ export default function generateBlockView(data) {
     let temp = 0;
     const tempArray = cloneDeep(dataBlock);
 
+    // Only need to swap until size / 2 to flip entirely.
     for (let i = 0; i < tempArray.length / 2; i++) {
       temp = tempArray[i].data[index];
       tempArray[i].data[index] = tempArray[tempArray.length - i - 1].data[index];
@@ -119,33 +120,6 @@ export default function generateBlockView(data) {
     }
 
     return tempArray;
-  }
-
-  /**
-   * Determines if an array is perfectly flipped or not
-   *
-   * @param  {Array<Object>}  dataBlock Current block data array
-   * @return {boolean}                  True if array is perfectly flipped,
-   *                                    false otherwise
-   */
-  function isPerfectlyFlipped(dataBlock) {
-    const tempArray = cloneDeep(dataBlock);
-    const numericGeneArray = [];
-
-    for (let i = 0; i < tempArray.length; i++) {
-      numericGeneArray.push(parseInt(tempArray[i].target.id.split('g')[1].split('.')[0]));
-    }
-
-    let isDescending = true;
-
-    for (let i = 0; i < numericGeneArray.length - 1; i++) {
-      if (numericGeneArray[i] < numericGeneArray[i + 1]) {
-        isDescending = false;
-        break;
-      }
-    }
-
-    return isDescending;
   }
 
   // Append block view container to the body of the page
@@ -267,12 +241,13 @@ export default function generateBlockView(data) {
 
   const blockArray = blockDictionary[blockID];
   for (let i = 0; i < blockArray.length; i++) {
-    const blockSource = blockArray[i].source;
-    const blockTarget = blockArray[i].target;
+    const blockSource = blockArray[i].connectionSource;
+    const blockTarget = blockArray[i].connectionTarget;
+    const connectionID = blockArray[i].connection;
     const currentSource = geneDictionary[blockSource];
     const currentTarget = geneDictionary[blockTarget];
     const eValueConnection = blockArray[i].eValueConnection;
-    const connectionID = blockArray[i].connection;
+    const isFlipped = blockArray.blockPositions.isFlipped;
 
     // Points are the determined using the midpoint between start and end
     const currentData = [
@@ -293,6 +268,7 @@ export default function generateBlockView(data) {
       },
       data: currentData,
       connection: connectionID,
+      isFlipped: isFlipped,
       eValue: eValueConnection
     });
   }
@@ -349,7 +325,7 @@ export default function generateBlockView(data) {
       .select(".flip-hint");
 
     if (!isFlipped) {
-      if (isPerfectlyFlipped(dataBlock)) {
+      if (dataBlock[0].isFlipped) {
         // If flip orientation is not selected, and the data block is perfectly
         // flipped, then show hint (opacity 1)
         d3HintElement

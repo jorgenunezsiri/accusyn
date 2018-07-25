@@ -3,23 +3,25 @@
 #config {
   float: left;
   margin: 20px 0 0 20px;
+
+  #documentation-container {
+    button {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+    }
+  }
 }
 
 #form-config {
-  .disabled {
-    color: gainsboro;
-  }
+  div.draw-blocks-order {
+    p {
+      display: inline-block;
 
-  p.reset-layout, p.save-layout {
-    display: inline-block;
-
-    > input {
-      padding: 0 15px;
+      &:nth-child(2) {
+        margin-left: 5px;
+      }
     }
-  }
-
-  p.save-layout {
-    margin-right: 10px;
   }
 
   p.filter-connections {
@@ -37,12 +39,34 @@
     }
   }
 
+  p.save-layout, p.reset-layout {
+    display: inline-block;
+
+    > input {
+      padding: 0 15px;
+    }
+  }
+
+  p.save-layout {
+    margin-right: 10px;
+  }
+
+  .disabled {
+    color: gainsboro;
+  }
+
   .chr-boxes {
+    padding: 0 0 10px;
+
     span.chr-box-extra > em {
       display: inline-block;
       margin-left: 10px;
       text-align: right;
       width: 65px;
+    }
+
+    .select-all {
+      padding-top: 5px;
     }
   }
 }

@@ -1,6 +1,14 @@
 import * as d3 from 'd3';
 
+import find from 'lodash/find';
+import findIndex from 'lodash/findIndex';
+import sortedUniq from 'lodash/sortedUniq';
+
 import generateGenomeView from './genomeView/generateGenomeView';
+
+import {
+  getDefaultChromosomeOrder
+} from './variables/currentChromosomeOrder';
 
 // Contants
 import {
@@ -9,43 +17,113 @@ import {
 } from './variables/constants';
 
 /**
- * Fixes current IDs in collinearity file by removing 0 when
- * chromosome number is below 10 (e.g. (N09,N01) turns into (N9, N1))
- *
- * @param  {Object} currentCollinearity Current index with the similarity relationships
- * @return {Object}                  Object with sourceID and targetID fixed
- */
-export function fixSourceTargetCollinearity(currentCollinearity) {
-  let sourceID = currentCollinearity.source.split('g')[0].split('Bna')[1];
-  let targetID = currentCollinearity.target.split('g')[0].split('Bna')[1];
-  if (sourceID[1] == '0') {
-    sourceID = sourceID.slice(0, 1) + sourceID.slice(2);
-  }
-  if (targetID[1] == '0') {
-    targetID = targetID.slice(0, 1) + targetID.slice(2);
-  }
-
-  return {
-    source: sourceID,
-    target: targetID
-  }
-};
-
-/**
  * Get the array of selected checkboxes
  *
- * @return {Array<string>} Array of selected checkboxes
+ * @param  {string} optionalClass Optional class to check for
+ * @return {Array<string>}        Array of selected checkboxes
  */
-export function getSelectedCheckboxes() {
-  const selectedCheckbox = []; // Array that stores the value of selected checkboxes
+export function getSelectedCheckboxes(optionalClass = "") {
+  // Array that stores the value of all the selected checkboxes
+  const selectedCheckboxes = [];
+  // Array that stores the value of only the selected checkboxes with the parameter class
+  const currentClassCheckboxes = [];
+
   d3.selectAll(".chr-box").each(function() {
     const cb = d3.select(this);
+
     if (cb.property("checked")) {
-      selectedCheckbox.push(cb.property("value"));
+      selectedCheckboxes.push(cb.property("value"));
+
+      if (optionalClass !== "") {
+        // The second class is the identifier in the chr-box input
+        // `chr-box ${partitionedGffKeys[i]} ${chrKey}`
+        const identifierClass = cb.attr("class").split(" ")[1];
+        if (identifierClass === optionalClass) {
+          currentClassCheckboxes.push(cb.property("value"));
+        }
+      }
     }
   });
 
-  return selectedCheckbox;
+  return {
+    currentClassCheckboxes: currentClassCheckboxes,
+    selectedCheckboxes: selectedCheckboxes
+  };
+};
+
+/**
+ * Shows chromosome connection information
+ * NOTE: This should be called for one to many connections
+ *
+ * @param  {Array<Object>} connectionDictionary Dictionary with the connection data
+ * @param  {Array<string>} selectedChromosomes  List of selected chromosomes
+ * @return {undefined}                          undefined
+ */
+export function showChromosomeConnectionInformation(connectionDictionary, selectedChromosomes) {
+  // If only one chromosome is selected, the connection information will show
+  // for each other chromosome
+
+  const chromosomeOrder = getDefaultChromosomeOrder();
+
+  const visitedChr = {}; // Visited chromosomes dictionary
+  for (let i = 0; i < chromosomeOrder.length; i++) {
+    visitedChr[chromosomeOrder[i]] = false;
+  }
+
+  visitedChr[selectedChromosomes[0]] = true;
+  for (let j = 0; j < chromosomeOrder.length; j++) {
+    // If a connection is found, mark current chromosome as visited
+    if (find(connectionDictionary[selectedChromosomes[0]], ['connection', chromosomeOrder[j]])) {
+      visitedChr[chromosomeOrder[j]] = true;
+    }
+  }
+
+  d3.selectAll(".chr-box").each(function(d) {
+    d3.select(this.parentNode.parentNode).select("span.chr-box-extra").html(function() {
+      // Finding the index of the connection in the dictionary
+      const indexConnection = findIndex(connectionDictionary[selectedChromosomes[0]], ['connection', d]);
+      let connectionAmount = 0;
+      let textToShow = "";
+      if (indexConnection === (-1)) {
+        textToShow += `<em class="disabled">0 blocks</em>`;
+      } else {
+        connectionAmount = connectionDictionary[selectedChromosomes[0]][indexConnection].blockIDs.length;
+        textToShow += `<em>${connectionAmount.toString()} `;
+        if (connectionAmount === 1) {
+          textToShow += 'block';
+        } else {
+          textToShow += 'blocks';
+        }
+        textToShow += '</em>';
+      }
+
+      return textToShow;
+    });
+
+    // d is the current chromosome id (e.g. N1, N2, N10)
+    if (visitedChr[d]) {
+      d3.select(this).attr("disabled", null);
+      d3.select(this.parentNode).classed("disabled", false);
+    } else {
+      // Only disable not visited chromosomes
+      d3.select(this).attr("disabled", true);
+      d3.select(this.parentNode).classed("disabled", true);
+    }
+  });
+};
+
+/**
+ * Reset chromosome order checkboxes
+ *
+ * @return {undefined} undefined
+ */
+export function resetChromosomeCheckboxes() {
+  d3.selectAll(".chr-box").each(function(d) {
+    d3.select(this.parentNode).classed("disabled", false);
+    d3.select(this.parentNode).select("span.chr-box-text").text(d);
+    d3.select(this.parentNode.parentNode).select("span.chr-box-extra").text("");
+    d3.select(this).attr("disabled", null);
+  });
 };
 
 /**
@@ -60,6 +138,26 @@ export function getQueryString(field, url) {
   const reg = new RegExp('[?&]' + field + '=([^&#]*)', 'i');
   const string = reg.exec(href);
   return string ? string[1] : null;
+};
+
+/**
+ * Async function to check if an url is valid
+ *
+ * @param  {string}  url Complete url
+ * @return {boolean}     True if valid url, false otherwise
+ */
+export async function isUrlFound(url) {
+  try {
+    const response = await fetch(url, {
+      method: 'HEAD',
+      cache: 'no-cache'
+    });
+
+    return response.status === 200; // Status should be OK if valid URL
+
+  } catch(error) {
+    return false;
+  }
 };
 
 /**
@@ -78,8 +176,8 @@ export function lookForBlocksPositions(blockDictionary, geneDictionary, block) {
   let maxTarget = 0;
   let minTarget = 100000000;
   for (let i = 0; i < blockArray.length; i++) {
-    const currentSource = geneDictionary[blockArray[i].source];
-    const currentTarget = geneDictionary[blockArray[i].target];
+    const currentSource = geneDictionary[blockArray[i].connectionSource];
+    const currentTarget = geneDictionary[blockArray[i].connectionTarget];
 
     minSource = Math.min(minSource, currentSource.start);
     maxSource = Math.max(maxSource, currentSource.end);
@@ -121,6 +219,60 @@ export function removeBlockView(transitionTime = 0) {
 };
 
 /**
+ * Partition Gff keys for the ordering inside the checkboxes
+ *
+ * @param  {Array<string>} gffKeys Array that includes the keys from the gff dictionary
+ * @return {Object}        Partitioned dictionary along with the ordered keys
+ */
+export function partitionGffKeys(gffKeys) {
+  // Sorted input gffKeys
+  let gffCopy = sortGffKeys(gffKeys.slice()).slice();
+
+  // Removing all non-letters from string
+  // e.g. from gffCopy = ["at1, at2, at3"]
+  // to gffCopy = ["at", "at", "at"]
+  gffCopy = gffCopy.map(function(current) {
+    return current.replace(/[^a-zA-Z]+/g, '');
+  });
+
+  // Creating a duplicate-free version of gffCopy array
+  // sortedUniq function is optimized for sorted arrays
+  // e.g. gffCopy = ["at"]
+  gffCopy = sortedUniq(gffCopy);
+
+  // Creating gffPartitionedDictionary to partition the gffKeys with their tags
+  const gffPartitionedDictionary = {};
+  for (let i = 0; i < gffCopy.length; i++) {
+    if (!(gffCopy[i] in gffPartitionedDictionary)) {
+      gffPartitionedDictionary[gffCopy[i]] = [];
+    }
+
+    for (let j = 0; j < gffKeys.length; j++) {
+      if (gffKeys[j].includes(gffCopy[i])) {
+        gffPartitionedDictionary[gffCopy[i]].push(gffKeys[j]);
+      }
+    }
+  }
+
+  // Sorting gffCopy keys in descending order when having more than 1 key,
+  // meaning more than 1 species to visualize
+  if (gffCopy.length > 1) {
+    gffCopy.sort(function compare(a, b) {
+      const countA = gffPartitionedDictionary[a].length;
+      const countB = gffPartitionedDictionary[b].length;
+      if (countA > countB) return -1;
+      if (countA < countB) return 1;
+      return 0;
+    });
+  }
+
+  return {
+    gffPartitionedDictionary: gffPartitionedDictionary,
+    partitionedGffKeys: gffCopy
+  };
+};
+
+/**
  * Sorts GFF keys
  *
  * @param  {Array<string>} gffKeys Array that includes the keys from the gff dictionary
@@ -129,15 +281,16 @@ export function removeBlockView(transitionTime = 0) {
 export function sortGffKeys(gffKeys) {
   const gffCopy = gffKeys.slice();
 
-  gffCopy.sort(function compare(a, b) {
-    a = parseInt(a.replace(/[A-Za-z]/g, ""));
-    b = parseInt(b.replace(/[A-Za-z]/g, ""));
-    if (a < b) return -1;
-    if (a > b) return 1;
-    return 0;
-  });
+  // Using localCompare collator to sort alphanumeric strings.
+  // More info: https://stackoverflow.com/a/38641281
+  // Using numeric collation
+  // e.g. "1" < "2" < "10"
+  // Using sensitivity: base
+  // This means that only strings that differ in base letters compare as unequal.
+  // e.g. a ≠ b, a = á, a = A.
+  const collator = new Intl.Collator('en', {numeric: true, sensitivity: 'base'});
 
-  return gffCopy;
+  return gffCopy.sort(collator.compare);
 };
 
 /**
@@ -215,9 +368,9 @@ export function updateFilter({
 
   if (shouldUpdatePath) {
     generateGenomeView({
-      "transition": { shouldDo: false },
-      "shouldUpdateBlockCollisions": shouldUpdateBlockCollisions,
-      "shouldUpdateLayout": shouldUpdateLayout
+      transition: { shouldDo: false },
+      shouldUpdateBlockCollisions: shouldUpdateBlockCollisions,
+      shouldUpdateLayout: shouldUpdateLayout
     });
   }
 };

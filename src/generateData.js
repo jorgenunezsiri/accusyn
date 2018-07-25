@@ -17,12 +17,20 @@ import * as d3 from 'd3';
 import find from 'lodash/find';
 import findIndex from 'lodash/findIndex';
 
+// React
+import React from 'react';
+import ReactDOM from 'react-dom';
+import Modal from './reactComponents/Modal';
+
 import generateGenomeView from './genomeView/generateGenomeView';
 import { schemeSet2 } from 'd3-scale-chromatic';
 
 import {
-  fixSourceTargetCollinearity,
+  getSelectedCheckboxes,
   lookForBlocksPositions,
+  partitionGffKeys,
+  resetChromosomeCheckboxes,
+  showChromosomeConnectionInformation,
   sortGffKeys,
   updateAngle,
   updateFilter
@@ -39,6 +47,7 @@ import { setGeneDictionary } from './variables/geneDictionary';
 import { setGffDictionary } from './variables/gffDictionary';
 
 // Constants
+import { sampleFiles } from './variables/templates';
 import { WIDTH, HEIGHT } from './variables/constants';
 
 /**
@@ -58,20 +67,49 @@ export default function generateData(error, gff, collinearity) {
   const geneDictionary = {}; // Dictionary that includes the start and end position data for each gene
   let gffKeys = []; // Array that includes the sorted keys from the gff dictionary
   const gffPositionDictionary = {}; // Dictionary that includes the colors, start and end position data for each chromosome
+  const minStartChromosomesDictionary = {}; // Dictionary to help calculating the min start position for each chromosome
+  const maxEndChromosomesDictionary = {}; // Dictionary to help calculating the max end positon for each chromosome
 
   // For loop to update position dictionary with file data
   for (let i = 0; i < gff.length; i++) {
     const currentChromosomeID = gff[i].chromosomeID;
+
     const start = parseInt(gff[i].start);
     const end = parseInt(gff[i].end);
 
-    if (!(currentChromosomeID in gffPositionDictionary)) {
-      gffPositionDictionary[currentChromosomeID] = {};
-      gffPositionDictionary[currentChromosomeID].start = start;
-      gffPositionDictionary[currentChromosomeID].color = colors(i);
+    // Minimum start dictionary
+    if (!(currentChromosomeID in minStartChromosomesDictionary)) {
+      minStartChromosomesDictionary[currentChromosomeID] = 100000000;
     }
 
-    gffPositionDictionary[currentChromosomeID].end = end;
+    minStartChromosomesDictionary[currentChromosomeID] = Math.min(
+      minStartChromosomesDictionary[currentChromosomeID],
+      start
+    );
+
+    // Maximum end dictionary
+    if (!(currentChromosomeID in maxEndChromosomesDictionary)) {
+      maxEndChromosomesDictionary[currentChromosomeID] = 0;
+    }
+
+    maxEndChromosomesDictionary[currentChromosomeID] = Math.max(
+      maxEndChromosomesDictionary[currentChromosomeID],
+      end
+    );
+
+    // Gff dictionary
+    if (!(currentChromosomeID in gffPositionDictionary)) {
+      gffPositionDictionary[currentChromosomeID] = {};
+    }
+
+    gffPositionDictionary[currentChromosomeID].start =
+      minStartChromosomesDictionary[currentChromosomeID];
+
+    gffPositionDictionary[currentChromosomeID].end =
+      maxEndChromosomesDictionary[currentChromosomeID];
+
+    // Gene dictionary
+    // currentGene checks gff3 (by default), gff otherwise
     const currentGene =
       gff[i].attributes ? gff[i].attributes.split(';')[0].split('=')[1] :
       (gff[i].geneID ? gff[i].geneID : currentChromosomeID);
@@ -85,11 +123,16 @@ export default function generateData(error, gff, collinearity) {
   // Setting gene dictionary with all the genes
   setGeneDictionary(geneDictionary);
 
-  // Setting gff dictionary with the start and end position for each chr
-  setGffDictionary(gffPositionDictionary);
-
   // Obtaining keys from dictionary and sorting them in ascending order
   gffKeys = sortGffKeys(Object.keys(gffPositionDictionary)).slice();
+
+  // Setting the color for each chromosome after sorting the gffKeys
+  for (let i = 0; i < gffKeys.length; i++) {
+    gffPositionDictionary[gffKeys[i]].color = colors(i);
+  }
+
+  // Setting gff dictionary with the start and end position for each chr
+  setGffDictionary(gffPositionDictionary);
 
   // Setting the current order (default to ordered array of chromosomes)
   setCurrentChromosomeOrder(gffKeys.slice());
@@ -107,18 +150,20 @@ export default function generateData(error, gff, collinearity) {
     // Adding all the block connections in the dictionary
     blockDictionary[currentBlock].push({
       connection: collinearity[i].connection,
-      // source and target are being used in the blockView for complete reference
-      source: collinearity[i].source,
-      target: collinearity[i].target,
+      // connectionSource and connectionTarget are being used in the
+      // blockView for complete reference
+      connectionSource: collinearity[i].connectionSource,
+      connectionTarget: collinearity[i].connectionTarget,
+      sourceChromosome: collinearity[i].sourceChromosome,
+      targetChromosome: collinearity[i].targetChromosome,
       score: collinearity[i].score,
       eValue: collinearity[i].eValueBlock,
       eValueConnection: collinearity[i].eValueConnection,
       isFlipped: collinearity[i].isFlipped
     });
 
-    const IDs = fixSourceTargetCollinearity(collinearity[i]);
-    const sourceID = IDs.source; // Source chromosome
-    const targetID = IDs.target; // Target chromosome
+    const sourceID = collinearity[i].sourceChromosome; // Source chromosome
+    const targetID = collinearity[i].targetChromosome; // Target chromosome
 
     // If source is not in the dictionary, create new array for the source
     if (!(sourceID in connectionDictionary)) {
@@ -194,7 +239,7 @@ export default function generateData(error, gff, collinearity) {
   // Updating the style of the configuration panel
   d3.select("#config")
     .style("display", "block")
-    .style("width", `${WIDTH / 3}px`);
+    .style("width", `${WIDTH / 2.5}px`);
 
   // Information title
   d3.select("#form-config")
@@ -215,6 +260,11 @@ export default function generateData(error, gff, collinearity) {
   d3.select("#form-config")
     .append("h6")
     .attr("class", "block-collisions-headline");
+
+  // Superimposed block collisions headline
+  d3.select("#form-config")
+    .append("h6")
+    .attr("class", "superimposed-block-collisions-headline");
 
   // Layout title
   d3.select("#form-config")
@@ -241,8 +291,8 @@ export default function generateData(error, gff, collinearity) {
     .on("change", function() {
       // Calling genome view for updates
       generateGenomeView({
-        "shouldUpdateBlockCollisions": false,
-        "shouldUpdateLayout": false
+        shouldUpdateBlockCollisions: false,
+        shouldUpdateLayout: false
       });
     });
 
@@ -266,8 +316,8 @@ export default function generateData(error, gff, collinearity) {
     .on("change", function() {
       // Calling genome view for updates
       generateGenomeView({
-        "shouldUpdateBlockCollisions": false,
-        "shouldUpdateLayout": false
+        shouldUpdateBlockCollisions: false,
+        shouldUpdateLayout: false
       });
     });
 
@@ -314,11 +364,39 @@ export default function generateData(error, gff, collinearity) {
       if (d3.select(this).property("checked")) {
         // Calling genome view for updates
         generateGenomeView({
-          "transition": { shouldDo: false },
-          "shouldUpdateBlockCollisions": true,
-          "shouldUpdateLayout": true
+          transition: { shouldDo: false },
+          shouldUpdateBlockCollisions: true,
+          shouldUpdateLayout: true
         });
       }
+    });
+
+  // Draw blocks ordered by: Block ID or Block length (ascending or descending)
+  d3.select("#form-config")
+    .append("div")
+    .attr("class", "draw-blocks-order")
+    .append("p")
+    .text("Drawing order: ");
+
+  d3.select("div.draw-blocks-order")
+    .append("p")
+    .append("select")
+    .html(function() {
+      return `
+        <option value="Block ID (↑)" selected="selected">Block ID (↑)</option>
+        <option value="Block ID (↓)">Block ID (↓)</option>
+        <option value="Block length (↑)">Block length (↑)</option>
+        <option value="Block length (↓)">Block length (↓)</option>
+        `;
+    });
+
+  d3.select("div.draw-blocks-order select")
+    .on("change", function() {
+      // Calling genome view for updates with default transition
+      generateGenomeView({
+        shouldUpdateBlockCollisions: false,
+        shouldUpdateLayout: false
+      });
     });
 
   // Filter connections input range
@@ -333,17 +411,21 @@ export default function generateData(error, gff, collinearity) {
     .append("p")
     .attr("class", "filter-connections")
     .append("select")
+    .attr("class", "filter-connections")
     .html(function() {
-      return '<option value="At Least" selected="selected">At Least</option><option value="At Most">At Most</option>';
+      return `
+        <option value="At Least" selected="selected">At Least</option>
+        <option value="At Most">At Most</option>
+        `;
     });
 
   d3.select(".filter-connections-div")
-    .select("select")
+    .select("select.filter-connections")
     .on("change", function() {
       // Calling genome view for updates with default transition
       generateGenomeView({
-        "shouldUpdateBlockCollisions": true,
-        "shouldUpdateLayout": true
+        shouldUpdateBlockCollisions: true,
+        shouldUpdateLayout: true
       });
     });
 
@@ -351,9 +433,11 @@ export default function generateData(error, gff, collinearity) {
     .append("p")
     .attr("class", "filter-connections")
     .html(function() {
-      return `<label for="filter-block-size" style="display: inline-block; text-align: left; width: 125px">
-        <span id="filter-block-size-value">...</span>
-        </label>`;
+      return `
+        <label for="filter-block-size" style="display: inline-block; text-align: left; width: 125px">
+          <span id="filter-block-size-value">...</span>
+        </label>
+        `;
     });
 
   d3.select(".filter-connections-div")
@@ -415,23 +499,49 @@ export default function generateData(error, gff, collinearity) {
   // Chromosome checkboxes
   d3.select("#form-config")
     .append("div")
-    .attr("class", "chr-boxes")
-    .selectAll("div.chr-boxes > div.chr-box-inner-content")
-    .data(gffKeys).enter()
+    .attr("class", "container")
     .append("div")
-    .attr("class", "chr-box-inner-content")
-    .append("label")
-    .append("input")
-    .attr("class", function(chrKey) {
-      return `chr-box ${chrKey}`;
-    })
-    .attr("type", "checkbox")
-    .attr("name", function(chrKey) {
-      return chrKey;
-    })
-    .attr("value", function(chrKey) {
-      return chrKey;
+    .attr("class", function() {
+      return "row for-chr-boxes";
     });
+
+  // Partitioning gff keys to get the checkboxes division
+  const { gffPartitionedDictionary, partitionedGffKeys } = partitionGffKeys(gffKeys);
+
+  for (let i = 0; i < partitionedGffKeys.length; i++) {
+    d3.select("div.for-chr-boxes")
+      .append("div")
+      .attr("class", function() {
+        return `chr-boxes ${partitionedGffKeys[i]} col-lg-6`;
+      })
+      .selectAll("div.chr-box-inner-content")
+      .data(gffPartitionedDictionary[partitionedGffKeys[i]]).enter()
+      .append("div")
+      .attr("class", "chr-box-inner-content")
+      .append("label")
+      .append("input")
+      .attr("class", function(chrKey) {
+        return `chr-box ${partitionedGffKeys[i]} ${chrKey}`;
+      })
+      .attr("type", "checkbox")
+      .attr("name", function(chrKey) {
+        return chrKey;
+      })
+      .attr("value", function(chrKey) {
+        return chrKey;
+      });
+
+    // Select all button
+    d3.select(`div.chr-boxes.${partitionedGffKeys[i]}`)
+      .append("p")
+      .attr("class", function() {
+        return `select-all ${partitionedGffKeys[i]}`;
+      })
+      .attr("title", "Selects all the connections.")
+      .append("input")
+      .attr("type", "button")
+      .attr("value", "Select all");
+  }
 
   d3.select("#form-config")
     .selectAll("div.chr-box-inner-content > label")
@@ -446,130 +556,92 @@ export default function generateData(error, gff, collinearity) {
     .append("span")
     .attr("class", "chr-box-extra");
 
+  // Checkboxes on change event
   d3.select("#form-config").selectAll(".chr-box")
-    .on("change", function(chrClicked) {
-      const selectedChromosomes = [];
-      const visitedChr = {}; // Visited chromosomes dictionary
-      for (let i = 0; i < gffKeys.length; i++) {
-        visitedChr[gffKeys[i]] = false;
-      }
+    .on("change", function() {
+      // All checkboxes are returned to their original state
+      resetChromosomeCheckboxes();
 
-      d3.selectAll(".chr-box").each(function(d) {
-        d3.select(this.parentNode).classed("disabled", false);
-        d3.select(this.parentNode).select("span.chr-box-text").text(d);
-        d3.select(this.parentNode.parentNode).select("span.chr-box-extra").text("");
+      // The second class is the identifier in the chr-box input
+      // `chr-box ${partitionedGffKeys[i]} ${chrKey}`
+      const identifierClass =
+        d3.select(this).attr("class").split(" ")[1];
 
-        const cb = d3.select(this);
-        cb.attr("disabled", null);
-        if (cb.property("checked")) {
-          // If chromosome is already checked, then it is visited
-          visitedChr[d] = true;
-          selectedChromosomes.push(cb.property("value"));
-        }
-      });
+      const {
+        currentClassCheckboxes,
+        selectedCheckboxes
+      } = getSelectedCheckboxes(identifierClass);
 
-      // Changing Select/Deselect All button depending on the amount of selected chromosomes
-      if (selectedChromosomes.length === 0) {
-        d3.select(".select-all > input").property("value", "Select All");
-        d3.select("p.select-all").attr("title", "Selects all the connections.");
+      // Changing Select/Deselect All button depending on the amount of
+      // selected chromosomes with the current class
+      if (currentClassCheckboxes.length === 0) {
+        d3.selectAll(`.select-all.${identifierClass} > input`).property("value", "Select all");
+        d3.selectAll(`p.select-all.${identifierClass}`).attr("title", "Selects all the connections.");
       } else {
-        d3.select(".select-all > input").property("value", "Deselect All");
-        d3.select("p.select-all").attr("title", "Deselects all the connections.");
+        d3.select(`.select-all.${identifierClass} > input`).property("value", "Deselect all");
+        d3.select(`p.select-all.${identifierClass}`).attr("title", "Deselects all the connections.");
       }
 
-      if (selectedChromosomes.length === 1) {
-        // If only one chromosome is selected, the connection information will show
-        // for each other chromosome
-
-        for (let j = 0; j < gffKeys.length; j++) {
-          // If a connection is found, mark current chromosome as visited
-          if (find(connectionDictionary[selectedChromosomes[0]], ['connection', gffKeys[j]])) {
-            visitedChr[gffKeys[j]] = true;
-          }
-        }
-
-        d3.selectAll(".chr-box").each(function(d) {
-          d3.select(this.parentNode.parentNode).select("span.chr-box-extra").html(function() {
-            // Finding the index of the connection in the dictionary
-            const indexConnection = findIndex(connectionDictionary[selectedChromosomes[0]], ['connection', d]);
-            let connectionAmount = 0;
-            let textToShow = "";
-            if (indexConnection === (-1)) {
-              textToShow += `<em class="disabled">0 blocks</em>`;
-            } else {
-              connectionAmount = connectionDictionary[selectedChromosomes[0]][indexConnection].blockIDs.length;
-              textToShow += `<em>${connectionAmount.toString()} `;
-              if (connectionAmount === 1) {
-                textToShow += 'block';
-              } else {
-                textToShow += 'blocks';
-              }
-              textToShow += '</em>';
-            }
-
-            return textToShow;
-          });
-
-          // d is the current chromosome id (e.g. N1, N2, N10)
-          if (visitedChr[d]) {
-            d3.select(this).attr("disabled", null);
-            d3.select(this.parentNode).classed("disabled", false);
-          } else {
-            // Only disable not visited chromosomes
-            d3.select(this).attr("disabled", true);
-            d3.select(this.parentNode).classed("disabled", true);
-          }
-        });
+      if (selectedCheckboxes.length === 1) {
+        showChromosomeConnectionInformation(connectionDictionary, selectedCheckboxes);
       }
 
       // Calling genome view for updates
       generateGenomeView({});
     });
 
-  // Select all button
-  d3.select("#form-config")
-    .append("p")
-    .attr("class", "select-all")
-    .attr("title", "Selects all the connections.")
-    .append("input")
-    .attr("type", "button")
-    .attr("value", "Select all");
-
-  d3.select("#form-config")
-    .select(".select-all > input")
+  // Select all button click
+  d3.select("#form-config").selectAll(".select-all > input")
     .on("click", function() {
+      // The second class is the identifier in the select-all input
+      // `select-all ${partitionedGffKeys[i]}`
+      const identifierClass =
+        d3.select(this.parentNode).attr("class").split(" ")[1];
+
       if (d3.select(this).property("value") === "Select all") {
         // Changing the value and title to Deselect all
         d3.select(this).property("value", "Deselect all");
-        d3.select("p.select-all").attr("title", "Deselects all the connections.");
+        d3.select(this.parentNode).attr("title", "Deselects all the connections.");
 
         // Selecting all checkboxes
-        d3.selectAll(".chr-box").each(function() {
-          if (!d3.select(this).property("checked")) {
+        d3.selectAll(`.chr-box.${identifierClass}`).each(function() {
+          if (!d3.select(this).property("checked") &&
+            !d3.select(this).attr("disabled")) {
             d3.select(this).property("checked", true);
           }
         });
       } else {
         // Changing the value and title to Select all
         d3.select(this).property("value", "Select all");
-        d3.select("p.select-all").attr("title", "Selects all the connections.");
+        d3.select(this.parentNode).attr("title", "Selects all the connections.");
 
-        // All checkboxes are returned to their original state
-        d3.selectAll(".chr-box").each(function(d) {
-          d3.select(this.parentNode).classed("disabled", false);
-          d3.select(this.parentNode).select("span.chr-box-text").text(d);
-          d3.select(this.parentNode.parentNode).select("span.chr-box-extra").text("");
-
-          const cb = d3.select(this);
-          cb.attr("disabled", null);
+        // Only the identified checkboxes are unchecked
+        d3.selectAll(`.chr-box.${identifierClass}`).each(function(d) {
           if (d3.select(this).property("checked")) {
             d3.select(this).property("checked", false);
           }
         });
       }
 
-      // When Select/Deselect All is clicked, all chromosomes will show by default
-      d3.select(".show-all input").property("checked", true);
+      const { selectedCheckboxes } = getSelectedCheckboxes();
+      if (selectedCheckboxes.length === 1) {
+        showChromosomeConnectionInformation(connectionDictionary, selectedCheckboxes);
+      } else {
+        // All checkboxes are returned to their original state
+        resetChromosomeCheckboxes();
+      }
+
+      /**
+       * Show all checkbox should be selected by default:
+       *
+       * -> When all the possible checkboxes are selected.
+       * -> When no checkboxes at all are selected, so that the user does not
+       * have to select 'Show all chromosomes' again.
+       */
+      if (d3.selectAll(".chr-box").size() === selectedCheckboxes.length ||
+        selectedCheckboxes.length === 0) {
+        d3.select(".show-all input").property("checked", true);
+      }
 
       // Calling genome view for updates
       generateGenomeView({});
@@ -614,10 +686,10 @@ export default function generateData(error, gff, collinearity) {
    * @return {undefined}       undefined
    */
   const callFullUpdateFilter = (value) => updateFilter({
-    "shouldUpdateBlockCollisions": true,
-    "shouldUpdateLayout": true,
-    "shouldUpdatePath": true,
-    "value": value
+    shouldUpdateBlockCollisions: true,
+    shouldUpdateLayout: true,
+    shouldUpdatePath: true,
+    value: value
   });
 
   // Updating filter on input
@@ -626,21 +698,34 @@ export default function generateData(error, gff, collinearity) {
       d3.select(".block-collisions-headline")
         .text("Updating block collisions ...");
 
+      d3.select(".superimposed-block-collisions-headline")
+        .text("Updating superimposed collisions ...");
+
       updateFilter({
-        "value": +this.value,
-        "shouldUpdatePath": true,
-        "shouldUpdateBlockCollisions": false,
-        "shouldUpdateLayout": false
+        shouldUpdateBlockCollisions: false,
+        shouldUpdateLayout: false,
+        shouldUpdatePath: true,
+        value: +this.value
       });
     })
     .on("mouseup", function() { callFullUpdateFilter(+this.value); })
     .on("keyup", function() { callFullUpdateFilter(+this.value); });
 
   // Default filtering (1 is min value and shouldUpdatePath = false)
-  updateFilter({ "value": 1, "shouldUpdatePath": false });
+  updateFilter({ shouldUpdatePath: false, value: 1 });
 
   // First load of the genome view
   generateGenomeView({});
+
+  // Loading sampleFiles modal inside its container
+  ReactDOM.render(
+    <Modal
+      buttonLabel="Sample files"
+      modalHeader="Sample files">
+      {sampleFiles}
+    </Modal>,
+    document.getElementById('documentation-container')
+  );
 
   // Displaying all the content after everything is loaded
   d3.select("#loader")

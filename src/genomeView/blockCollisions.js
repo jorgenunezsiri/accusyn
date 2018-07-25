@@ -19,6 +19,12 @@ import { getChordAngles } from './dragging';
 import { sortGffKeys } from './../helpers';
 import { getCircosObject } from './../variables/myCircos';
 import {
+  getCollisionCount,
+  getSuperimposedCollisionCount,
+  setCollisionCount,
+  setSuperimposedCollisionCount
+} from './../variables/collisionCount';
+import {
   setCurrentChromosomeOrder,
   toChromosomeOrder
 } from './../variables/currentChromosomeOrder';
@@ -68,15 +74,37 @@ function intersects(R1, R2, R3, R4) {
 };
 
 /**
+ * Determines if chord is superimposed based on start and end angles
+ *
+ * @param  {number}  R1 First angle
+ * @param  {number}  R2 Second angle
+ * @return {boolean}    True if chord is superimposed based on angles
+ */
+function isSuperimposed(R1, R2) {
+  return (
+    (R1.start >= R2.start &&
+      R1.start <= R2.end) ||
+    (R1.end <= R2.end &&
+      R1.end >= R2.start) ||
+
+    (R2.start >= R1.start &&
+      R2.start <= R1.end) ||
+    (R2.end <= R1.end &&
+      R2.end >= R1.start)
+  );
+};
+
+/**
  * Get the number of block collisions with the current chords and chromosome data
  *
  * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
  * @param  {Array<Object>} dataChords      Plotting information for each block chord
  * @param  {number} maxNumberOfCollisions  Optional limit to check for
- * @return {number}        collisionCount  Total number of collisions
+ * @return {number} Number of collisions and superimposed collisions
  */
 export function getBlockCollisions(dataChromosomes, dataChords, maxNumberOfCollisions = 0) {
   let collisionCount = 0;
+  let superimposedCollisionCount = 0;
   let breakLoop = false;
 
   for (let i = 0; i < dataChords.length; i++) {
@@ -86,17 +114,22 @@ export function getBlockCollisions(dataChromosomes, dataChords, maxNumberOfColli
       const R3 = getChordAngles(dataChromosomes, dataChords[j], 'source');
       const R4 = getChordAngles(dataChromosomes, dataChords[j], 'target');
 
-      // TODO: Check this again !!!!
-      if (intersects(R1.middle, R2.middle, R3.middle, R4.middle) ||
+      if (
+        // Determining if same position lines are colliding
         intersects(R1.start, R2.start, R3.start, R4.start) ||
+        intersects(R1.middle, R2.middle, R3.middle, R4.middle) ||
         intersects(R1.end, R2.end, R3.end, R4.end) ||
 
+        // Determining if start and middle lines are colliding
         intersects(R1.start, R2.start, R3.middle, R4.middle) ||
-        intersects(R1.end, R2.end, R3.middle, R4.middle) ||
-        intersects(R1.start, R2.start, R3.end, R4.end) ||
-
         intersects(R1.middle, R2.middle, R3.start, R4.start) ||
+
+        // Determining if middle and end lines are colliding
         intersects(R1.middle, R2.middle, R3.end, R4.end) ||
+        intersects(R1.end, R2.end, R3.middle, R4.middle) ||
+
+        // Determining if start and end lines are colliding
+        intersects(R1.start, R2.start, R3.end, R4.end) ||
         intersects(R1.end, R2.end, R3.start, R4.start)
       ) {
         collisionCount++;
@@ -110,13 +143,34 @@ export function getBlockCollisions(dataChromosomes, dataChords, maxNumberOfColli
 
         // console.log("i j: ", dataChords[i].source.value.id, dataChords[j].source.value.id);
       }
+
+      if (
+        // dataChords[i]['source'] and dataChords[j]['target']
+        isSuperimposed(R1, R4) ||
+
+        // dataChords[i]['target'] and dataChords[j]['source']
+        isSuperimposed(R2, R3) ||
+
+        // dataChords[i]['target'] and dataChords[j]['target']
+        isSuperimposed(R2, R4) ||
+
+        // dataChords[i]['source'] and dataChords[j]['source']
+        isSuperimposed(R1, R3)
+      ) {
+        superimposedCollisionCount++;
+
+        // console.log("i j: ", dataChords[i].source.value.id, dataChords[j].source.value.id);
+      }
     }
 
     if (breakLoop) break;
   }
 
   return new Promise(resolve => {
-    resolve(collisionCount);
+    resolve({
+      collisionCount,
+      superimposedCollisionCount
+    });
   });
 }
 
@@ -129,7 +183,14 @@ export function getBlockCollisions(dataChromosomes, dataChords, maxNumberOfColli
  */
 export async function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
   console.log('Updating block collision headline !!!');
-  const collisionCount = await getBlockCollisions(dataChromosomes, dataChords);
+  const {
+    collisionCount,
+    superimposedCollisionCount
+  } = await getBlockCollisions(dataChromosomes, dataChords);
+
+  // Saving up-to-date collision counts
+  setCollisionCount(collisionCount);
+  setSuperimposedCollisionCount(superimposedCollisionCount);
 
   console.log("COLLISION COUNT: " + collisionCount);
 
@@ -137,8 +198,18 @@ export async function updateBlockCollisionHeadline(dataChromosomes, dataChords) 
   d3Select(".block-collisions-headline")
     .text(function() {
       let textToShow = "";
-      textToShow += collisionCount.toString() === "1" ?
+      textToShow += collisionCount === 1 ?
         `${collisionCount} block collision` : `${collisionCount} block collisions`;
+      return textToShow;
+    });
+
+  // Update block-collisions-headline with current collision count
+  d3Select(".superimposed-block-collisions-headline")
+    .text(function() {
+      let textToShow = "";
+      textToShow += superimposedCollisionCount === 1 ?
+        `${superimposedCollisionCount} superimposed collision` :
+        `${superimposedCollisionCount} superimposed collisions`;
       return textToShow;
     });
 };
@@ -155,8 +226,8 @@ function minSwapsToSort(arr) {
   const arrPos = [];
   for (let i = 0; i < n; i++) {
     arrPos.push({
-      "first": arr[i],
-      "second": i
+      first: arr[i],
+      second: i
     });
   }
 
@@ -199,8 +270,8 @@ function minSwapsToSort(arr) {
   }
 
   return {
-    "answer": ans,
-    "swapPositions": swapPositions
+    answer: ans,
+    swapPositions: swapPositions
   };
 }
 
@@ -368,8 +439,8 @@ function transitionSwapOldToNew(dataChromosomes, bestSolution, currentChr, hasMo
   }
 
   hasMovedDragging[currentChr] = {
-    "angle": angle,
-    "hasMoved": true
+    angle: angle,
+    hasMoved: true
   };
 }
 
@@ -393,8 +464,8 @@ export function loopUpPositionCollisionsDictionary(bestSolution, dataChords) {
   });
 
   return {
-    "currentPosition": currentPosition,
-    "key": key
+    currentPosition: currentPosition,
+    key: key
   };
 };
 
@@ -451,8 +522,8 @@ export function swapPositionsAnimation(dataChromosomes, bestSolution, swapPositi
   let hasMovedDragging = [];
   for (let i = 0; i < chromosomeOrder.length; i++) {
     hasMovedDragging[chromosomeOrder[i]] = {
-      "angle": 0,
-      "hasMoved": false
+      angle: 0,
+      hasMoved: false
     };
     visited[chromosomeOrder[i]] = false;
   }
@@ -520,9 +591,9 @@ export function swapPositionsAnimation(dataChromosomes, bestSolution, swapPositi
 
   // TODO: Think about performance when calling generateGenomeView again
   setTimeout(() => generateGenomeView({
-      "transition": { shouldDo: false },
-      "shouldUpdateBlockCollisions": true,
-      "shouldUpdateLayout": true
+      transition: { shouldDo: false },
+      shouldUpdateBlockCollisions: true,
+      shouldUpdateLayout: true
     }), TRANSITION_SWAPPING_TIME +
     (TRANSITION_SWAPPING_TIME * swapPositions.length) +
     (TRANSITION_SWAPPING_TIME * positionsNotBeingSwapped.length));
@@ -578,9 +649,9 @@ export function callSwapPositionsAnimation(dataChromosomes, bestSolution, update
     // NOTE: This is necessary when I'm using the myCircos.layout function
     // to modify the layout
     generateGenomeView({
-      "transition": { shouldDo: false },
-      "shouldUpdateBlockCollisions": false,
-      "shouldUpdateLayout": true
+      transition: { shouldDo: false },
+      shouldUpdateBlockCollisions: false,
+      shouldUpdateLayout: true
     });
   }
 };
@@ -614,23 +685,78 @@ function acceptanceProbability(currentEnergy, neighborEnergy, temperature) {
  * More info: http://www.theprojectspot.com/tutorial-post/simulated-annealing-algorithm-for-beginners/6
  */
 export async function simulatedAnnealing(dataChromosomes, dataChords) {
-  if (dataChords.length === 0) return;
-
   let howMany = 0;
 
   const myCircos = getCircosObject();
 
   let currentSolution = cloneDeep(dataChromosomes);
   myCircos.layout(currentSolution, CIRCOS_CONF);
-  let currentEnergy = await getBlockCollisions(currentSolution, dataChords);
+
+  // I do not need to calculate block collisions the first time
+  // because I can take the current collision count from the getters
+  let currentEnergy = getCollisionCount();
+  const superimposedCollisionCount = getSuperimposedCollisionCount();
+
   console.log('CURRENT ENERGY: ', currentEnergy);
 
-  if (currentEnergy === 0) return;
+  // Show notification and return if there are no collisions
+  if (currentEnergy === 0 || dataChords.length === 0) {
+    ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
+    ReactDOM.render(
+      <AlertWithTimeout
+        color = "danger"
+        message = {"There are no collisions in the current layout."}
+      />,
+      document.getElementById('alert-container')
+    );
 
-  let temperature = 5000; // TODO: Think about values
+    return;
+  }
+
+  // Do not run SA if having more than 25,000 block collisions
+  // NOTE: For 25,000 block collisions, SA is taking less than 60 seconds approximately,
+  // depending on the amount of chromosomes
+  if (currentEnergy > 25000) {
+    ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
+    ReactDOM.render(
+      <AlertWithTimeout
+        color = "danger"
+        message = {"This feature does not work with more than 10,000 block collisions."}
+      />,
+      document.getElementById('alert-container')
+    );
+
+    return;
+  }
+
+  // Show notification and return if collisionCount equals superimposedCount
+  if (currentEnergy === superimposedCollisionCount) {
+    ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
+    ReactDOM.render(
+      <AlertWithTimeout
+        color = "danger"
+        message = {"All the block collisions in the current layout are from superimposed blocks."}
+      />,
+      document.getElementById('alert-container')
+    );
+
+    return;
+  }
+
+  // Default temperature/ratio is 5,000/0.05
+  // Entering loop around 150 times
+  let temperature = 5000;
   let ratio = 0.05;
 
-  // Update temperature to higher number if less than 100 collisions available
+  // Update temperature/ratio to 5,000/0.006 if collision count is between 100 and 500
+  // Entering loop around 1500 times
+  if (currentEnergy > 100 && currentEnergy <= 500) {
+    temperature = 6000;
+    ratio = 0.006;
+  }
+
+  // Update temperature/ratio to 10,000/0.003 if less than 100 collisions available
+  // Entering loop around 3000 times
   if (currentEnergy <= 100) {
     temperature = 10000;
     ratio = 0.003;
@@ -652,7 +778,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
     newSolution[pos1] = val2;
 
     myCircos.layout(newSolution, CIRCOS_CONF);
-    let neighborEnergy = await getBlockCollisions(newSolution, dataChords, /*bestEnergy*/ );
+    let { collisionCount: neighborEnergy } = await getBlockCollisions(newSolution, dataChords, /*bestEnergy*/ );
     const probability = acceptanceProbability(currentEnergy, neighborEnergy, temperature);
 
     if (probability === 1.0 || probability > Math.random()) {

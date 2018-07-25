@@ -48,6 +48,17 @@ button.close > span {
   font-size: 24px;
 }
 
+// Styles for Reactstrap Modal
+.modal-reactstrap {
+  h5 {
+    margin-bottom: 15px;
+  }
+
+  p {
+    margin-bottom: 10px;
+  }
+}
+
 // Styles for spinning animation
 #loader {
   -webkit-animation: spin 2s linear infinite;

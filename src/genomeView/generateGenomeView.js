@@ -30,10 +30,8 @@ import findIndex from 'lodash/findIndex';
 import generateBlockView from './../generateBlockView';
 
 import {
-  fixSourceTargetCollinearity,
   getSelectedCheckboxes,
   removeBlockView,
-  sortGffKeys,
   updateBlockNumberHeadline
 } from './../helpers';
 
@@ -60,7 +58,7 @@ import {
 } from './../variables/currentChromosomeMouseDown';
 import {
   getCurrentChromosomeOrder,
-  toChromosomeOrder
+  getDefaultChromosomeOrder
 } from './../variables/currentChromosomeOrder';
 import { getGffDictionary } from './../variables/gffDictionary';
 import { getSavedCollisionSolutionsDictionary } from './../variables/savedCollisionSolutionsDictionary';
@@ -114,7 +112,7 @@ function transitionRemoveBlockView(condition, callback) {
  */
 function getDataChromosomes() {
   const gffPositionDictionary = getGffDictionary();
-  const selectedCheckbox = getSelectedCheckboxes();
+  const { selectedCheckboxes } = getSelectedCheckboxes();
 
   // To keep track of the Show All input state
   const showAllChromosomes = d3.select("p.show-all input").property("checked");
@@ -130,7 +128,9 @@ function getDataChromosomes() {
     const currentObj = {
       color: gffPositionDictionary[key].color,
       label: key,
-      len: (gffPositionDictionary[key].end - gffPositionDictionary[key].start),
+      // Chromosome width / length.
+      // Should be equal to the maximum end point, so that chords show accurately
+      len: gffPositionDictionary[key].end,
       id: key
     };
 
@@ -138,7 +138,7 @@ function getDataChromosomes() {
       // All the chromosomes will show
       dataChromosomes.push(currentObj);
     } else {
-      if (selectedCheckbox.indexOf(key) > -1) {
+      if (selectedCheckboxes.indexOf(key) > -1) {
         // If current chromosome is selected and showAllChromosomes is
         // not selected, then add it
         dataChromosomes.push(currentObj);
@@ -198,9 +198,9 @@ function generateCircosLayout() {
         console.log('CURRENT FLIPPED CHR: ', currentFlippedChromosomes);
 
         setTimeout(() => generateGenomeView({
-          "transition": transition,
-          "shouldUpdateBlockCollisions": true,
-          "shouldUpdateLayout": true
+          transition: transition,
+          shouldUpdateBlockCollisions: true,
+          shouldUpdateLayout: true
         }), FLIPPING_CHROMOSOME_TIME + (FLIPPING_CHROMOSOME_TIME / 2));
       },
       'mousedown.chr': function(d) {
@@ -283,12 +283,16 @@ function generatePathGenomeView({
   // Updating block collisions should happen if flag is true
   // (when filtering transitions are not happening and flag is true at the end of filtering)
   // It should also happen when transitions are true
-  if (shouldUpdateBlockCollisions || (transition && transition.shouldDo)) {
+  if (shouldUpdateBlockCollisions ||
+    shouldUpdateBlockCollisions == null && (transition && transition.shouldDo)) {
     setTimeout(() => updateBlockCollisionHeadline(dataChromosomes, dataChords),
       DEFAULT_GENOME_TRANSITION_TIME + (DEFAULT_GENOME_TRANSITION_TIME / 2));
 
     d3.select(".block-collisions-headline")
       .text("Updating block collisions ...");
+
+    d3.select(".superimposed-block-collisions-headline")
+      .text("Updating superimposed collisions ...");
   }
 
   // Adding the configuration for the Circos chords using the generated array
@@ -435,7 +439,7 @@ function generatePathGenomeView({
   // Save layout button
   d3.select(".save-layout > input")
     .on("click", function() {
-      getBlockCollisions(dataChromosomes, dataChords).then((collisionCount) => {
+      getBlockCollisions(dataChromosomes, dataChords).then(({ collisionCount }) => {
         saveToCollisionsDictionary(dataChromosomes, collisionCount, dataChords);
 
         ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
@@ -455,8 +459,7 @@ function generatePathGenomeView({
       d3.select('p.show-best-layout input').property("checked", false);
 
       const localDataChromosomes = cloneDeep(dataChromosomes);
-      const oldChromosomeOrder = toChromosomeOrder(localDataChromosomes);
-      const currentChromosomeOrder = sortGffKeys(oldChromosomeOrder.slice()).slice();
+      const currentChromosomeOrder = getDefaultChromosomeOrder();
 
       const orderedDataChromosomes = currentChromosomeOrder.map(function(currentChr) {
         const position = findIndex(localDataChromosomes, ['id', currentChr]);
@@ -507,21 +510,21 @@ export default function generateGenomeView({
   const blockKeys = Object.keys(blockDictionary);
 
   const gffPositionDictionary = getGffDictionary();
-  const selectedCheckbox = getSelectedCheckboxes();
+  const { selectedCheckboxes } = getSelectedCheckboxes();
 
   dataChords = []; // Emptying data chords array
 
   foundCurrentSelectedBlock = false;
 
-  const oneToMany = selectedCheckbox.length === 1;
+  const oneToMany = selectedCheckboxes.length === 1;
   const lookID = [];
   if (oneToMany) {
     // One to many relationships
-    lookID.push(selectedCheckbox[0]);
+    lookID.push(selectedCheckboxes[0]);
   } else {
     // Many to many relationships
-    for (let j = 0; j < selectedCheckbox.length; j++) {
-      lookID.push(selectedCheckbox[j]);
+    for (let j = 0; j < selectedCheckboxes.length; j++) {
+      lookID.push(selectedCheckboxes[j]);
     }
   }
 
@@ -529,94 +532,121 @@ export default function generateGenomeView({
     const currentBlock = blockKeys[i];
 
     // Only need to enter if current block is not currently removed
-    if (currentRemovedBlocks.indexOf(currentBlock) === -1) {
+    if (currentRemovedBlocks.indexOf(currentBlock) > (-1)) continue;
 
-      const IDs = fixSourceTargetCollinearity(blockDictionary[currentBlock][0]);
-      const sourceID = IDs.source;
-      const targetID = IDs.target;
+    const sourceID = blockDictionary[currentBlock][0].sourceChromosome; // Source chromosome
+    const targetID = blockDictionary[currentBlock][0].targetChromosome; // Target chromosome
 
-      let shouldAddDataChord = false;
-      if (oneToMany) {
-        // For one to many
-        // Either the source or the target needs to be currently selected
-        // Unless Show All is not selected meaning that both source and target
-        // need to be the same selected chromosome
-        shouldAddDataChord = showAllChromosomes ?
-          (lookID.indexOf(sourceID) > -1 || lookID.indexOf(targetID) > -1) :
-          (lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1);
-      } else {
-        // For many to many all connections need to be between selected chromosomes
-        shouldAddDataChord = lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1;
+    let shouldAddDataChord = false;
+    if (oneToMany) {
+      // For one to many
+      // Either the source or the target needs to be currently selected
+      // Unless Show All is not selected meaning that both source and target
+      // need to be the same selected chromosome
+      shouldAddDataChord = showAllChromosomes ?
+        (lookID.indexOf(sourceID) > -1 || lookID.indexOf(targetID) > -1) :
+        (lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1);
+    } else {
+      // For many to many all connections need to be between selected chromosomes
+      shouldAddDataChord = lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1;
+    }
+
+    // Only add data chord if the filter condition is satisfied
+    shouldAddDataChord = shouldAddDataChord && (
+      (filterSelect === 'At Least' && blockDictionary[currentBlock].length >= filterValue) ||
+      (filterSelect === 'At Most' && blockDictionary[currentBlock].length <= filterValue)
+    );
+
+    if (shouldAddDataChord) {
+      const blockPositions = blockDictionary[currentBlock].blockPositions;
+
+      const sourcePositions = {
+        start: blockPositions.minSource,
+        end: blockPositions.maxSource
+      };
+      const targetPositions = {
+        start: blockPositions.minTarget,
+        end: blockPositions.maxTarget
+      };
+
+      // Example for flipped chromosomes:
+      // Positions -> 20-28, 1-13
+      // newStart = lastChrPosition - (endBlock)
+      // newEnd = lastChrPosition - (startBlock)
+      // 28-28 = 0, 28-20 = 8
+      // 28-13 = 15, 28-1 = 27
+
+      // newStart = lastChrPosition - (endBlock)
+      // newEnd = lastChrPosition - (startBlock)
+      let tmpStart = 0;
+      if (currentFlippedChromosomes.indexOf(sourceID) !== (-1)) {
+        tmpStart = sourcePositions.start;
+
+        sourcePositions.start = gffPositionDictionary[sourceID].end - sourcePositions.end;
+        sourcePositions.end = gffPositionDictionary[sourceID].end - tmpStart;
       }
 
-      // Only add data chord if the filter condition is satisfied
-      shouldAddDataChord = shouldAddDataChord && (
-        (filterSelect === 'At Least' && blockDictionary[currentBlock].length >= filterValue) ||
-        (filterSelect === 'At Most' && blockDictionary[currentBlock].length <= filterValue)
-      );
+      if (currentFlippedChromosomes.indexOf(targetID) !== (-1)) {
+        tmpStart = targetPositions.start;
 
-      if (shouldAddDataChord) {
-        const blockPositions = blockDictionary[currentBlock].blockPositions;
+        targetPositions.start = gffPositionDictionary[targetID].end - targetPositions.end;
+        targetPositions.end = gffPositionDictionary[targetID].end - tmpStart;
+      }
 
-        const sourcePositions = {
-          start: blockPositions.minSource,
-          end: blockPositions.maxSource
-        };
-        const targetPositions = {
-          start: blockPositions.minTarget,
-          end: blockPositions.maxTarget
-        };
-
-        // Example for flipped chromosomes:
-        // Positions -> 20-28, 1-13
-        // newStart = lastChrPosition - (endBlock)
-        // newEnd = lastChrPosition - (startBlock)
-        // 28-28 = 0, 28-20 = 8
-        // 28-13 = 15, 28-1 = 27
-
-        // newStart = lastChrPosition - (endBlock)
-        // newEnd = lastChrPosition - (startBlock)
-        let tmpStart = 0;
-        if (currentFlippedChromosomes.indexOf(sourceID) !== (-1)) {
-          tmpStart = sourcePositions.start;
-
-          sourcePositions.start = gffPositionDictionary[sourceID].end - sourcePositions.end;
-          sourcePositions.end = gffPositionDictionary[sourceID].end - tmpStart;
-        }
-
-        if (currentFlippedChromosomes.indexOf(targetID) !== (-1)) {
-          tmpStart = targetPositions.start;
-
-          targetPositions.start = gffPositionDictionary[targetID].end - targetPositions.end;
-          targetPositions.end = gffPositionDictionary[targetID].end - tmpStart;
-        }
-
-        dataChords.push({
-          source: {
-            id: sourceID,
-            start: sourcePositions.start,
-            end: sourcePositions.end,
-            value: {
-              id: currentBlock,
-              length: blockPositions.blockLength,
-              score: blockPositions.blockScore,
-              eValue: blockPositions.blockEValue,
-              isFlipped: blockPositions.isFlipped
-            }
-          },
-          target: {
-            id: targetID,
-            start: targetPositions.start,
-            end: targetPositions.end
+      dataChords.push({
+        source: {
+          id: sourceID,
+          start: sourcePositions.start,
+          end: sourcePositions.end,
+          value: {
+            id: currentBlock,
+            length: blockPositions.blockLength,
+            score: blockPositions.blockScore,
+            eValue: blockPositions.blockEValue,
+            isFlipped: blockPositions.isFlipped
           }
-        });
-
-        if (isEqual(dataChords[dataChords.length - 1], currentSelectedBlock)) {
-          foundCurrentSelectedBlock = true;
+        },
+        target: {
+          id: targetID,
+          start: targetPositions.start,
+          end: targetPositions.end
         }
+      });
+
+      if (isEqual(dataChords[dataChords.length - 1], currentSelectedBlock)) {
+        foundCurrentSelectedBlock = true;
       }
     }
   }
+
+  // Sorting the chords according to the drawing order
+  const filterDrawOrder = (d3.select('div.draw-blocks-order select') &&
+    d3.select('div.draw-blocks-order select').property("value")) || 'Block ID (↑)';
+
+  dataChords.sort(function compare(a, b) {
+    let countA, countB;
+    if (filterDrawOrder === 'Block ID (↑)' || filterDrawOrder === 'Block ID (↓)') {
+      countA = parseInt(a.source.value.id);
+      countB = parseInt(b.source.value.id);
+    } else if (filterDrawOrder === 'Block length (↑)' || filterDrawOrder === 'Block length (↓)') {
+      countA = a.source.value.length;
+      countB = b.source.value.length;
+    }
+
+    if (filterDrawOrder === 'Block ID (↑)' || filterDrawOrder === 'Block length (↑)') {
+      // Sorting in ascending order to draw the lengthy chords or the chords
+      // with bigger ID at the end
+      if (countA < countB) return -1;
+      if (countA > countB) return 1;
+    } else if (filterDrawOrder === 'Block ID (↓)' || filterDrawOrder === 'Block length (↓)') {
+      // Sorting in descending order to draw the lengthy chords or the chords
+      // with bigger ID at the beginning
+      if (countA > countB) return -1;
+      if (countA < countB) return 1;
+    }
+
+    return 0;
+  });
 
   // Resetting currentSelectedBlock object back to default if no block is found
   if (!foundCurrentSelectedBlock && !isEmpty(currentSelectedBlock)) {
@@ -655,13 +685,13 @@ export default function generateGenomeView({
       !foundCurrentSelectedBlock) &&
     !d3.select("#block-view-container").empty();
 
-  const transitionRemove = (selectedCheckbox.length === 0 && !showAllChromosomes);
+  const transitionRemove = (selectedCheckboxes.length === 0 && !showAllChromosomes);
 
   transitionRemoveBlockView(condition,
     () => generatePathGenomeView({
-      "shouldUpdateBlockCollisions": shouldUpdateBlockCollisions,
-      "shouldUpdateLayout": shouldUpdateLayout,
-      "transition": transition,
-      "transitionRemove": transitionRemove
+      shouldUpdateBlockCollisions: shouldUpdateBlockCollisions,
+      shouldUpdateLayout: shouldUpdateLayout,
+      transition: transition,
+      transitionRemove: transitionRemove
     }));
 };
