@@ -16,7 +16,10 @@ import isEqual from 'lodash/isEqual';
 
 import generateGenomeView from './generateGenomeView';
 import { getChordAngles } from './dragging';
-import { sortGffKeys } from './../helpers';
+import {
+  getChordsRadius,
+  sortGffKeys
+} from './../helpers';
 import { getCircosObject } from './../variables/myCircos';
 import {
   getCollisionCount,
@@ -368,7 +371,7 @@ function transitionSwapOldToNew(dataChromosomes, bestSolution, currentChr, hasMo
     .attr("transform", `rotate(${angle})`);
 
   if (!d3SelectAll(`path.chord.${currentChr}`).empty()) {
-    const ribbon = d3Ribbon().radius(GENOME_INNER_RADIUS);
+    const ribbon = d3Ribbon().radius(getChordsRadius());
 
     d3SelectAll(`path.chord.${currentChr}`)
       .raise()

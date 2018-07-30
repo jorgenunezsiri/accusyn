@@ -1,17 +1,17 @@
 const CONNECTION_COLOR = "sandybrown"; // Default connection color
 const GAP_AMOUNT = 0.04; // Circos plot gap - Value in radians
-const GENOME_INNER_RADIUS = 300; // Circos plot inner radius
+const GENOME_INNER_RADIUS = 350; // Circos plot inner radius
 const GENOME_OUTER_RADIUS = GENOME_INNER_RADIUS + 50; // Circos plot outer radius
 const RADIANS_TO_DEGREES = (180.0 / Math.PI); // Convert radians to degrees
 const DEGREES_TO_RADIANS = (Math.PI / 180.0); // Concert degrees to radians
-const WIDTH = 800; // Circos plot width
-const HEIGHT = 800; // Circos plot height
+const WIDTH = 1100; // Circos plot width
+const HEIGHT = 1100; // Circos plot height
 
 // Genome view
 const CIRCOS_CONF = {
   innerRadius: GENOME_INNER_RADIUS,
   outerRadius: GENOME_OUTER_RADIUS,
-  cornerRadius: 1,
+  cornerRadius: 2,
   gap: GAP_AMOUNT,
   labels: {
     display: true,
@@ -24,6 +24,54 @@ const CIRCOS_CONF = {
     display: false
   },
   events: {}
+};
+
+// Genome view additional tracks
+// NOTE: Histogram is always on top of heatmap
+// 4 positioning options:
+//  -> heatmap outside, histogram inside
+//  -> histogram outside, heatmap inside
+//  -> heatmap outside, histogram outside
+//  -> heatmap inside, histogram inside
+
+// Using 12% separation between inner and outer radius in tracks
+// and 3% separation from genome inner radius
+
+// Track inside top
+const TRACK_INNER_RADIUS_INSIDE_TOP = 0.85;
+const TRACK_OUTER_RADIUS_INSIDE_TOP = 0.97;
+// Track inside bottom
+const TRACK_INNER_RADIUS_INSIDE_BOTTOM = 0.70;
+const TRACK_OUTER_RADIUS_INSIDE_BOTTOM = 0.82;
+
+// Track outside top
+const TRACK_INNER_RADIUS_OUTSIDE_TOP = 1.18;
+const TRACK_OUTER_RADIUS_OUTSIDE_TOP = 1.30;
+// Track outside bottom
+const TRACK_INNER_RADIUS_OUTSIDE_BOTTOM = 1.03;
+const TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM = 1.15;
+
+// Sequential color scales - palettes
+// More info: https://github.com/d3/d3-scale-chromatic
+const SEQUENTIAL_COLOR_SCALES = {
+  Blues: 'Blues',
+  Greens: 'Greens',
+  Greys: 'Greys',
+  Oranges: 'Oranges',
+  Purples: 'Purples',
+  Reds: 'Reds',
+  BuGn: 'Blue-Green',
+  BuPu: 'Blue-Purple',
+  GnBu: 'Green-Blue',
+  OrRd: 'Orange-Red',
+  PuBu: 'Purple-Blue',
+  PuBuGn: 'Purple-Blue-Green',
+  PuRd: 'Purple-Red',
+  RdPu: 'Red-Purple',
+  YlGn: 'Yellow-Green',
+  YlGnBu: 'Yellow-Green-Blue',
+  YlOrBr: 'Yellow-Orange-Brown',
+  YlOrRd: 'Yellow-Orange-Red'
 };
 
 // Genome view transitions
@@ -54,6 +102,15 @@ export {
   CIRCOS_CONF,
   GAP_AMOUNT,
   GENOME_INNER_RADIUS,
+  TRACK_INNER_RADIUS_INSIDE_TOP,
+  TRACK_OUTER_RADIUS_INSIDE_TOP,
+  TRACK_INNER_RADIUS_INSIDE_BOTTOM,
+  TRACK_OUTER_RADIUS_INSIDE_BOTTOM,
+  TRACK_INNER_RADIUS_OUTSIDE_TOP,
+  TRACK_OUTER_RADIUS_OUTSIDE_TOP,
+  TRACK_INNER_RADIUS_OUTSIDE_BOTTOM,
+  TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM,
+  SEQUENTIAL_COLOR_SCALES,
   // Genome view transitions
   FLIPPING_CHROMOSOME_TIME,
   TRANSITION_DRAG_TIME,

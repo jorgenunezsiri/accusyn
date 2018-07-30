@@ -1,9 +1,10 @@
 // _common.scss partial file
 
+button,
 input[type="range"],
 input[type="button"],
 input[type="checkbox"],
-button {
+select {
   cursor: pointer;
 }
 

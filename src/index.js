@@ -23,14 +23,53 @@ if (process.env.NODE_ENV === 'production') {
 */
 
 /**
+ * Process BedGraph file (e.g. feature_count, feature_density)
+ *
+ * @param  {Array<string>} fileNames File names to read
+ * @param  {Function}      callback  Callback function to be called
+ * @return {undefined}               undefined
+ */
+const processBedGraph = function processBedGraph(fileNames, callback) {
+  const allData = [];
+  for (let i = 0; i < fileNames.length; i++) {
+    d3.text(`./files/${fileNames[i]}.bg`, function(data) {
+      const result = `chromosomeID\tstart\tend\tvalue\n${data}`;
+      const returnData = d3.tsvParse(result).reduce((dataInside, current) => {
+        // Not including Scaffold chromosomes
+        if (!current.chromosomeID.startsWith('Scaffold') &&
+        !current.chromosomeID.startsWith('scaffold')) {
+
+          // To check if last character is a number.
+          // If not is treated as scaffold, i.e. current is not included
+          if (isFinite(current.chromosomeID[current.chromosomeID.length - 1])) {
+            dataInside.push(current);
+          }
+        }
+
+        return dataInside;
+      }, []);
+
+      allData.push({
+        data: returnData,
+        name: fileNames[i]
+      });
+
+      // First callback parameter is null if complete task is successful
+      if (i === (fileNames.length - 1)) callback(null, allData);
+    });
+  }
+};
+
+/**
  * Process simplified gff file
  *
- * @param  {[type]}   fileName File name to read
+ * @param  {string}   fileName File name to read
+ * @param  {string}   fileType File type to read
  * @param  {Function} callback Callback function to be called
  * @return {undefined}         undefined
  */
-const processGFF = function processGFF(fileName, callback) {
-  return d3.text(fileName, function(data) {
+const processGFF = function processGFF(fileName, fileType, callback) {
+  return d3.text(`./files/${fileName}.${fileType}`, function(data) {
     const result = `chromosomeID\tgeneID\tstart\tend\n${data}`;
     const returnData = d3.tsvParse(result).reduce((dataInside, current) => {
       // Not including Scaffold chromosomes
@@ -47,6 +86,7 @@ const processGFF = function processGFF(fileName, callback) {
       return dataInside;
     }, []);
 
+    // First callback parameter is null if task is successful
     callback(null, returnData);
   });
 };
@@ -54,12 +94,13 @@ const processGFF = function processGFF(fileName, callback) {
 /**
  * Process gff3 file
  *
- * @param  {[type]}   fileName File name to read
+ * @param  {string}   fileName File name to read
+ * @param  {string}   fileType File type to read
  * @param  {Function} callback Callback function to be called
  * @return {undefined}         undefined
  */
-const processGFF3 = function processGFF3(fileName, callback) {
-  return d3.text(fileName, function(data) {
+const processGFF3 = function processGFF3(fileName, fileType, callback) {
+  return d3.text(`./files/${fileName}.${fileType}`, function(data) {
     const result = `chromosomeID\torigin\ttype\tstart\tend\tscore\tstrand\tphase\tattributes\n${data}`;
     const returnData = d3.tsvParse(result).reduce((dataInside, current) => {
       // Only including features that are mRNA
@@ -77,6 +118,7 @@ const processGFF3 = function processGFF3(fileName, callback) {
       return dataInside;
     }, []);
 
+    // First callback parameter is null if task is successful
     callback(null, returnData);
   });
 };
@@ -84,7 +126,7 @@ const processGFF3 = function processGFF3(fileName, callback) {
 /**
  * Process collinearity file
  *
- * @param  {[type]}   fileName File name to read
+ * @param  {string}   fileName File name to read
  * @param  {Function} callback Callback function to be called
  * @return {undefined}         undefined
  */
@@ -96,7 +138,7 @@ const processCollinearity = function processCollinearity(fileName, callback) {
   let isFlipped = 'no';
   let isScaffold = false;
 
-  return d3.text(fileName, function(data) {
+  return d3.text(`./files/${fileName}.collinearity`, function(data) {
     const result = data.split('\n').reduce((dataInside, current) => {
       const trimmedCurrent = current.trim();
 
@@ -160,27 +202,52 @@ const processCollinearity = function processCollinearity(fileName, callback) {
       return dataInside;
     }, []);
 
+    // First callback parameter is null if task is successful
     callback(null, result);
   });
 };
 
 (async function main() {
-  const gff = getQueryString('gff') || 'bnapus';
-  const gffType = getQueryString('gffType') || 'gff';
-  const collinearity = getQueryString('collinearity') || 'bnapus-top-5-hits';
+  // Reading query parameters
+  let gff = getQueryString('gff');
+  let gffType = getQueryString('gffType');
+  let collinearity = getQueryString('collinearity');
+  let additionalTrack = getQueryString('additionalTrack');
+
+  gff = gff !== null ? gff[0] : 'bnapus';
+  gffType = gffType !== null ? gffType[0] : 'gff';
+  collinearity = collinearity !== null ? collinearity[0] : 'bnapus_top_5_hits';
+  additionalTrack = additionalTrack !== null ? additionalTrack : (gff === 'bnapus' ? [
+    'bnapus_gene_count',
+    'bnapus_gene_density',
+    'bnapus_repeat_count',
+    'bnapus_repeat_density'
+  ] : null);
 
   const isValidUrlGff =
     await isUrlFound(`${getCurrentHost()}files/${gff}.${gffType}`);
   const isValidUrlCollinearity =
     await isUrlFound(`${getCurrentHost()}files/${collinearity}.collinearity`);
 
-  if (isValidUrlGff && isValidUrlCollinearity) {
+  let isValidUrlAdditionalTrack = true;
+  if (additionalTrack) {
+    for (let i = 0; i < additionalTrack.length; i++) {
+      isValidUrlAdditionalTrack = isValidUrlAdditionalTrack &&
+        await isUrlFound(`${getCurrentHost()}files/${additionalTrack[i]}.bg`);
+    }
+  }
+
+  if (isValidUrlGff && isValidUrlCollinearity && isValidUrlAdditionalTrack) {
     // Call generateData only after loading the data files
-    d3.queue()
-    .defer(gffType === 'gff3' ? processGFF3 : processGFF,
-    `./files/${gff}.${gffType}`)
-    .defer(processCollinearity, `./files/${collinearity}.collinearity`)
-    .await(generateData);
+    const q = d3.queue();
+    q.defer(gffType === 'gff3' ? processGFF3 : processGFF, gff, gffType);
+    q.defer(processCollinearity, collinearity);
+
+    if (additionalTrack) {
+      q.defer(processBedGraph, additionalTrack);
+    }
+
+    q.await(generateData);
   } else {
     ReactDOM.render(
       <AlertWithTimeout

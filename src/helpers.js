@@ -6,12 +6,20 @@ import sortedUniq from 'lodash/sortedUniq';
 
 import generateGenomeView from './genomeView/generateGenomeView';
 
-import {
-  getDefaultChromosomeOrder
-} from './variables/currentChromosomeOrder';
+import { getDefaultChromosomeOrder } from './variables/currentChromosomeOrder';
+import { isAdditionalTrackAdded } from './variables/additionalTrack';
 
 // Contants
 import {
+  GENOME_INNER_RADIUS,
+  TRACK_INNER_RADIUS_INSIDE_TOP,
+  TRACK_OUTER_RADIUS_INSIDE_TOP,
+  TRACK_INNER_RADIUS_INSIDE_BOTTOM,
+  TRACK_OUTER_RADIUS_INSIDE_BOTTOM,
+  TRACK_INNER_RADIUS_OUTSIDE_TOP,
+  TRACK_OUTER_RADIUS_OUTSIDE_TOP,
+  TRACK_INNER_RADIUS_OUTSIDE_BOTTOM,
+  TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM,
   WIDTH,
   HEIGHT
 } from './variables/constants';
@@ -46,8 +54,8 @@ export function getSelectedCheckboxes(optionalClass = "") {
   });
 
   return {
-    currentClassCheckboxes: currentClassCheckboxes,
-    selectedCheckboxes: selectedCheckboxes
+    currentClassCheckboxes,
+    selectedCheckboxes
   };
 };
 
@@ -127,17 +135,156 @@ export function resetChromosomeCheckboxes() {
 };
 
 /**
+ * Gets the inner and outer radius for heatmap and histogram based on current placements
+ * NOTE: This function is only called when there is a selected track
+ *
+ * @return {Object} Inner and outer radius
+ */
+export function getInnerAndOuterRadiusAdditionalTracks() {
+  const selectedHeatmapTrack = d3.select("div.heatmap-track-input select") &&
+    d3.select("div.heatmap-track-input select").property("value");
+  const trackPlacementHeatmapTrack = d3.select("div.heatmap-track-placement select") &&
+    d3.select("div.heatmap-track-placement select").property("value");
+
+  const selectedHistogramTrack = d3.select("div.histogram-track-input select") &&
+    d3.select("div.histogram-track-input select").property("value");
+  const trackPlacementHistogramTrack = d3.select("div.histogram-track-placement select") &&
+    d3.select("div.histogram-track-placement select").property("value");
+
+  // Placing both additionalTracks outside by default
+  let innerRadiusHeatmap = TRACK_INNER_RADIUS_OUTSIDE_BOTTOM;
+  let outerRadiusHeatmap = TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM;
+  let innerRadiusHistogram = TRACK_INNER_RADIUS_OUTSIDE_TOP;
+  let outerRadiusHistogram = TRACK_OUTER_RADIUS_OUTSIDE_TOP;
+
+  if (selectedHeatmapTrack === 'None') {
+    // If both tracks are outside and heatmap is empty, then histogram takes its placement
+    innerRadiusHistogram = TRACK_INNER_RADIUS_OUTSIDE_BOTTOM;
+    outerRadiusHistogram = TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM;
+  }
+
+  if (trackPlacementHeatmapTrack === 'Inside' && trackPlacementHistogramTrack === 'Inside') {
+    // If boths are inside
+    innerRadiusHeatmap = TRACK_INNER_RADIUS_INSIDE_BOTTOM;
+    outerRadiusHeatmap = TRACK_OUTER_RADIUS_INSIDE_BOTTOM;
+    innerRadiusHistogram = TRACK_INNER_RADIUS_INSIDE_TOP;
+    outerRadiusHistogram = TRACK_OUTER_RADIUS_INSIDE_TOP;
+
+    if (selectedHistogramTrack === 'None') {
+      // If both tracks are inside and histogram is empty, then heatmap takes its placement
+      innerRadiusHeatmap = TRACK_INNER_RADIUS_INSIDE_TOP;
+      outerRadiusHeatmap = TRACK_OUTER_RADIUS_INSIDE_TOP;
+    }
+  } else if (trackPlacementHeatmapTrack === 'Outside' && trackPlacementHistogramTrack === 'Inside') {
+    // If heatmap is outside and histogram is inside
+    innerRadiusHeatmap = TRACK_INNER_RADIUS_OUTSIDE_BOTTOM;
+    outerRadiusHeatmap = TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM;
+    innerRadiusHistogram = TRACK_INNER_RADIUS_INSIDE_TOP;
+    outerRadiusHistogram = TRACK_OUTER_RADIUS_INSIDE_TOP;
+
+    if (selectedHistogramTrack === 'None') {
+      // For the purpose of getting the chord radius, since the histogram is inside
+      // and no histogram track is selected, then reset the histogram radii
+      innerRadiusHistogram = 1.0;
+      outerRadiusHistogram = 1.0;
+    }
+  } else if (trackPlacementHeatmapTrack === 'Inside' && trackPlacementHistogramTrack === 'Outside') {
+    // If heatmap is inside and histogram is outside
+    innerRadiusHeatmap = TRACK_INNER_RADIUS_INSIDE_TOP;
+    outerRadiusHeatmap = TRACK_OUTER_RADIUS_INSIDE_TOP;
+    innerRadiusHistogram = TRACK_INNER_RADIUS_OUTSIDE_BOTTOM;
+    outerRadiusHistogram = TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM;
+
+    if (selectedHeatmapTrack === 'None') {
+      // For the purpose of getting the chord radius, since the heatmap is inside
+      // and no heatmap track is selected, then reset the heatmap radii
+      innerRadiusHeatmap = 1.0;
+      outerRadiusHeatmap = 1.0;
+    }
+  }
+
+  return {
+    heatmap: {
+      innerRadius: innerRadiusHeatmap,
+      outerRadius: outerRadiusHeatmap
+    },
+    histogram: {
+      innerRadius: innerRadiusHistogram,
+      outerRadius: outerRadiusHistogram
+    }
+  };
+};
+
+/**
+ * Gets the radius for plotting the chords accurately
+ *
+ * @return {number} Chords radius number
+ */
+export function getChordsRadius() {
+  let radius = GENOME_INNER_RADIUS;
+  if (isAdditionalTrackAdded()) {
+    // Inner and outer radius
+    const { heatmap, histogram } = getInnerAndOuterRadiusAdditionalTracks();
+    // Take the minimum between both track innerRadius
+    const innerRadius = Math.min(heatmap.innerRadius, histogram.innerRadius);
+    if (innerRadius < 1.00) {
+      console.log('\n\n\n\n\nINNER RADIUS: ', innerRadius);
+      // If minimum is below 1.00, then use proportion of genome inner radius
+      radius = innerRadius * radius;
+    }
+  }
+
+  return radius;
+};
+
+/**
  * Get the value of a querystring
  *
- * @param  {String} field The field to get the value of
- * @param  {String} url   The URL to get the value from (optional)
- * @return {String}       The field value
+ * @param  {string} field  The field to get the value of
+ * @param  {string} url    The URL to get the value from (optional)
+ * @return {Array<string>} All the field values
  */
 export function getQueryString(field, url) {
   const href = url ? url : window.location.href;
-  const reg = new RegExp('[?&]' + field + '=([^&#]*)', 'i');
-  const string = reg.exec(href);
-  return string ? string[1] : null;
+  const regex = new RegExp('[?&]' + field + '=([^&#]*)', 'ig');
+  const matches = []; // Array of matches
+  let match; // Variable for each match
+
+  // Obtaining all the matches from the query strings with the exec function
+  while ((match = regex.exec(href)) !== null) {
+    matches.push(match[1]); // Pushing the result group (parenthesized substring)
+  }
+
+  console.log("MATCHES: ", matches);
+
+  return (matches && matches.length > 0) ? matches : null;
+};
+
+/**
+ * Calculates the middle value between two numbers
+ * NOTE: Numeric helper
+ *
+ * @param  {number} low  First number
+ * @param  {number} high Second number
+ * @return {number}      Middle value result
+ */
+export function calculateMiddleValue(low, high) {
+  return low + (high - low) / 2.0;
+};
+
+/**
+ * Rounds float number using the decimalPlaces
+ * NOTE: Numeric helper
+ *
+ * @param  {number} value         Current number value
+ * @param  {number} decimalPlaces Number of digits after the decimal points
+ * @return {number}               Rounded number
+ */
+export function roundFloatNumber(value, decimalPlaces = 0) {
+  // Check if number is float using modulus
+  // Integer % 1 will always be equal to zero
+  // More info: https://stackoverflow.com/a/2304062
+  return value % 1 !== 0 ? parseFloat(value.toFixed(decimalPlaces)) : value;
 };
 
 /**
@@ -155,7 +302,7 @@ export async function isUrlFound(url) {
 
     return response.status === 200; // Status should be OK if valid URL
 
-  } catch(error) {
+  } catch (error) {
     return false;
   }
 };
@@ -288,7 +435,7 @@ export function sortGffKeys(gffKeys) {
   // Using sensitivity: base
   // This means that only strings that differ in base letters compare as unequal.
   // e.g. a ≠ b, a = á, a = A.
-  const collator = new Intl.Collator('en', {numeric: true, sensitivity: 'base'});
+  const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 
   return gffCopy.sort(collator.compare);
 };

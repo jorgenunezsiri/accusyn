@@ -30,6 +30,7 @@ import {
   lookForBlocksPositions,
   partitionGffKeys,
   resetChromosomeCheckboxes,
+  roundFloatNumber,
   showChromosomeConnectionInformation,
   sortGffKeys,
   updateAngle,
@@ -38,27 +39,37 @@ import {
 
 // Variables getters and setters
 import { setBlockDictionary } from './variables/blockDictionary';
-import { setCircosObject } from './variables/myCircos';
 import {
   setCurrentChromosomeOrder,
   setDefaultChromosomeOrder
 } from './variables/currentChromosomeOrder';
 import { setGeneDictionary } from './variables/geneDictionary';
 import { setGffDictionary } from './variables/gffDictionary';
+import {
+  getAdditionalTrackArray,
+  isAdditionalTrackAdded,
+  pushAdditionalTrack
+} from './variables/additionalTrack';
+import { setCircosObject } from './variables/myCircos';
 
 // Constants
 import { sampleFiles } from './variables/templates';
-import { WIDTH, HEIGHT } from './variables/constants';
+import {
+  SEQUENTIAL_COLOR_SCALES,
+  WIDTH,
+  HEIGHT
+} from './variables/constants';
 
 /**
  * Generates and preprocess data for the syteny browser
  *
- * @param  {Object} error               Error handler
- * @param  {Array<Object>} gff          Data from gff file
- * @param  {Array<Object>} collinearity Data from collinearity file
- * @return {undefined}                  undefined
+ * @param  {Object} error                     Error handler
+ * @param  {Array<Object>} gff                Data from gff file
+ * @param  {Array<Object>} collinearity       Data from collinearity file
+ * @param  {Array<Object>} additionalTrack    Data from additional track
+ * @return {undefined}                        undefined
  */
-export default function generateData(error, gff, collinearity) {
+export default function generateData(error, gff, collinearity, additionalTrack) {
   if (error) return console.error(error);
 
   console.log("DATA LOADED !!!");
@@ -126,10 +137,15 @@ export default function generateData(error, gff, collinearity) {
   // Obtaining keys from dictionary and sorting them in ascending order
   gffKeys = sortGffKeys(Object.keys(gffPositionDictionary)).slice();
 
+  let totalChrEnd = 0;
   // Setting the color for each chromosome after sorting the gffKeys
   for (let i = 0; i < gffKeys.length; i++) {
+    totalChrEnd += gffPositionDictionary[gffKeys[i]].end;
     gffPositionDictionary[gffKeys[i]].color = colors(i);
   }
+
+  console.log('TOTAL CHR END: ', totalChrEnd);
+  console.log('MAXIMUM WINDOW SIZE: ', Math.ceil(totalChrEnd / 2000) + 3000);
 
   // Setting gff dictionary with the start and end position for each chr
   setGffDictionary(gffPositionDictionary);
@@ -137,6 +153,38 @@ export default function generateData(error, gff, collinearity) {
   // Setting the current order (default to ordered array of chromosomes)
   setCurrentChromosomeOrder(gffKeys.slice());
   setDefaultChromosomeOrder(gffKeys.slice());
+
+  console.log('additionalTrack: ', additionalTrack);
+
+  if (additionalTrack) {
+    for (let i = 0; i < additionalTrack.length; i++) {
+      const additionalTrackArray = []; // Array that includes the data from the additional tracks BedGraph file
+      const { data: currentData, name } = additionalTrack[i];
+      let maxValue = 0, minValue = 100000000;
+
+      for (let i = 0; i < currentData.length; i++) {
+        let value = roundFloatNumber(parseFloat(currentData[i].value), 6);
+        const additionalTrackObject = {
+          block_id: currentData[i].chromosomeID,
+          start: parseInt(currentData[i].start),
+          end: parseInt(currentData[i].end),
+          value: value
+        };
+
+        minValue = Math.min(minValue, value);
+        maxValue = Math.max(maxValue, value);
+
+        additionalTrackArray.push(additionalTrackObject);
+      }
+
+      pushAdditionalTrack({
+        data: additionalTrackArray,
+        minValue: minValue,
+        maxValue: maxValue,
+        name: name
+      });
+    }
+  }
 
   const blockDictionary = {}; // Dictionary to store the data for all blocks
   const connectionDictionary = {}; // Dictionary to store the data for all the connections between any source and target
@@ -238,8 +286,7 @@ export default function generateData(error, gff, collinearity) {
 
   // Updating the style of the configuration panel
   d3.select("#config")
-    .style("display", "block")
-    .style("width", `${WIDTH / 2.5}px`);
+    .style("display", "block");
 
   // Information title
   d3.select("#form-config")
@@ -434,7 +481,7 @@ export default function generateData(error, gff, collinearity) {
     .attr("class", "filter-connections")
     .html(function() {
       return `
-        <label for="filter-block-size" style="display: inline-block; text-align: left; width: 125px">
+        <label for="filter-block-size">
           <span id="filter-block-size-value">...</span>
         </label>
         `;
@@ -444,8 +491,7 @@ export default function generateData(error, gff, collinearity) {
     .append("p")
     .attr("class", "filter-connections")
     .html(function() {
-      return `<input style="margin-left: 45px; width: 195px" type="range" min="1" max=
-        ${maxBlockSize.toString()} id="filter-block-size">`;
+      return `<input type="range" min="1" max=${maxBlockSize.toString()} id="filter-block-size">`;
     });
 
   // Filter angle input range
@@ -454,13 +500,13 @@ export default function generateData(error, gff, collinearity) {
     .attr("class", "filter-angle-div")
     .html(function() {
       return `
-        <label for="nAngle-genome-view" style="display: inline-block; margin-bottom: 0; text-align: left; width: 110px">
-           <span>Rotate = </span>
-           <span id="nAngle-genome-view-value">…</span>
-         </label>
-         <p>
-           <input type="range" min="0" max="360" id="nAngle-genome-view" style="margin-left: 45px; width: 195px">
-         </p>
+        <label for="nAngle-genome-view">
+          <span>Rotate = </span>
+          <span id="nAngle-genome-view-value">…</span>
+        </label>
+        <p>
+          <input type="range" min="0" max="360" id="nAngle-genome-view">
+        </p>
       `;
     });
 
@@ -490,6 +536,140 @@ export default function generateData(error, gff, collinearity) {
     .append("input")
     .attr("type", "button")
     .attr("value", "Minimize collisions");
+
+  if (isAdditionalTrackAdded()) {
+    const currentAdditionalTracks = getAdditionalTrackArray();
+    console.log('currentAdditionalTracks: ', currentAdditionalTracks);
+    // Loading input option tags for select
+    let inputOptions = '<option value="None" selected="selected">None</option>';
+    for (let i = 0; i < currentAdditionalTracks.length; i++) {
+      inputOptions += `
+        <option value="${currentAdditionalTracks[i].name}">${currentAdditionalTracks[i].name}</option>
+        `;
+    }
+
+    // Loading colors option tag for select
+    const allColors = Object.keys(SEQUENTIAL_COLOR_SCALES);
+    let colorOptions = "";
+    for (let i = 0; i < allColors.length; i++) {
+      const key = allColors[i];
+      colorOptions += `
+        <option value="${key}">${SEQUENTIAL_COLOR_SCALES[key]}</option>
+        `;
+    }
+
+    // Additional tracks title
+    d3.select("#form-config")
+      .append("h5")
+      .text("Additional tracks");
+
+    // Heatmap track
+    d3.select("#form-config")
+      .append("div")
+      .attr("class", "heatmap-track additional-track")
+      .append("p")
+      .html("<strong>Heatmap track</strong>");
+
+    // Heatmap additional track select input
+    d3.select(".heatmap-track")
+      .append("div")
+      .attr("class", "heatmap-track-input additional-track-block")
+      .append("p")
+      .text("Input: ");
+
+    d3.select("div.heatmap-track-input")
+      .append("p")
+      .append("select")
+      .html(inputOptions);
+
+    // Heatmap color scale
+    d3.select(".heatmap-track")
+    .append("div")
+    .attr("class", "heatmap-track-color additional-track-block")
+    .append("p")
+    .text("Palette: ");
+
+    d3.select("div.heatmap-track-color")
+    .append("p")
+    .append("select")
+    .html(colorOptions);
+
+    // Heatmap placement
+    d3.select(".heatmap-track")
+      .append("div")
+      .attr("class", "heatmap-track-placement additional-track-block")
+      .append("p")
+      .text("Placement: ");
+
+    d3.select("div.heatmap-track-placement")
+      .append("p")
+      .append("select")
+      .html(function() {
+        return `
+          <option value="Outside" selected="selected">Outside</option>
+          <option value="Inside">Inside</option>
+          `;
+      });
+
+    // Histogram track
+    d3.select("#form-config")
+      .append("div")
+      .attr("class", "histogram-track additional-track")
+      .append("p")
+      .html("<strong>Histogram track</strong>");
+
+    // Histogram additional track select input
+    d3.select(".histogram-track")
+      .append("div")
+      .attr("class", "histogram-track-input additional-track-block")
+      .append("p")
+      .text("Input: ");
+
+    d3.select("div.histogram-track-input")
+      .append("p")
+      .append("select")
+      .html(inputOptions);
+
+    // Histogram color scale
+    d3.select(".histogram-track")
+    .append("div")
+    .attr("class", "histogram-track-color additional-track-block")
+    .append("p")
+    .text("Palette: ");
+
+    d3.select("div.histogram-track-color")
+    .append("p")
+    .append("select")
+    .html(colorOptions);
+
+    // Histogram placement
+    d3.select(".histogram-track")
+      .append("div")
+      .attr("class", "histogram-track-placement additional-track-block")
+      .append("p")
+      .text("Placement: ");
+
+    d3.select("div.histogram-track-placement")
+      .append("p")
+      .append("select")
+      .html(function() {
+        return `
+          <option value="Outside" selected="selected">Outside</option>
+          <option value="Inside">Inside</option>
+          `;
+      });
+
+    // Select on change for heatmap and histogram
+    d3.selectAll("div.additional-track-block select")
+      .on("change", function() {
+        // Calling genome view for updates with default transition
+        generateGenomeView({
+          transition: { shouldDo: false },
+          shouldUpdateBlockCollisions: false,
+          shouldUpdateLayout: true
+        });
+      });
+  }
 
   // Connections title
   d3.select("#form-config")

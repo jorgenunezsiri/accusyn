@@ -30,8 +30,12 @@ import findIndex from 'lodash/findIndex';
 import generateBlockView from './../generateBlockView';
 
 import {
+  calculateMiddleValue,
+  getChordsRadius,
+  getInnerAndOuterRadiusAdditionalTracks,
   getSelectedCheckboxes,
   removeBlockView,
+  roundFloatNumber,
   updateBlockNumberHeadline
 } from './../helpers';
 
@@ -51,7 +55,6 @@ import {
 
 // Variable getters and setters
 import { getBlockDictionary } from './../variables/blockDictionary';
-import { getCircosObject } from './../variables/myCircos';
 import {
   getCurrentChromosomeMouseDown,
   setCurrentChromosomeMouseDown
@@ -61,6 +64,11 @@ import {
   getDefaultChromosomeOrder
 } from './../variables/currentChromosomeOrder';
 import { getGffDictionary } from './../variables/gffDictionary';
+import {
+  getAdditionalTrackArray,
+  isAdditionalTrackAdded
+} from './../variables/additionalTrack';
+import { getCircosObject } from './../variables/myCircos';
 import { getSavedCollisionSolutionsDictionary } from './../variables/savedCollisionSolutionsDictionary';
 
 // Contants
@@ -69,6 +77,7 @@ import {
   CONNECTION_COLOR,
   DEFAULT_GENOME_TRANSITION_TIME,
   FLIPPING_CHROMOSOME_TIME,
+  GENOME_INNER_RADIUS,
   REMOVE_BLOCK_VIEW_TRANSITION_TIME
 } from './../variables/constants';
 
@@ -150,6 +159,108 @@ function getDataChromosomes() {
 }
 
 /**
+ * Get current track array and position by only selecting chromosomes from dataChromosomes
+ *
+ * @param  {string} selectedTrack Selected track name
+ * @return {Object} Current track array and position
+ */
+function getCurrentTrack(selectedTrack) {
+  const additionalTrackArray = getAdditionalTrackArray();
+  console.log('ADDITIONAL TRACK ARRAY: ', additionalTrackArray);
+
+  let selectedTrackPosition = findIndex(additionalTrackArray, ['name', selectedTrack]);
+  console.log('selectedTrackPosition: ', selectedTrackPosition);
+  if (selectedTrackPosition === (-1)) selectedTrackPosition = 0;
+
+  // Adding current track by only selecting chromosomes from dataChromosomes
+  const currentTrack = cloneDeep(additionalTrackArray[selectedTrackPosition].data).reduce(
+    function(dataInside, currentChr) {
+      const position = findIndex(dataChromosomes, ['id', currentChr['block_id']]);
+      if (position !== (-1)) dataInside.push(currentChr);
+      return dataInside;
+    }, []);
+
+  console.log('CURRENT TRACK: ', currentTrack);
+
+  return {
+    currentTrack,
+    selectedTrackPosition
+  };
+}
+
+/**
+ * Generates additional track from additional track array
+ *
+ * @param  {string}    trackName Current trackName
+ * @return {undefined} undefined
+ */
+function generateAdditionalTrack(trackName) {
+  const myCircos = getCircosObject();
+
+  const selectedTrack = d3.select(`div.${trackName}-track-input select`) &&
+    d3.select(`div.${trackName}-track-input select`).property("value");
+
+  // Resetting histogram by removing it first
+  myCircos.removeTracks(trackName);
+
+  if (selectedTrack !== 'None') {
+    const trackColor = (d3.select(`div.${trackName}-track-color select`) &&
+      d3.select(`div.${trackName}-track-color select`).property("value")) || 'YlOrRd';
+
+    // Inner and outer radius
+    const { innerRadius, outerRadius } = getInnerAndOuterRadiusAdditionalTracks()[trackName];
+    // Current track array and position
+    const { currentTrack, selectedTrackPosition } = getCurrentTrack(selectedTrack);
+    // Axes
+    const { minValue, maxValue } = getAdditionalTrackArray()[selectedTrackPosition];
+
+    // Middle value
+    const middleValue = calculateMiddleValue(minValue, maxValue);
+
+    const axes = []; // Always pushing 5 axes
+    axes.push({ position: roundFloatNumber(minValue, 2), thickness: 2 });
+    axes.push({ position: roundFloatNumber(calculateMiddleValue(minValue, middleValue), 2), thickness: 2 });
+    axes.push({ position: roundFloatNumber(middleValue, 2), thickness: 2 });
+    axes.push({ position: roundFloatNumber(calculateMiddleValue(middleValue, maxValue), 2), thickness: 2 });
+    axes.push({ position: roundFloatNumber(maxValue, 2), thickness: 2 });
+
+    console.log('AXES: ', axes);
+
+    const configuration = {
+      innerRadius: innerRadius,
+      outerRadius: outerRadius,
+      logScale: false,
+      color: trackColor,
+      tooltipContent: function(d) {
+        // Only show tooltip if the user is not dragging
+        const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
+        if (currentChromosomeMouseDown === "") {
+          const { block_id, start, end, value } = d;
+          return `<h6><u>Bin information</u></h6>
+          <h6>Chromosome: ${block_id}</h6>
+          <h6>Start: ${start}</h6>
+          <h6>End: ${end}</h6>
+          <h6>Value: ${value}</h6>`;
+        }
+
+        return;
+      }
+    };
+
+    if (trackName === 'heatmap') {
+      // Loading heatmap
+      myCircos.heatmap('heatmap', currentTrack, configuration);
+    } else if (trackName === 'histogram') {
+      configuration.axes = axes;
+      configuration.showAxesTooltip = true; // Showing axes tooltip by default
+
+      // Loading histogram
+      myCircos.histogram('histogram', currentTrack, configuration);
+    }
+  }
+}
+
+/**
  * Generates Circos layout from chromosome data
  *
  * @return {undefined} undefined
@@ -208,6 +319,12 @@ function generateCircosLayout() {
       }
     }
   }, cloneDeep(CIRCOS_CONF)));
+
+  // Adding additional tracks
+  if (isAdditionalTrackAdded()) {
+    generateAdditionalTrack('heatmap');
+    generateAdditionalTrack('histogram');
+  }
 
   // Adding the dragHandler to the svg after populating the dataChromosomes object
   addSvgDragHandler(dataChromosomes);
@@ -282,7 +399,7 @@ function generatePathGenomeView({
   // TODO: Think about this condition and the Updating label (multiple d3.select everywhere)
   // Updating block collisions should happen if flag is true
   // (when filtering transitions are not happening and flag is true at the end of filtering)
-  // It should also happen when transitions are true
+  // It should also happen when transitions are true and flag is not defined
   if (shouldUpdateBlockCollisions ||
     shouldUpdateBlockCollisions == null && (transition && transition.shouldDo)) {
     setTimeout(() => updateBlockCollisionHeadline(dataChromosomes, dataChords),
@@ -296,8 +413,9 @@ function generatePathGenomeView({
   }
 
   // Adding the configuration for the Circos chords using the generated array
+  const radius = getChordsRadius();
   myCircos.chords('chords', dataChords, {
-    radius: null,
+    radius: radius === GENOME_INNER_RADIUS ? null : radius,
     logScale: false,
     opacity: function(d) {
       if (foundCurrentSelectedBlock) {
@@ -459,7 +577,15 @@ function generatePathGenomeView({
       d3.select('p.show-best-layout input').property("checked", false);
 
       const localDataChromosomes = cloneDeep(dataChromosomes);
-      const currentChromosomeOrder = getDefaultChromosomeOrder();
+      // Only choose the current ones from localDataChromosomes
+      const currentChromosomeOrder = getDefaultChromosomeOrder().reduce(
+        function(dataInside, currentChr) {
+          const position = findIndex(localDataChromosomes, ['id', currentChr]);
+          if (position !== (-1)) dataInside.push(currentChr);
+          return dataInside;
+        }, []);
+
+      console.log('CURRENT ORDER: ', currentChromosomeOrder);
 
       const orderedDataChromosomes = currentChromosomeOrder.map(function(currentChr) {
         const position = findIndex(localDataChromosomes, ['id', currentChr]);
@@ -673,10 +799,6 @@ export default function generateGenomeView({
       }, 50);
     });
 
-  if (shouldUpdateLayout) {
-    generateCircosLayout();
-  }
-
   // Remove block view if user is filtering
   // and selected block is not present anymore
   // OR when the block is simply not present (because of view changes (e.g. flipping a chromosome))
@@ -687,11 +809,16 @@ export default function generateGenomeView({
 
   const transitionRemove = (selectedCheckboxes.length === 0 && !showAllChromosomes);
 
-  transitionRemoveBlockView(condition,
-    () => generatePathGenomeView({
+  transitionRemoveBlockView(condition, function callBackAfterRemovingBlockView() {
+    if (shouldUpdateLayout) {
+      generateCircosLayout();
+    }
+
+    generatePathGenomeView({
       shouldUpdateBlockCollisions: shouldUpdateBlockCollisions,
       shouldUpdateLayout: shouldUpdateLayout,
       transition: transition,
       transitionRemove: transitionRemove
-    }));
+    });
+  });
 };

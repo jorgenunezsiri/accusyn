@@ -2,7 +2,10 @@ import * as d3 from 'd3';
 import find from 'lodash/find';
 
 import generateGenomeView  from './generateGenomeView';
-import { updateAngle } from './../helpers';
+import {
+  getChordsRadius,
+  updateAngle
+} from './../helpers';
 import {
   getCurrentChromosomeMouseDown,
   setCurrentChromosomeMouseDown
@@ -109,7 +112,7 @@ export function updateChordsWhileDragging({
   // Only update if chromosome (parameter) has chords
   // meaning that selection should not be empty
   if (!d3.selectAll(`path.chord.${chromosome}`).empty()) {
-    const ribbon = d3.ribbon().radius(GENOME_INNER_RADIUS);
+    const ribbon = d3.ribbon().radius(getChordsRadius());
     const isChrMouseDown = transitionDuration === 0 &&
       chromosome === currentChromosomeMouseDown;
 

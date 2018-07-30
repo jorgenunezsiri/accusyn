@@ -3,24 +3,38 @@
 #config {
   float: left;
   margin: 20px 0 0 20px;
+  width: 320px; // width = 800 / 2.5
 
   #documentation-container {
     button {
       position: absolute;
-      right: 10px;
-      top: 10px;
+      right: 20px;
+      top: 20px;
     }
   }
 }
 
 #form-config {
-  div.draw-blocks-order {
+  // overflow-y: scroll; // To consider later
+  // height: 1300px; // To consider later
+  padding: 20px 0 0 20px;
+  margin-bottom: 20px;
+
+  div.draw-blocks-order,
+  div.additional-track-block {
     p {
       display: inline-block;
 
       &:nth-child(2) {
         margin-left: 5px;
       }
+    }
+  }
+
+  p.filter-connections, div.filter-angle-div p {
+    input {
+      margin-left: 45px;
+      width: 195px;
     }
   }
 
@@ -39,6 +53,12 @@
     }
   }
 
+  div.filter-angle-div {
+    label {
+      margin-bottom: 0;
+    }
+  }
+
   p.save-layout, p.reset-layout {
     display: inline-block;
 
@@ -49,6 +69,12 @@
 
   p.save-layout {
     margin-right: 10px;
+  }
+
+  div.additional-track {
+    > p {
+      margin-bottom: 8px;
+    }
   }
 
   .disabled {

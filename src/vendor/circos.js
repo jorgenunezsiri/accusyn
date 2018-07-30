@@ -24245,7 +24245,7 @@ var _buildAxisData = function _buildAxisData(value, axesGroup, conf) {
 
 var _buildAxesData = exports._buildAxesData = function _buildAxesData(conf) {
   return (0, _reduce2.default)(conf.axes, function (aggregator, axesGroup) {
-    if (!axesGroup.position && !axesGroup.spacing) {
+    if (axesGroup.position == null && axesGroup.spacing == null) {
       _logger2.default.warn('Skipping axe group with no position and spacing defined');
       return aggregator;
     }
