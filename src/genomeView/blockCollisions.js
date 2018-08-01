@@ -724,7 +724,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
     ReactDOM.render(
       <AlertWithTimeout
         color = "danger"
-        message = {"This feature does not work with more than 10,000 block collisions."}
+        message = {"This feature does not work with more than 25,000 block collisions."}
       />,
       document.getElementById('alert-container')
     );
