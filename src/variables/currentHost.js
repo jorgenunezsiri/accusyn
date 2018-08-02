@@ -1,8 +1,10 @@
 /**
  * Getter function for current host
  *
- * @return {string} Current chromosome order
+ * @return {string} Current host with protocol
  */
 export function getCurrentHost() {
-  return `http://${window.location.host}/`;
+  const currentHost = window.location.host;
+  const currentProtocol = window.location.protocol;
+  return `${currentProtocol}//${currentHost}/`;
 };
