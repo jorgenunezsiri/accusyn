@@ -30,3 +30,24 @@ export function setCircosObject() {
       height: HEIGHT
     });
 };
+
+let _circosRotateValue = 0;
+
+/**
+ * Getter function for Circos rotate value
+ *
+ * @return {number} Circos rotate value
+ */
+export function getCircosRotateValue() {
+  return _circosRotateValue;
+};
+
+/**
+ * Setter function for Circos rotate value
+ *
+ * @param {number} rotateValue Rotate value
+ * @return {undefined} undefined
+ */
+export function setCircosRotateValue(rotateValue) {
+  _circosRotateValue = rotateValue;
+};

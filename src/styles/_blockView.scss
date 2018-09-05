@@ -1,9 +1,31 @@
 // _blockView.scss partial file
 
 #block-view-container {
-  float: left;
-  margin-left: 75px;
-  margin-top: 200px;
+  margin-top: 125px;
+  padding-right: 0;
+
+  &.dark-mode {
+    svg {
+      background-color: #222222;
+      border-radius: 20px;
+    }
+
+    text.axis-label,
+    .axisY0 g.tick text,
+    .axisY1 g.tick text {
+      fill: #ffffff;
+    }
+
+    .axisY0 g.tick line,
+    .axisY1 g.tick line {
+      stroke: #ffffff;
+    }
+  }
+
+  .axisY0 g.tick line,
+  .axisY1 g.tick line {
+    stroke-width: 2px;
+  }
 
   .rect-clip-block {
     fill: none;
@@ -15,10 +37,15 @@
     text-anchor: middle;
   }
 
+  .outer-content {
+    margin: 0 auto;
+    max-width: 550px;
+  }
+
   .outer-clickable-content {
     display: flex;
     justify-content: space-between;
-    margin-top: -30px;
+    margin-top: 10px;
   }
 
   p {

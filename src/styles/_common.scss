@@ -34,14 +34,20 @@ label {
   }
 }
 
+#page-container {
+  padding: 0;
+}
+
 .container {
-  position: relative;
+  max-width: 100%;
 }
 
 // Container for bootstrap alert
 .alert {
+  left: 50%;
   position: absolute;
   top: 10px;
+  transform: translate(-50%, 0);
 }
 
 // Button for bootstrap alert

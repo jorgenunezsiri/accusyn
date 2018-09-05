@@ -11,7 +11,6 @@ export function getAdditionalTrackArray() {
   return _additionalTrackArray;
 };
 
-
 /**
  * To check whether an additional track is added or no
  *

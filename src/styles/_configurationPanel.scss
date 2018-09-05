@@ -1,16 +1,16 @@
 // _configurationPanel.scss partial file
 
 #config {
-  float: left;
   margin: 20px 0 0 20px;
-  width: 320px; // width = 800 / 2.5
+  min-width: 330px; // width = 800 / 2.5 + 10px
+  max-width: 330px; // width = 800 / 2.5 + 10px
+}
 
-  #documentation-container {
-    button {
-      position: absolute;
-      right: 20px;
-      top: 20px;
-    }
+#page-container #documentation-container {
+  button {
+    position: absolute;
+    right: 20px;
+    top: 20px;
   }
 }
 
@@ -21,7 +21,8 @@
   margin-bottom: 20px;
 
   div.draw-blocks-order,
-  div.additional-track-block {
+  div.additional-track-block,
+  div.chromosomes-palette {
     p {
       display: inline-block;
 

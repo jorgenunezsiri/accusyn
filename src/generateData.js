@@ -23,7 +23,6 @@ import ReactDOM from 'react-dom';
 import Modal from './reactComponents/Modal';
 
 import generateGenomeView from './genomeView/generateGenomeView';
-import { schemeSet2 } from 'd3-scale-chromatic';
 
 import {
   getSelectedCheckboxes,
@@ -55,6 +54,7 @@ import { setCircosObject } from './variables/myCircos';
 // Constants
 import { sampleFiles } from './variables/templates';
 import {
+  CATEGORICAL_COLOR_SCALES,
   SEQUENTIAL_COLOR_SCALES,
   WIDTH,
   HEIGHT
@@ -74,7 +74,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
 
   console.log("DATA LOADED !!!");
 
-  const colors = d3.scaleOrdinal(schemeSet2); // Default color scheme
+  const colors = d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES['Normal']); // Default color scheme
   const geneDictionary = {}; // Dictionary that includes the start and end position data for each gene
   let gffKeys = []; // Array that includes the sorted keys from the gff dictionary
   const gffPositionDictionary = {}; // Dictionary that includes the colors, start and end position data for each chromosome
@@ -338,8 +338,32 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .on("change", function() {
       // Calling genome view for updates
       generateGenomeView({
-        shouldUpdateBlockCollisions: false,
-        shouldUpdateLayout: false
+        shouldUpdateBlockCollisions: false
+      });
+    });
+
+  // Dark mode checkbox
+  d3.select("#form-config")
+    .append("p")
+    .attr("class", "dark-mode")
+    .attr("title", "If selected, both views will have black background.")
+    .append("label")
+    .append("input")
+    .attr("type", "checkbox")
+    .attr("name", "dark-mode")
+    .attr("value", "Dark mode")
+    .property("checked", false); // Dark mode is not checked by default
+
+  d3.select("#form-config").select("p.dark-mode > label")
+    .append("span")
+    .text("Dark mode");
+
+  d3.select("p.dark-mode input")
+    .on("change", function() {
+      // Calling genome view for updates
+
+      generateGenomeView({
+        shouldUpdateBlockCollisions: false
       });
     });
 
@@ -416,6 +440,45 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
           shouldUpdateLayout: true
         });
       }
+    });
+
+  // Chromosomes palette
+  d3.select("#form-config")
+    .append("div")
+    .attr("class", "chromosomes-palette")
+    .append("p")
+    .text("Chromosomes palette: ");
+
+  const allCategoricalColors = Object.keys(CATEGORICAL_COLOR_SCALES);
+  let categoricalColorOptions = "";
+  for (let i = 0; i < allCategoricalColors.length; i++) {
+    const key = allCategoricalColors[i];
+    categoricalColorOptions += `
+      <option value="${key}">${key}</option>
+      `;
+  }
+
+  d3.select("div.chromosomes-palette")
+    .append("p")
+    .append("select")
+    .html(categoricalColorOptions);
+
+  d3.select("div.chromosomes-palette select")
+    .on("change", function() {
+      const selected = d3.select(this).property("value");
+      const colors = d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES[selected]);
+
+      // Setting the color for each chromosome with new color scale
+      for (let i = 0; i < gffKeys.length; i++) {
+        gffPositionDictionary[gffKeys[i]].color = colors(i);
+      }
+
+      setGffDictionary(gffPositionDictionary);
+
+      // Calling genome view for updates with default transition
+      generateGenomeView({
+        shouldUpdateBlockCollisions: false
+      });
     });
 
   // Draw blocks ordered by: Block ID or Block length (ascending or descending)
@@ -828,7 +891,11 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     });
 
   // SVG element that will include the Circos plot
-  const svg = d3.select("#page-container")
+  const svg = d3.select("#page-container .row")
+    .append("div")
+    .attr("class", function() {
+      return "col-lg-6 text-center";
+    })
     .append("svg")
     .attr("id", "genome-view")
     .attr("width", WIDTH)

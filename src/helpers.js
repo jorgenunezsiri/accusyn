@@ -8,6 +8,10 @@ import generateGenomeView from './genomeView/generateGenomeView';
 
 import { getDefaultChromosomeOrder } from './variables/currentChromosomeOrder';
 import { isAdditionalTrackAdded } from './variables/additionalTrack';
+import {
+  getCircosRotateValue,
+  setCircosRotateValue
+} from './variables/myCircos';
 
 // Contants
 import {
@@ -20,6 +24,8 @@ import {
   TRACK_OUTER_RADIUS_OUTSIDE_TOP,
   TRACK_INNER_RADIUS_OUTSIDE_BOTTOM,
   TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM,
+  SCALE_DECREASE,
+  TRANSLATE_INSCREASE,
   WIDTH,
   HEIGHT
 } from './variables/constants';
@@ -134,9 +140,65 @@ export function resetChromosomeCheckboxes() {
   });
 };
 
+
+/**
+ * Gets the transform values based on how many additional tracks are outside
+ *
+ * Note: For each outside track, scale will decrease 6% for each additional track
+ * translate will increase 40px for each additional track
+ *
+ * @return {Object} Transform values
+ */
+export function getTransformValuesAdditionalTracks() {
+  let scale = 1; // 100% by default
+
+  let translate = {
+    width: WIDTH / 2,
+    height: HEIGHT / 2
+  };
+
+  const rotate = getCircosRotateValue();
+
+  if (isAdditionalTrackAdded()) {
+    const selectedHeatmapTrack = d3.select("div.heatmap-track-input select") &&
+    d3.select("div.heatmap-track-input select").property("value");
+    const trackPlacementHeatmapTrack = d3.select("div.heatmap-track-placement select") &&
+    d3.select("div.heatmap-track-placement select").property("value");
+
+    const selectedHistogramTrack = d3.select("div.histogram-track-input select") &&
+    d3.select("div.histogram-track-input select").property("value");
+    const trackPlacementHistogramTrack = d3.select("div.histogram-track-placement select") &&
+    d3.select("div.histogram-track-placement select").property("value");
+
+    // TODO: Come back to this after generalizing the additional tracks
+    // Need to include current position attribute inside each track object,
+    // and update it accordingly
+    let howManyOutside = 0;
+    if (selectedHeatmapTrack !== 'None' && trackPlacementHeatmapTrack === 'Outside') howManyOutside++;
+    if (selectedHistogramTrack !== 'None' && trackPlacementHistogramTrack === 'Outside') howManyOutside++;
+
+    if (howManyOutside >= 1) {
+      // Decreasing 6% of scale -> (100 - (6 * #ofTracksOutside) / 100
+      scale = (100 - (SCALE_DECREASE * howManyOutside)) / 100;
+      translate.width = translate.width + (TRANSLATE_INSCREASE * howManyOutside);
+      translate.height = translate.height + (TRANSLATE_INSCREASE * howManyOutside);
+    }
+  }
+
+  console.log('ROTATE, SCALE, AND TRANSLATE: ', rotate, scale, translate);
+
+  return {
+    rotate,
+    scale,
+    translate
+  }
+};
+
 /**
  * Gets the inner and outer radius for heatmap and histogram based on current placements
  * NOTE: This function is only called when there is a selected track
+ *
+ * TODO: Come back to this function after generalizing the additional tracks
  *
  * @return {Object} Inner and outer radius
  */
@@ -174,6 +236,21 @@ export function getInnerAndOuterRadiusAdditionalTracks() {
       // If both tracks are inside and histogram is empty, then heatmap takes its placement
       innerRadiusHeatmap = TRACK_INNER_RADIUS_INSIDE_TOP;
       outerRadiusHeatmap = TRACK_OUTER_RADIUS_INSIDE_TOP;
+    }
+
+    if (selectedHeatmapTrack === 'None' && selectedHistogramTrack !== 'None') {
+      // If only heatmap is empty, and both tracks are inside, then assign it to the top inside radius,
+      // so chords are drawn accordingly
+      innerRadiusHeatmap = TRACK_INNER_RADIUS_INSIDE_TOP;
+      outerRadiusHeatmap = TRACK_OUTER_RADIUS_INSIDE_TOP;
+    }
+
+    if (selectedHeatmapTrack === 'None' && selectedHistogramTrack === 'None') {
+      // If both tracks are inside and empty, then assign it to 1.0 radius, to chords are drawn accordingly
+      innerRadiusHistogram = 1.0;
+      outerRadiusHistogram = 1.0;
+      innerRadiusHeatmap = 1.0;
+      outerRadiusHeatmap = 1.0;
     }
   } else if (trackPlacementHeatmapTrack === 'Outside' && trackPlacementHistogramTrack === 'Inside') {
     // If heatmap is outside and histogram is inside
@@ -225,10 +302,10 @@ export function getChordsRadius() {
   if (isAdditionalTrackAdded()) {
     // Inner and outer radius
     const { heatmap, histogram } = getInnerAndOuterRadiusAdditionalTracks();
+    console.log('HEATMAP AND HISTOGRAM FOR CHORD RADIUS: ', heatmap, histogram);
     // Take the minimum between both track innerRadius
     const innerRadius = Math.min(heatmap.innerRadius, histogram.innerRadius);
     if (innerRadius < 1.00) {
-      console.log('\n\n\n\n\nINNER RADIUS: ', innerRadius);
       // If minimum is below 1.00, then use proportion of genome inner radius
       radius = innerRadius * radius;
     }
@@ -452,9 +529,17 @@ export function updateAngle(nAngle = 0, nDragging = 0) {
   d3.select("#nAngle-genome-view-value").text(nAngle + String.fromCharCode(176));
   d3.select("#nAngle-genome-view").property("value", nAngle);
 
-  // Rotate the genome view
+  const { scale: currentScale, translate: currentTranslate } =
+    getTransformValuesAdditionalTracks();
+
+  const rotateValue = ((-1) * (nAngle + nDragging));
+  setCircosRotateValue(rotateValue);
+
+  // Rotate the genome view with current transforms
   d3.select("g.all")
-    .attr("transform", `translate(${WIDTH / 2},${HEIGHT / 2}) rotate(${((-1) * (nAngle + nDragging))})`);
+    .attr("transform", `scale(${currentScale})
+      translate(${currentTranslate.width},${currentTranslate.height})
+      rotate(${rotateValue})`);
 };
 
 /**

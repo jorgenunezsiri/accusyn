@@ -34,6 +34,7 @@ import {
   getChordsRadius,
   getInnerAndOuterRadiusAdditionalTracks,
   getSelectedCheckboxes,
+  getTransformValuesAdditionalTracks,
   removeBlockView,
   roundFloatNumber,
   updateBlockNumberHeadline
@@ -78,7 +79,9 @@ import {
   DEFAULT_GENOME_TRANSITION_TIME,
   FLIPPING_CHROMOSOME_TIME,
   GENOME_INNER_RADIUS,
-  REMOVE_BLOCK_VIEW_TRANSITION_TIME
+  REMOVE_BLOCK_VIEW_TRANSITION_TIME,
+  WIDTH,
+  HEIGHT
 } from './../variables/constants';
 
 // Local variables
@@ -200,7 +203,7 @@ function generateAdditionalTrack(trackName) {
   const selectedTrack = d3.select(`div.${trackName}-track-input select`) &&
     d3.select(`div.${trackName}-track-input select`).property("value");
 
-  // Resetting histogram by removing it first
+  // Resetting heatmap or histogram by removing it first
   myCircos.removeTracks(trackName);
 
   if (selectedTrack !== 'None') {
@@ -270,8 +273,7 @@ function generateCircosLayout() {
 
   dataChromosomes = getDataChromosomes();
 
-  // Generating layout configuration for the Circos plot
-  myCircos.layout(dataChromosomes, defaultsDeep({
+  let extraLayoutConfiguration = {
     events: {
       'contextmenu.chr': function(d, i, nodes, event) {
         // To prevent default right click action
@@ -318,7 +320,33 @@ function generateCircosLayout() {
         setCurrentChromosomeMouseDown(d.id);
       }
     }
-  }, cloneDeep(CIRCOS_CONF)));
+  };
+
+  const darkMode = d3.select("p.dark-mode input").property("checked");
+  d3.select("svg#genome-view")
+    .classed("border border-light rounded-circle dark-mode", darkMode);
+
+  if (d3.select("#block-view-container")) {
+    d3.select("#block-view-container")
+      .classed("dark-mode", darkMode);
+  }
+
+  d3.select(".circos-tooltip")
+    .classed("dark-mode", darkMode);
+
+  if (darkMode) {
+    extraLayoutConfiguration.labels = {
+      color: '#ffffff'
+    };
+  }
+
+  // Generating layout configuration for the Circos plot
+  myCircos.layout(dataChromosomes, defaultsDeep(extraLayoutConfiguration, cloneDeep(CIRCOS_CONF)));
+
+  // Updating block view using current selected block if not empty
+  if (!isEmpty(currentSelectedBlock)) {
+    generateBlockView(currentSelectedBlock);
+  }
 
   // Adding additional tracks
   if (isAdditionalTrackAdded()) {
@@ -516,11 +544,19 @@ function generatePathGenomeView({
     myCircos.render();
   }
 
+  const { rotate: currentRotate, scale: currentScale, translate: currentTranslate } =
+    getTransformValuesAdditionalTracks();
+
+  d3.select("g.all")
+    .attr("transform", `scale(${currentScale})
+      translate(${currentTranslate.width},${currentTranslate.height})
+      rotate(${currentRotate})`);
+
   // Highlighting flipped blocks if checkbox is true
   if (highlightFlippedBlocks) {
     d3.selectAll("path.chord.isFlipped")
       .style("stroke", "#ea4848")
-      .style("stroke-width", "1px");
+      .style("stroke-width", "2px");
   }
 
   // Highlighting flipped chromosomes by default

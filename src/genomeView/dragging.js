@@ -303,6 +303,14 @@ function onStartDragging(dataChromosomes) {
   lastAngle = 0;
   trueLastAngle = 0;
 
+  const darkMode = d3.select("p.dark-mode input").property("checked");
+
+  // Changing fill to black if in dark mode, so red highlight can be seen
+  if (darkMode) {
+    d3.select(`g.${currentChromosomeMouseDown} textPath`)
+      .style("fill", "#000000");
+  }
+
   // Highlighting current mouse down chromosome and its chords
   d3.select(`g.${currentChromosomeMouseDown}`)
     .style("stroke", "#ea4848")

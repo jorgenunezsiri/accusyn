@@ -641,7 +641,7 @@ export function callSwapPositionsAnimation(dataChromosomes, bestSolution, update
     ReactDOM.render(
       <AlertWithTimeout
         color = "danger"
-        message = {"No better layout was found this time. Feel free to try again!"}
+        message = {"No better layout was found at this time. Feel free to try again!"}
       />,
       document.getElementById('alert-container')
     );

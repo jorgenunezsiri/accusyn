@@ -1,11 +1,19 @@
 // _genomeView.scss partial file
 
 svg#genome-view {
-  float: left;
   margin-left: 25px;
   margin-top: 50px;
+
+  &.dark-mode {
+    background-color: #222222;
+  }
 }
 
 .cs-layout > g {
   cursor: pointer;
+}
+
+div.circos-tooltip.dark-mode {
+  background: #ffffff;
+  color: #000000;
 }

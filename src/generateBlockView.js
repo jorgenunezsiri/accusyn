@@ -49,6 +49,8 @@ export default function generateBlockView(data) {
   const geneDictionary = getGeneDictionary();
   const gffPositionDictionary = getGffDictionary();
 
+  const darkMode = d3.select("p.dark-mode input").property("checked");
+
   const sourceChromosomeID = data.source.id;
   const targetChromosomeID = data.target.id;
   const blockID = data.source.value.id;
@@ -56,11 +58,11 @@ export default function generateBlockView(data) {
   const margin = {
     top: 50,
     right: 90,
-    bottom: 50,
+    bottom: 15,
     left: 90
   };
-  const widthBlock = 500 - margin.left - margin.right;
-  const heightBlock = 800 - margin.top - margin.bottom;
+  const widthBlock = 550 - margin.left - margin.right;
+  const heightBlock = 900 - margin.top - margin.bottom;
 
   // Set the ranges for x and y
   const y = [d3.scaleLinear().range([heightBlock, 0]), d3.scaleLinear().range([heightBlock, 0])];
@@ -123,9 +125,13 @@ export default function generateBlockView(data) {
   }
 
   // Append block view container to the body of the page
-  d3.select("#page-container")
+  d3.select("#page-container .row")
     .append("div")
-    .attr("id", "block-view-container");
+    .attr("id", "block-view-container")
+    .attr("class", function() {
+      let classes = 'col-lg-4 text-center';
+      return darkMode ? 'dark-mode ' + classes : classes;
+    });
 
   const svgBlock = d3.select("#block-view-container")
     .append("svg")
@@ -457,7 +463,7 @@ export default function generateBlockView(data) {
 
       // Remove old paths if they are present
       if (!svgBlock.selectAll("path.line").empty()) {
-        svgBlock.selectAll("path.line").remove();
+        svgBlock.select("g.clip-block-group").remove(); // Removing complete clip block group
       }
 
       // Y scale domains using minimum, maximum and offsetDomain values
@@ -465,7 +471,9 @@ export default function generateBlockView(data) {
       y[1].domain([minData(1) - OFFSET_DOMAIN, maxData(1) + OFFSET_DOMAIN]);
 
       // Add new paths inside the block
-      svgBlock.append("g").attr("clip-path", "url(#clip-block)")
+      svgBlock.append("g")
+        .attr("class", "clip-block-group")
+        .attr("clip-path", "url(#clip-block)")
         .selectAll("path")
         .data(dataBlock).enter()
         .append("path")
@@ -480,20 +488,25 @@ export default function generateBlockView(data) {
           );
         });
 
+      // To keep track of the value of the color blocks checkbox
+      const coloredBlocks = d3.select("p.color-blocks input").property("checked");
+
+      const pathLineColor = coloredBlocks ? gffPositionDictionary[sourceChromosomeID].color : CONNECTION_COLOR;
+
       if (!onInputChange) {
         svgBlock.selectAll("path.line")
-          .attr("stroke", "white")
+          .attr("stroke", darkMode ? "#222222" : "#ffffff")
           .transition()
           .duration(500)
           .ease(d3.easeLinear)
-          .attr("stroke", CONNECTION_COLOR);
+          .attr("stroke", pathLineColor);
       } else {
         svgBlock.selectAll("path.line")
           .attr("stroke", "lightblue")
           .transition()
           .duration(COLOR_CHANGE_TIME)
           .ease(d3.easeLinear)
-          .attr("stroke", CONNECTION_COLOR);
+          .attr("stroke", pathLineColor);
       }
 
       // Add the Circos tooltip
@@ -603,5 +616,5 @@ export default function generateBlockView(data) {
     .attr("class", "axis-label")
     .attr("x", (widthBlock / 2))
     .attr("y", 0 - (margin.top / 3))
-    .text(`${sourceChromosomeID} vs. ${targetChromosomeID} - Block ${blockID} gene locations`);
+    .text(`${sourceChromosomeID} vs. ${targetChromosomeID} - Block ${blockID}`);
 }

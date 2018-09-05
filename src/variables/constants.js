@@ -1,6 +1,13 @@
+import {
+  schemeAccent,
+  schemeDark2,
+  schemePastel2,
+  schemeSet2
+} from 'd3-scale-chromatic';
+
 const CONNECTION_COLOR = "sandybrown"; // Default connection color
 const GAP_AMOUNT = 0.04; // Circos plot gap - Value in radians
-const GENOME_INNER_RADIUS = 350; // Circos plot inner radius
+const GENOME_INNER_RADIUS = 375; // Circos plot inner radius
 const GENOME_OUTER_RADIUS = GENOME_INNER_RADIUS + 50; // Circos plot outer radius
 const RADIANS_TO_DEGREES = (180.0 / Math.PI); // Convert radians to degrees
 const DEGREES_TO_RADIANS = (Math.PI / 180.0); // Concert degrees to radians
@@ -16,7 +23,7 @@ const CIRCOS_CONF = {
   labels: {
     display: true,
     position: 'center',
-    size: '16px',
+    size: '16', // 'px' is added in Circos library
     color: '#000000',
     radialOffset: 20
   },
@@ -50,6 +57,19 @@ const TRACK_OUTER_RADIUS_OUTSIDE_TOP = 1.30;
 // Track outside bottom
 const TRACK_INNER_RADIUS_OUTSIDE_BOTTOM = 1.03;
 const TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM = 1.15;
+
+// Transform changes when adding tracks
+const SCALE_DECREASE = 6; // 6% scaling decrese
+const TRANSLATE_INSCREASE = 40; // 40px increase in both x and y coordinates
+
+// Categorical color scales - palettes
+// Each scale is using 8 colors
+const CATEGORICAL_COLOR_SCALES = {
+  Normal: schemeSet2,
+  Accent: schemeAccent,
+  Dark: schemeDark2,
+  Pastel: schemePastel2
+};
 
 // Sequential color scales - palettes
 // More info: https://github.com/d3/d3-scale-chromatic
@@ -110,7 +130,10 @@ export {
   TRACK_OUTER_RADIUS_OUTSIDE_TOP,
   TRACK_INNER_RADIUS_OUTSIDE_BOTTOM,
   TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM,
+  CATEGORICAL_COLOR_SCALES,
   SEQUENTIAL_COLOR_SCALES,
+  SCALE_DECREASE,
+  TRANSLATE_INSCREASE,
   // Genome view transitions
   FLIPPING_CHROMOSOME_TIME,
   TRANSITION_DRAG_TIME,
