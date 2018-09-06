@@ -90,7 +90,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
 
     // Minimum start dictionary
     if (!(currentChromosomeID in minStartChromosomesDictionary)) {
-      minStartChromosomesDictionary[currentChromosomeID] = 100000000;
+      minStartChromosomesDictionary[currentChromosomeID] = Number.MAX_SAFE_INTEGER;
     }
 
     minStartChromosomesDictionary[currentChromosomeID] = Math.min(
@@ -160,7 +160,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     for (let i = 0; i < additionalTrack.length; i++) {
       const additionalTrackArray = []; // Array that includes the data from the additional tracks BedGraph file
       const { data: currentData, name } = additionalTrack[i];
-      let maxValue = 0, minValue = 100000000;
+      let maxValue = 0, minValue = Number.MAX_SAFE_INTEGER;
 
       for (let i = 0; i < currentData.length; i++) {
         let value = roundFloatNumber(parseFloat(currentData[i].value), 6);

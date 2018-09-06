@@ -396,9 +396,9 @@ export function lookForBlocksPositions(blockDictionary, geneDictionary, block) {
   const blockArray = blockDictionary[block];
 
   let maxSource = 0;
-  let minSource = 100000000;
+  let minSource = Number.MAX_SAFE_INTEGER;
   let maxTarget = 0;
-  let minTarget = 100000000;
+  let minTarget = Number.MAX_SAFE_INTEGER;
   for (let i = 0; i < blockArray.length; i++) {
     const currentSource = geneDictionary[blockArray[i].connectionSource];
     const currentTarget = geneDictionary[blockArray[i].connectionTarget];

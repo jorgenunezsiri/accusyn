@@ -305,7 +305,7 @@ export default function generateBlockView(data) {
      * @return {number}   Minimum value
      */
     function minData(d) {
-      let minValue = 100000000;
+      let minValue = Number.MAX_SAFE_INTEGER;
       for (let i = 0; i < dataBlock.length; i++) {
         minValue = Math.min(minValue, dataBlock[i].data[d]);
       }

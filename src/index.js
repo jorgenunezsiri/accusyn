@@ -37,7 +37,7 @@ const processBedGraph = function processBedGraph(fileNames, callback) {
       const returnData = d3.tsvParse(result).reduce((dataInside, current) => {
         // Not including Scaffold chromosomes
         if (!current.chromosomeID.startsWith('Scaffold') &&
-        !current.chromosomeID.startsWith('scaffold')) {
+          !current.chromosomeID.startsWith('scaffold')) {
 
           // To check if last character is a number.
           // If not is treated as scaffold, i.e. current is not included

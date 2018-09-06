@@ -17,13 +17,13 @@ const sampleFiles = (
       <a href={`${getCurrentHost()}?gff=at_vv&collinearity=at_vv`}>
       At vs. Vv</a> - <em>Arabidopsis thaliana</em> (Thale cress) vs. <em>Vitis vinifera</em> (Grape vine)
     </p>
-    <p>
+    {/* <p>
       <a href={`${getCurrentHost()}?gff=bnapus&collinearity=bnapus&additionalTrack=bnapus_gene_count&additionalTrack=bnapus_gene_density&additionalTrack=bnapus_repeat_count&additionalTrack=bnapus_repeat_density`}>
       Bn</a> - <em>Brassica napus</em> (Canola)
-    </p>
+    </p> */}
     <p>
       <a href={`${getCurrentHost()}?gff=bnapus&collinearity=bnapus_top_5_hits&additionalTrack=bnapus_gene_count&additionalTrack=bnapus_gene_density&additionalTrack=bnapus_repeat_count&additionalTrack=bnapus_repeat_density`}>
-      Bn (with top 5 BLAST hits)</a> - <em>Brassica napus</em> (Canola)
+      Bn</a> - <em>Brassica napus</em> (Canola)
     </p>
     <p>
       <a href={`${getCurrentHost()}?gff=camelina&collinearity=camelina&additionalTrack=camelina_gene_count&additionalTrack=camelina_gene_density&additionalTrack=camelina_repeat_count&additionalTrack=camelina_repeat_density`}>
@@ -32,6 +32,14 @@ const sampleFiles = (
     <p>
       <a href={`${getCurrentHost()}?gff=os_sb&collinearity=os_sb`}>
       Os vs. Sb</a> - <em>Oryza sativa</em> (Asian rice) vs. <em>Sorghum bicolor</em> (Sorghum)
+    </p>
+    <p>
+      <a href={`${getCurrentHost()}?gff=cs_iwgsc&collinearity=cs_iwgsc`}>
+      Wheat (IWGSC)</a> - <em>Triticum aestivum</em> (Chinese Spring)
+    </p>
+    <p>
+      <a href={`${getCurrentHost()}?gff=wheat_hb&collinearity=wheat_hb`}>
+      Wheat (Hybrid)</a> - <em>Artificial Hexaploid</em> (Hybrid)
     </p>
   </div>
 );
