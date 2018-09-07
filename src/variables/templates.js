@@ -41,6 +41,14 @@ const sampleFiles = (
       <a href={`${getCurrentHost()}?gff=wheat_hb&collinearity=wheat_hb`}>
       Wheat (Hybrid)</a> - <em>Artificial Hexaploid</em> (Hybrid)
     </p>
+    <p>
+      <a href={`${getCurrentHost()}?gff=cs_hb&collinearity=cs_hb`}>
+      Wheat (CS vs. HB)</a> - <em>Chinese Spring</em> vs. <em>Artificial Hybrid Wheat</em>
+    </p>
+    <p>
+      <a href={`${getCurrentHost()}?gff=hb_cs&collinearity=hb_cs`}>
+      Wheat (HB vs. CS)</a> - <em>Artificial Hybrid Wheat</em> vs. <em>Chinese Spring</em>
+    </p>
   </div>
 );
 

@@ -383,6 +383,14 @@ function onEndDragging(dataChromosomes) {
 
   let currentChromosomeOrder = getCurrentChromosomeOrder();
 
+  const darkMode = d3.select("p.dark-mode input").property("checked");
+
+  // Changing fill back to white if in dark mode, because highlight is being turn off
+  if (darkMode) {
+    d3.select(`g.${currentChromosomeMouseDown} textPath`)
+      .style("fill", "#ffffff");
+  }
+
   // Turning off highlighting for current mouse down chromosome
   d3.select(`g.${currentChromosomeMouseDown}`)
     .style("stroke", "none");
