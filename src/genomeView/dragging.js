@@ -7,6 +7,10 @@ import {
   updateAngle
 } from './../helpers';
 import {
+  getChordAngles,
+  updateWaitingBlockCollisionHeadline
+} from './blockCollisions';
+import {
   getCurrentChromosomeMouseDown,
   setCurrentChromosomeMouseDown
 } from './../variables/currentChromosomeMouseDown';
@@ -37,29 +41,6 @@ let lastAngle = 0; // Last angle that was captured in the drag event
 let offsetAngle = 0; // Offset dragging angle
 let selectDrag = []; // Array to keep track of the chr that will be moving in the dragging animation
 let trueLastAngle = 0; // Last angle from drag event without modification
-
-
-/**
- * Generates the angles for the chord inside the chromosomes data
- *
- * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
- * @param  {Object} chord           Current chord
- * @param  {string} reference       Type of reference (i.e. source or target)
- * @return {Object}                 Chord angles
- */
-export function getChordAngles(dataChromosomes, chord, reference) {
-  const currentObject = find(dataChromosomes, ['id', chord[reference].id]);
-  const startAngle = currentObject.start + (chord[reference].start /
-    currentObject.len) * (currentObject.end - currentObject.start);
-  const endAngle = currentObject.start + (chord[reference].end /
-    currentObject.len) * (currentObject.end - currentObject.start);
-
-  return {
-    start: startAngle,
-    middle: (startAngle + endAngle) / 2,
-    end: endAngle
-  }
-};
 
 /**
  * Generates dragging angles dictionary from current chromosome data
@@ -336,12 +317,7 @@ function onDragging(dataChromosomes) {
 
   if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "") return;
 
-  // TODO: CREATE FUNCTION FOR THIS !!!
-  d3.select(".block-collisions-headline")
-    .text("Updating block collisions ...");
-
-  d3.select(".superimposed-block-collisions-headline")
-    .text("Updating superimposed collisions ...");
+  updateWaitingBlockCollisionHeadline();
 
   // Selecting current mouse down chromosome
   const current = d3.select(`g.${currentChromosomeMouseDown}`);

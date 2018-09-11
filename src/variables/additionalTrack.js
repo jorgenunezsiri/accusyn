@@ -1,5 +1,3 @@
-import cloneDeep from 'lodash/cloneDeep';
-
 let _additionalTrackArray = []; // Array that stores the data for the additional tracks
 
 /**

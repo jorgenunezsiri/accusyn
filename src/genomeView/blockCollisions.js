@@ -4,6 +4,9 @@ import {
   selectAll as d3SelectAll
 } from 'd3';
 
+// ParallelJS
+import Parallel from 'paralleljs';
+
 // React
 import React from 'react';
 import ReactDOM from 'react-dom';
@@ -15,7 +18,6 @@ import findIndex from 'lodash/findIndex';
 import isEqual from 'lodash/isEqual';
 
 import generateGenomeView from './generateGenomeView';
-import { getChordAngles } from './dragging';
 import {
   getChordsRadius,
   sortGffKeys
@@ -32,6 +34,14 @@ import {
   toChromosomeOrder
 } from './../variables/currentChromosomeOrder';
 import {
+  getDataChords,
+  setDataChords
+} from './../variables/dataChords';
+import {
+  getDataChromosomes,
+  setDataChromosomes
+} from './../variables/dataChromosomes';
+import {
   getSavedCollisionSolutionsDictionary,
   setSavedCollisionSolutionsDictionary
 } from './../variables/savedCollisionSolutionsDictionary';
@@ -44,6 +54,31 @@ import {
   RADIANS_TO_DEGREES,
   TRANSITION_SWAPPING_TIME
 } from './../variables/constants';
+
+/**
+ * Generates the angles for the chord inside the chromosomes data
+ *
+ * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
+ * @param  {Object} chord           Current chord
+ * @param  {string} reference       Type of reference (i.e. source or target)
+ * @return {Object}                 Chord angles
+ */
+export function getChordAngles(dataChromosomes, chord, reference) {
+  const currentObject = dataChromosomes.find((element) => {
+    return element.id === chord[reference].id;
+  });
+
+  const startAngle = currentObject.start + (chord[reference].start /
+    currentObject.len) * (currentObject.end - currentObject.start);
+  const endAngle = currentObject.start + (chord[reference].end /
+    currentObject.len) * (currentObject.end - currentObject.start);
+
+  return {
+    start: startAngle,
+    middle: (startAngle + endAngle) / 2,
+    end: endAngle
+  }
+};
 
 /**
  * Determines if line from angle R1 to R2 intersects with line from angle R3 to R4
@@ -102,13 +137,12 @@ function isSuperimposed(R1, R2) {
  *
  * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
  * @param  {Array<Object>} dataChords      Plotting information for each block chord
- * @param  {number} maxNumberOfCollisions  Optional limit to check for
+ * @param  {boolean} shouldReturnPromise   True if should return JS Promise, false otherwise
  * @return {number} Number of collisions and superimposed collisions
  */
-export function getBlockCollisions(dataChromosomes, dataChords, maxNumberOfCollisions = 0) {
+export function getBlockCollisions(dataChromosomes, dataChords, shouldReturnPromise = true) {
   let collisionCount = 0;
   let superimposedCollisionCount = 0;
-  let breakLoop = false;
 
   for (let i = 0; i < dataChords.length; i++) {
     for (let j = i + 1; j < dataChords.length; j++) {
@@ -137,13 +171,6 @@ export function getBlockCollisions(dataChromosomes, dataChords, maxNumberOfColli
       ) {
         collisionCount++;
 
-        // If collisions are already worse, then break
-        if (maxNumberOfCollisions > 0 &&
-          collisionCount > maxNumberOfCollisions) {
-          breakLoop = true;
-          break;
-        }
-
         // console.log("i j: ", dataChords[i].source.value.id, dataChords[j].source.value.id);
       }
 
@@ -161,12 +188,15 @@ export function getBlockCollisions(dataChromosomes, dataChords, maxNumberOfColli
         isSuperimposed(R1, R3)
       ) {
         superimposedCollisionCount++;
-
-        // console.log("i j: ", dataChords[i].source.value.id, dataChords[j].source.value.id);
       }
     }
+  }
 
-    if (breakLoop) break;
+  if (!shouldReturnPromise) {
+    return {
+      collisionCount,
+      superimposedCollisionCount
+    };
   }
 
   return new Promise(resolve => {
@@ -175,46 +205,89 @@ export function getBlockCollisions(dataChromosomes, dataChords, maxNumberOfColli
       superimposedCollisionCount
     });
   });
-}
+};
+
+/**
+ * Updating the label of block collisions headline, so the user knows that
+ * the calculation is in progress
+ *
+ * @return {undefined} undefined
+ */
+export function updateWaitingBlockCollisionHeadline() {
+  d3Select(".block-collisions-headline")
+    .text("Updating block collisions ...");
+
+  d3Select(".superimposed-block-collisions-headline")
+    .text("Updating superimposed collisions ...");
+};
 
 /**
  * Updating the label showing the number of block collisions
+ * NOTE: Using paralleljs to do the calculation asynchronously
  *
  * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
  * @param  {Array<Object>} dataChords      Plotting information for each block chord
  * @return {undefined}                     undefined
  */
-export async function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
+export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
   console.log('Updating block collision headline !!!');
-  const {
-    collisionCount,
-    superimposedCollisionCount
-  } = await getBlockCollisions(dataChromosomes, dataChords);
+  updateWaitingBlockCollisionHeadline();
 
-  // Saving up-to-date collision counts
-  setCollisionCount(collisionCount);
-  setSuperimposedCollisionCount(superimposedCollisionCount);
+  setDataChromosomes(dataChromosomes);
+  setDataChords(dataChords);
 
-  console.log("COLLISION COUNT: " + collisionCount);
+  const p = new Parallel({
+      dataChromosomes: dataChromosomes,
+      dataChords: dataChords
+    })
+    .require(getBlockCollisions)
+    .require(getChordAngles)
+    .require(intersects)
+    .require(isSuperimposed);
 
-  // Update block-collisions-headline with current collision count
-  d3Select(".block-collisions-headline")
-    .text(function() {
-      let textToShow = "";
-      textToShow += collisionCount === 1 ?
+  p.spawn(function (data) {
+    return getBlockCollisions(data.dataChromosomes, data.dataChords, false);
+  }).then(function (data) {
+    const {
+      collisionCount,
+      superimposedCollisionCount
+    } = data;
+
+    const currentDataChromosomes = getDataChromosomes();
+    const currentDataChords = getDataChords();
+
+    // Only update the collision count of the latest layout (saved globally).
+    // This is to update it once.
+    const shouldUpdateCollisionCount = isEqual(currentDataChromosomes, dataChromosomes) &&
+      isEqual(currentDataChords, dataChords);
+
+    if (shouldUpdateCollisionCount) {
+      // Saving up-to-date collision counts
+      setCollisionCount(collisionCount);
+      setSuperimposedCollisionCount(superimposedCollisionCount);
+
+      console.log("COLLISION COUNT: " + collisionCount);
+
+      // Update block-collisions-headline with current collision count
+      d3Select(".block-collisions-headline")
+      .text(function() {
+        let textToShow = "";
+        textToShow += collisionCount === 1 ?
         `${collisionCount} block collision` : `${collisionCount} block collisions`;
-      return textToShow;
-    });
+        return textToShow;
+      });
 
-  // Update block-collisions-headline with current collision count
-  d3Select(".superimposed-block-collisions-headline")
-    .text(function() {
-      let textToShow = "";
-      textToShow += superimposedCollisionCount === 1 ?
+      // Update block-collisions-headline with current collision count
+      d3Select(".superimposed-block-collisions-headline")
+      .text(function() {
+        let textToShow = "";
+        textToShow += superimposedCollisionCount === 1 ?
         `${superimposedCollisionCount} superimposed collision` :
         `${superimposedCollisionCount} superimposed collisions`;
-      return textToShow;
-    });
+        return textToShow;
+      });
+    }
+  });
 };
 
 /**
@@ -288,7 +361,6 @@ function minSwapsToSort(arr) {
  * Source: https://www.geeksforgeeks.org/minimum-swaps-to-make-two-array-identical/
  */
 export function minSwapToMakeArraySame(a, b) {
-  console.log('A and B: ', a, b);
   if (a.length !== b.length) return [];
 
   const n = a.length;
@@ -303,20 +375,10 @@ export function minSwapToMakeArraySame(a, b) {
     modifiedB[i] = mapDictionary[a[i]];
   }
 
-  for (let i = 0; i < n; i++) {
-    console.log("B[i]: ", modifiedB[i]);
-  }
-  console.log('\n');
-
   const ans = minSwapsToSort(modifiedB, n);
 
-  console.log('SWAP POSITIONS BEFORE: ', b, ans.swapPositions);
-
-
   modifiedB = b.slice();
-  console.log('modifiedB before: ', modifiedB.slice());
   const swapPositions = ans.swapPositions.map(function(x) {
-    // console.log('X: ', x);
     const toReturn = [modifiedB[x[0]], modifiedB[x[1]]];
     // Doing the swap to return right swapped elements
     const temp = modifiedB[x[0]];
@@ -325,11 +387,6 @@ export function minSwapToMakeArraySame(a, b) {
 
     return toReturn;
   });
-
-  console.log('modifiedB after: ', modifiedB.slice());
-
-  console.log('ANSWER: ', ans.answer,
-    swapPositions);
 
   return swapPositions;
 }
@@ -360,9 +417,6 @@ function transitionSwapOldToNew(dataChromosomes, bestSolution, currentChr, hasMo
       (previousStartPosition * RADIANS_TO_DEGREES);
   }
   // else angle is 0 by default
-
-
-  console.log(`ANGLE FOR ${currentChr}: ${angle}`);
 
   d3Select(`.cs-layout g.${currentChr}`)
     .raise()
@@ -449,6 +503,7 @@ function transitionSwapOldToNew(dataChromosomes, bestSolution, currentChr, hasMo
 
 /**
  * Looks up position in collisions dictionary
+ * TODO: Move this to variable folder
  *
  * @param  {Array<Object>} bestSolution Data for best solution chromosomes
  * @param  {Array<Object>} dataChords   Plotting information for each block chord
@@ -489,16 +544,9 @@ export function saveToCollisionsDictionary(bestSolution, collisionCount, dataCho
   }
 
   if (currentPosition !== (-1)) {
-    if (collisionCount < savedCollisionSolutionsDictionary[key][currentPosition].collisionCount) {
-      // For this configuration, I found another combination that is better
-      // (with less number of collisions)
-      savedCollisionSolutionsDictionary[key][currentPosition].bestSolution = cloneDeep(bestSolution);
-      savedCollisionSolutionsDictionary[key][currentPosition].collisionCount = collisionCount;
-    }
-
-    console.log('POSITION: ', currentPosition);
-    console.log('SAVED SOLUTION: ', savedCollisionSolutionsDictionary[key][currentPosition]);
-
+    // For this configuration, I want to save another combination (could be better or not)
+    savedCollisionSolutionsDictionary[key][currentPosition].bestSolution = cloneDeep(bestSolution);
+    savedCollisionSolutionsDictionary[key][currentPosition].collisionCount = collisionCount;
   } else {
     savedCollisionSolutionsDictionary[key].push({
       bestSolution: cloneDeep(bestSolution),
@@ -531,8 +579,6 @@ export function swapPositionsAnimation(dataChromosomes, bestSolution, swapPositi
     visited[chromosomeOrder[i]] = false;
   }
 
-  console.log('SWAP POSITIONS: ', swapPositions);
-
   for (let i = 0; i < swapPositions.length; i++) {
     visited[swapPositions[i][0]] = true;
     visited[swapPositions[i][1]] = true;
@@ -545,7 +591,6 @@ export function swapPositionsAnimation(dataChromosomes, bestSolution, swapPositi
     }
   }
 
-  console.log('VISITED: ', visited);
   console.log('POSITIONS NOT SWAPPED: ', positionsNotBeingSwapped);
 
   let transitionTime = 0;
@@ -593,11 +638,17 @@ export function swapPositionsAnimation(dataChromosomes, bestSolution, swapPositi
   }
 
   // TODO: Think about performance when calling generateGenomeView again
-  setTimeout(() => generateGenomeView({
-      transition: { shouldDo: false },
-      shouldUpdateBlockCollisions: true,
-      shouldUpdateLayout: true
-    }), TRANSITION_SWAPPING_TIME +
+  setTimeout(() => {
+      // Enabling filtering after calling the animation
+      d3Select("#filter-block-size")
+        .attr("disabled", null);
+
+      generateGenomeView({
+        transition: { shouldDo: false },
+        shouldUpdateBlockCollisions: true,
+        shouldUpdateLayout: true
+      });
+    }, TRANSITION_SWAPPING_TIME +
     (TRANSITION_SWAPPING_TIME * swapPositions.length) +
     (TRANSITION_SWAPPING_TIME * positionsNotBeingSwapped.length));
 }
@@ -625,8 +676,13 @@ export function callSwapPositionsAnimation(dataChromosomes, bestSolution, update
       // NOTE: Current chromosome order variable always includes all the chromosomes
       setCurrentChromosomeOrder(toChromosomeOrder(bestSolution, true));
 
+      // Disabling filtering before calling the animation
+      d3Select("#filter-block-size")
+        .attr("disabled", true);
+
+      // TODO: Workaround for this?
       // Calling the actual animation
-      swapPositionsAnimation(dataChromosomes, bestSolution, swapPositions);
+      setTimeout(() => swapPositionsAnimation(dataChromosomes, bestSolution, swapPositions), 50);
 
       ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
       ReactDOM.render(
@@ -648,7 +704,7 @@ export function callSwapPositionsAnimation(dataChromosomes, bestSolution, update
 
     // If they are the same and I can update (the flag is true),
     // it means they have the same number of collisions.
-    // Re-render to keep everything untouched.
+    // Re-render to keep everything untouched, specially the layout
     // NOTE: This is necessary when I'm using the myCircos.layout function
     // to modify the layout
     generateGenomeView({
@@ -688,13 +744,6 @@ function acceptanceProbability(currentEnergy, neighborEnergy, temperature) {
  * More info: http://www.theprojectspot.com/tutorial-post/simulated-annealing-algorithm-for-beginners/6
  */
 export async function simulatedAnnealing(dataChromosomes, dataChords) {
-  let howMany = 0;
-
-  const myCircos = getCircosObject();
-
-  let currentSolution = cloneDeep(dataChromosomes);
-  myCircos.layout(currentSolution, CIRCOS_CONF);
-
   // I do not need to calculate block collisions the first time
   // because I can take the current collision count from the getters
   let currentEnergy = getCollisionCount();
@@ -766,6 +815,12 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
   }
 
   const complementRatio = (1 - ratio);
+  const myCircos = getCircosObject();
+
+  let howMany = 0;
+
+  let currentSolution = cloneDeep(dataChromosomes);
+
   let bestSolution = cloneDeep(currentSolution);
   let bestEnergy = currentEnergy;
 
@@ -781,13 +836,14 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
     newSolution[pos1] = val2;
 
     myCircos.layout(newSolution, CIRCOS_CONF);
-    let { collisionCount: neighborEnergy } = await getBlockCollisions(newSolution, dataChords, /*bestEnergy*/ );
+    const { collisionCount: neighborEnergy } = await getBlockCollisions(newSolution, dataChords);
     const probability = acceptanceProbability(currentEnergy, neighborEnergy, temperature);
 
     if (probability === 1.0 || probability > Math.random()) {
       currentSolution = cloneDeep(newSolution);
       currentEnergy = neighborEnergy;
 
+      // Keeping the first best solution generated by using <
       if (neighborEnergy < bestEnergy) {
         bestSolution = cloneDeep(newSolution);
         bestEnergy = neighborEnergy;

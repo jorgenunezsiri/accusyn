@@ -47,7 +47,6 @@ import {
 
 import {
   callSwapPositionsAnimation,
-  getBlockCollisions,
   loopUpPositionCollisionsDictionary,
   saveToCollisionsDictionary,
   simulatedAnnealing,
@@ -56,6 +55,9 @@ import {
 
 // Variable getters and setters
 import { getBlockDictionary } from './../variables/blockDictionary';
+import {
+  getCollisionCount
+} from './../variables/collisionCount';
 import {
   getCurrentChromosomeMouseDown,
   setCurrentChromosomeMouseDown
@@ -424,20 +426,13 @@ function generatePathGenomeView({
     };
   }
 
-  // TODO: Think about this condition and the Updating label (multiple d3.select everywhere)
+  // TODO: Think more about this condition
   // Updating block collisions should happen if flag is true
   // (when filtering transitions are not happening and flag is true at the end of filtering)
   // It should also happen when transitions are true and flag is not defined
   if (shouldUpdateBlockCollisions ||
     shouldUpdateBlockCollisions == null && (transition && transition.shouldDo)) {
-    setTimeout(() => updateBlockCollisionHeadline(dataChromosomes, dataChords),
-      DEFAULT_GENOME_TRANSITION_TIME + (DEFAULT_GENOME_TRANSITION_TIME / 2));
-
-    d3.select(".block-collisions-headline")
-      .text("Updating block collisions ...");
-
-    d3.select(".superimposed-block-collisions-headline")
-      .text("Updating superimposed collisions ...");
+    updateBlockCollisionHeadline(dataChromosomes, dataChords);
   }
 
   // Adding the configuration for the Circos chords using the generated array
@@ -593,17 +588,16 @@ function generatePathGenomeView({
   // Save layout button
   d3.select(".save-layout > input")
     .on("click", function() {
-      getBlockCollisions(dataChromosomes, dataChords).then(({ collisionCount }) => {
-        saveToCollisionsDictionary(dataChromosomes, collisionCount, dataChords);
+      const collisionCount = getCollisionCount();
+      saveToCollisionsDictionary(dataChromosomes, collisionCount, dataChords);
 
-        ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
-        ReactDOM.render(
-          <AlertWithTimeout
+      ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
+      ReactDOM.render(
+        <AlertWithTimeout
             message={"The layout was successfully saved."}
           />,
-          document.getElementById('alert-container')
-        );
-      });
+        document.getElementById('alert-container')
+      );
     });
 
   // Reset layout button

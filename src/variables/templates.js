@@ -34,7 +34,7 @@ const sampleFiles = (
       Os vs. Sb</a> - <em>Oryza sativa</em> (Asian rice) vs. <em>Sorghum bicolor</em> (Sorghum)
     </p>
     <p>
-      <a href={`${getCurrentHost()}?gff=cs_iwgsc&collinearity=cs_iwgsc`}>
+      <a href={`${getCurrentHost()}?gff=cs_iwgsc&collinearity=cs_iwgsc&additionalTrack=cs_genes&additionalTrack=cs_PresenceAbsence&additionalTrack=cs_SNPs&additionalTrack=cs_TEs`}>
       Wheat (IWGSC)</a> - <em>Triticum aestivum</em> (Chinese Spring)
     </p>
     <p>
@@ -45,10 +45,10 @@ const sampleFiles = (
       <a href={`${getCurrentHost()}?gff=cs_hb&collinearity=cs_hb`}>
       Wheat (CS vs. HB)</a> - <em>Chinese Spring</em> vs. <em>Artificial Hybrid Wheat</em>
     </p>
-    <p>
+    {/* <p>
       <a href={`${getCurrentHost()}?gff=hb_cs&collinearity=hb_cs`}>
       Wheat (HB vs. CS)</a> - <em>Artificial Hybrid Wheat</em> vs. <em>Chinese Spring</em>
-    </p>
+    </p> */}
   </div>
 );
 

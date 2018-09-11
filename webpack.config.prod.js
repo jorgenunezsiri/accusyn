@@ -47,6 +47,9 @@ module.exports = {
       }
     ]
   },
+  node: {
+    child_process: 'empty'
+  },
   plugins: [
     new ExtractTextPlugin({
       filename: 'bundle.css'

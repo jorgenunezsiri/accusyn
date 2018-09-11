@@ -24,6 +24,8 @@ import Modal from './reactComponents/Modal';
 
 import generateGenomeView from './genomeView/generateGenomeView';
 
+import { updateWaitingBlockCollisionHeadline } from './genomeView/blockCollisions';
+
 import {
   getSelectedCheckboxes,
   lookForBlocksPositions,
@@ -942,11 +944,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   // Updating filter on input
   d3.select("#filter-block-size")
     .on("input", function() {
-      d3.select(".block-collisions-headline")
-        .text("Updating block collisions ...");
-
-      d3.select(".superimposed-block-collisions-headline")
-        .text("Updating superimposed collisions ...");
+      updateWaitingBlockCollisionHeadline();
 
       updateFilter({
         shouldUpdateBlockCollisions: false,
