@@ -164,14 +164,21 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
       const { data: currentData, name } = additionalTrack[i];
       let maxValue = 0, minValue = Number.MAX_SAFE_INTEGER;
 
-      for (let i = 0; i < currentData.length; i++) {
-        let value = roundFloatNumber(parseFloat(currentData[i].value), 6);
+      for (let j = 0; j < currentData.length; j++) {
+        let value = roundFloatNumber(parseFloat(currentData[j].value), 6);
         const additionalTrackObject = {
-          block_id: currentData[i].chromosomeID,
-          start: parseInt(currentData[i].start),
-          end: parseInt(currentData[i].end),
+          block_id: currentData[j].chromosomeID,
+          start: parseInt(currentData[j].start),
+          end: parseInt(currentData[j].end),
           value: value
         };
+
+        // Not adding values that are above the chromosome limit
+        if (additionalTrackObject.start > gffPositionDictionary[currentData[j].chromosomeID].end &&
+            additionalTrackObject.end > gffPositionDictionary[currentData[j].chromosomeID].end &&
+            additionalTrackObject.value === 0) {
+          continue;
+        }
 
         minValue = Math.min(minValue, value);
         maxValue = Math.max(maxValue, value);
@@ -369,6 +376,32 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
       });
     });
 
+  // Highlight flipped chromosomes checkbox
+  d3.select("#form-config")
+    .append("p")
+    .attr("class", "highlight-flipped-chromosomes")
+    .attr("title", "If selected, all flipped chromosomes will be highlighted.")
+    .append("label")
+    .append("input")
+    .attr("type", "checkbox")
+    .attr("name", "highlight-flipped-chromosomes")
+    .attr("value", "Highlight flipped chromosomes")
+    .property("checked", true); // Highligh flipped chromosomes is checked by default
+
+  d3.select("#form-config").select("p.highlight-flipped-chromosomes > label")
+    .append("span")
+    .text("Highlight flipped chromosomes");
+
+  d3.select("p.highlight-flipped-chromosomes input")
+    .on("change", function() {
+      // Calling genome view for updates
+      generateGenomeView({
+        transition: { shouldDo: false },
+        shouldUpdateBlockCollisions: false,
+        shouldUpdateLayout: false
+      });
+    });
+
   // Highlight flipped blocks checkbox
   d3.select("#form-config")
     .append("p")
@@ -435,10 +468,13 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   d3.select("p.show-best-layout input")
     .on("change", function() {
       if (d3.select(this).property("checked")) {
-        // Calling genome view for updates
+        // Calling genome view for updates without modifying block collision count
+        // * If the layout is going to change, generateGenomeView is being called again,
+        // and the count will be updated anyways after the animation
+        // * If the layout is going to stay the same, there is no need to update the count
         generateGenomeView({
           transition: { shouldDo: false },
-          shouldUpdateBlockCollisions: true,
+          shouldUpdateBlockCollisions: false,
           shouldUpdateLayout: true
         });
       }

@@ -18,8 +18,10 @@ import findIndex from 'lodash/findIndex';
 import isEqual from 'lodash/isEqual';
 
 import generateGenomeView from './generateGenomeView';
+import { updateAdditionalTracksWhileDragging } from './dragging';
 import {
   getChordsRadius,
+  resetInputsAndSelectsOnAnimation,
   sortGffKeys
 } from './../helpers';
 import { getCircosObject } from './../variables/myCircos';
@@ -233,6 +235,14 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
   console.log('Updating block collision headline !!!');
   updateWaitingBlockCollisionHeadline();
 
+  // Disabling minimize collisions and save layout buttons until collision counts
+  // are calculated
+  d3Select(".best-guess > input")
+    .attr("disabled", true);
+
+  d3Select(".save-layout > input")
+    .attr("disabled", true);
+
   setDataChromosomes(dataChromosomes);
   setDataChords(dataChords);
 
@@ -267,6 +277,13 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
       setSuperimposedCollisionCount(superimposedCollisionCount);
 
       console.log("COLLISION COUNT: " + collisionCount);
+
+      // Enabling minimize collisions and save layout buttons after calculations are done
+      d3Select(".best-guess > input")
+        .attr("disabled", null);
+
+      d3Select(".save-layout > input")
+        .attr("disabled", null);
 
       // Update block-collisions-headline with current collision count
       d3Select(".block-collisions-headline")
@@ -423,6 +440,13 @@ function transitionSwapOldToNew(dataChromosomes, bestSolution, currentChr, hasMo
     .transition()
     .duration(TRANSITION_SWAPPING_TIME)
     .attr("transform", `rotate(${angle})`);
+
+  updateAdditionalTracksWhileDragging({
+    angleValue: angle,
+    chromosome: currentChr,
+    dataChromosomes: dataChromosomes,
+    transitionDuration: TRANSITION_SWAPPING_TIME
+  });
 
   if (!d3SelectAll(`path.chord.${currentChr}`).empty()) {
     const ribbon = d3Ribbon().radius(getChordsRadius());
@@ -639,9 +663,8 @@ export function swapPositionsAnimation(dataChromosomes, bestSolution, swapPositi
 
   // TODO: Think about performance when calling generateGenomeView again
   setTimeout(() => {
-      // Enabling filtering after calling the animation
-      d3Select("#filter-block-size")
-        .attr("disabled", null);
+      // Enabling inputs and selects after calling the animation
+      resetInputsAndSelectsOnAnimation();
 
       generateGenomeView({
         transition: { shouldDo: false },
@@ -676,9 +699,8 @@ export function callSwapPositionsAnimation(dataChromosomes, bestSolution, update
       // NOTE: Current chromosome order variable always includes all the chromosomes
       setCurrentChromosomeOrder(toChromosomeOrder(bestSolution, true));
 
-      // Disabling filtering before calling the animation
-      d3Select("#filter-block-size")
-        .attr("disabled", true);
+      // Disabling inputs and selects before calling the animation
+      resetInputsAndSelectsOnAnimation(true);
 
       // TODO: Workaround for this?
       // Calling the actual animation

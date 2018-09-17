@@ -4,6 +4,7 @@ import find from 'lodash/find';
 import generateGenomeView  from './generateGenomeView';
 import {
   getChordsRadius,
+  resetInputsAndSelectsOnAnimation,
   updateAngle
 } from './../helpers';
 import {
@@ -62,6 +63,33 @@ export function generateDraggingAnglesDictionary(dataChromosomes) {
     draggingAnglesDictionary[currentID].endAngle = dataChromosomes[i].end * RADIANS_TO_DEGREES;
     draggingAnglesDictionary[currentID].totalAngle =
       (draggingAnglesDictionary[currentID].endAngle - draggingAnglesDictionary[currentID].startAngle);
+  }
+};
+
+/**
+ * Updates the additional tracks while dragging
+ *
+ * @param  {number} angleValue             Angle of rotation
+ * @param  {string} chromosome             Chromosome to update the additional tracks
+ * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
+ * @param  {number} transitionDuration     Time for transitioning
+ * @return {undefined}                     undefined
+ */
+export function updateAdditionalTracksWhileDragging({
+  angleValue,
+  chromosome,
+  dataChromosomes,
+  transitionDuration
+}) {
+  if (!d3.selectAll(`g.all g.block.${chromosome}`).empty()) {
+    const currentObject = find(dataChromosomes, ['id', chromosome]);
+    const rotatingAngle = angleValue + (currentObject.start * RADIANS_TO_DEGREES);
+
+    d3.selectAll(`g.all g.block.${chromosome}`)
+      .raise()
+      .transition()
+      .duration(transitionDuration)
+      .attr("transform", `rotate(${rotatingAngle})`);
   }
 };
 
@@ -269,14 +297,23 @@ function onStartDragging(dataChromosomes) {
 
   if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "") return;
 
-  // Creating a clone of the current mouse down chromosome
+  // Removing clones if they exists
   d3.selectAll(`g.${currentChromosomeMouseDown}-clone`).remove();
   // Creating clone of mouse down chr using selection.clone(deep = true)
-  const copy = d3.select(`g.${currentChromosomeMouseDown}`).clone(true);
-  copy.lower()
+  const copyChr = d3.select(`g.${currentChromosomeMouseDown}`).clone(true);
+  copyChr.lower()
     .attr("class", `${currentChromosomeMouseDown}-clone`)
     .attr("opacity", 0.5)
     .style("pointer-events", "none"); // No events should point to it
+
+  if (!d3.selectAll(`g.all g.block.${currentChromosomeMouseDown}`).empty()) {
+    // Creating clone of additional tracks using selection.clone(deep = true)
+    const copyTracks = d3.selectAll(`g.all g.block.${currentChromosomeMouseDown}`).clone(true);
+    copyTracks.lower()
+      .attr("class", `${currentChromosomeMouseDown}-clone`)
+      .attr("opacity", 0.5)
+      .style("pointer-events", "none"); // No events should point to it
+  }
 
   // Offset angle for correct rotation
   offsetAngle = getAngleFromCoordinates();
@@ -328,6 +365,13 @@ function onDragging(dataChromosomes) {
     .attr("transform", `rotate(${currentAngle})`)
     // While dragging no other events should point to it
     .style("pointer-events", "none");
+
+  updateAdditionalTracksWhileDragging({
+    angleValue: currentAngle,
+    chromosome: currentChromosomeMouseDown,
+    dataChromosomes: dataChromosomes,
+    transitionDuration: 0
+  });
 
   // Updating lastAngle with currentAngle to be used in the end drag event
   lastAngle = currentAngle;
@@ -408,6 +452,9 @@ function onEndDragging(dataChromosomes) {
     return;
   }
 
+  // Disabling inputs and selects before calling the animation
+  resetInputsAndSelectsOnAnimation(true);
+
   // Disable checkbox because dragging might lead to a worse solution
   d3.select('p.show-best-layout input').property("checked", false);
 
@@ -487,8 +534,8 @@ function onEndDragging(dataChromosomes) {
 
   let transitionDraggingBackTime = TRANSITION_DRAG_TIME;
 
-  // Transitioning the remaining chromosomes, by removing the clone first
-  d3.select(`g.${currentChromosomeMouseDown}-clone`)
+  // Transitioning the remaining chromosomes, by removing the clones first
+  d3.selectAll(`g.${currentChromosomeMouseDown}-clone`)
     .transition()
     .duration(TRANSITION_DRAG_TIME)
     .attr("opacity", 0)
@@ -526,8 +573,12 @@ function onEndDragging(dataChromosomes) {
             .attr("transform", `rotate(${rotatingAngle})`);
         }
 
-        console.log('ROTATING ANGLE: ', rotatingAngle);
-        console.log('TRUE LAST ANGLE: ', trueLastAngle);
+        updateAdditionalTracksWhileDragging({
+          angleValue: rotatingAngle,
+          chromosome: selectDrag[index],
+          dataChromosomes: dataChromosomes,
+          transitionDuration: TRANSITION_DRAG_TIME
+        });
 
         updateChordsWhileDragging({
           angleValue: angleValue,
@@ -559,6 +610,9 @@ function onEndDragging(dataChromosomes) {
       const chromosomeRotateAngle = d3.select("#nAngle-genome-view").property("value");
       updateAngle(+chromosomeRotateAngle, 360 - draggedAngle);
     }
+
+    // Enabling inputs and selects after calling the animation
+    resetInputsAndSelectsOnAnimation();
 
     // Drawing genome view without removing block view
     // and updating block collisions

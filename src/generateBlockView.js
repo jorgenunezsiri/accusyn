@@ -17,7 +17,8 @@ import * as d3 from 'd3';
 import cloneDeep from 'lodash/cloneDeep';
 
 import {
-  removeBlockView
+  removeBlockView,
+  resetInputsAndSelectsOnAnimation
 } from './helpers';
 
 // Variables getters and setters
@@ -149,9 +150,10 @@ export default function generateBlockView(data) {
     .attr("class", "outer-clickable-content")
     .append("p")
     .attr("class", "reset-button")
-    .append("button")
+    .append("input")
+    .attr("type", "button")
+    .attr("value", "Reset")
     .attr("title", "Resets the block view to its original scale.")
-    .text("Reset")
     .on("click", function() {
       if (isFlipped && !onInputChange) {
         onInputChange = true;
@@ -353,6 +355,9 @@ export default function generateBlockView(data) {
     }
 
     if (onInputChange) {
+      // Disabling inputs and selects before calling the animation
+      resetInputsAndSelectsOnAnimation(true);
+
       // Change paths color to lightblue
       svgBlock.selectAll("path.line")
         .transition()
@@ -507,6 +512,9 @@ export default function generateBlockView(data) {
           .duration(COLOR_CHANGE_TIME)
           .ease(d3.easeLinear)
           .attr("stroke", pathLineColor);
+
+        // Enabling inputs and selects after calling the animation
+        resetInputsAndSelectsOnAnimation();
       }
 
       // Add the Circos tooltip

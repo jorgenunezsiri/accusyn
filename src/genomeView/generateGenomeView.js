@@ -36,6 +36,7 @@ import {
   getSelectedCheckboxes,
   getTransformValuesAdditionalTracks,
   removeBlockView,
+  resetInputsAndSelectsOnAnimation,
   roundFloatNumber,
   updateBlockNumberHeadline
 } from './../helpers';
@@ -281,6 +282,9 @@ function generateCircosLayout() {
         // To prevent default right click action
         event.preventDefault();
 
+        // Disabling inputs and selects before calling the animation
+        resetInputsAndSelectsOnAnimation(true);
+
         // Before flipping, set all chords with the same opacity
         d3.selectAll("path.chord").attr("opacity", 0.7);
 
@@ -312,11 +316,16 @@ function generateCircosLayout() {
 
         console.log('CURRENT FLIPPED CHR: ', currentFlippedChromosomes);
 
-        setTimeout(() => generateGenomeView({
-          transition: transition,
-          shouldUpdateBlockCollisions: true,
-          shouldUpdateLayout: true
-        }), FLIPPING_CHROMOSOME_TIME + (FLIPPING_CHROMOSOME_TIME / 2));
+        setTimeout(() => {
+          // Enabling inputs and selects after calling the animation
+          resetInputsAndSelectsOnAnimation();
+
+          generateGenomeView({
+            transition: transition,
+            shouldUpdateBlockCollisions: true,
+            shouldUpdateLayout: true
+          });
+        }, FLIPPING_CHROMOSOME_TIME + (FLIPPING_CHROMOSOME_TIME / 2));
       },
       'mousedown.chr': function(d) {
         setCurrentChromosomeMouseDown(d.id);
@@ -413,6 +422,9 @@ function generatePathGenomeView({
 
   // To keep track of the value of highlight flipped blocks checkbox
   const highlightFlippedBlocks = d3.select("p.highlight-flipped-blocks input").property("checked");
+
+  // To keep track of the value of highlight flipped chromosomes checkbox
+  const highlightFlippedChromosomes = d3.select("p.highlight-flipped-chromosomes input").property("checked");
 
   const myCircos = getCircosObject();
 
@@ -547,20 +559,22 @@ function generatePathGenomeView({
       translate(${currentTranslate.width},${currentTranslate.height})
       rotate(${currentRotate})`);
 
-  // Highlighting flipped blocks if checkbox is true
+  // Highlighting flipped blocks if checkbox is selected
   if (highlightFlippedBlocks) {
     d3.selectAll("path.chord.isFlipped")
       .style("stroke", "#ea4848")
       .style("stroke-width", "2px");
   }
 
-  // Highlighting flipped chromosomes by default
-  for (let i = 0; i < currentFlippedChromosomes.length; i++) {
-    // d3.select(`g.${currentFlippedChromosomes[i]}`).attr("opacity", 0.6);
-    d3.select(`g.${currentFlippedChromosomes[i]} path#arc-label${currentFlippedChromosomes[i]}`)
+  // Highlighting flipped chromosomes if checkbox is selected
+  if (highlightFlippedChromosomes) {
+    for (let i = 0; i < currentFlippedChromosomes.length; i++) {
+      // d3.select(`g.${currentFlippedChromosomes[i]}`).attr("opacity", 0.6);
+      d3.select(`g.${currentFlippedChromosomes[i]} path#arc-label${currentFlippedChromosomes[i]}`)
       .style("stroke", "#ea4848")
       .style("stroke-width", "1px");
-    // d3.select(`g.${currentFlippedChromosomes[i]}`).style("stroke", "#ea4848");
+      // d3.select(`g.${currentFlippedChromosomes[i]}`).style("stroke", "#ea4848");
+    }
   }
 
   // Show best / saved layout checkbox

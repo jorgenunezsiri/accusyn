@@ -1247,7 +1247,9 @@ var Track = function () {
     value: function renderBlock(parentElement, data, layout, conf) {
       var _this2 = this;
 
-      var block = parentElement.selectAll('.block').data(data).enter().append('g').attr('class', 'block').attr('transform', function (d) {
+      var block = parentElement.selectAll('.block').data(data).enter().append('g').attr('class', function (d) {
+        return 'block ' + d.key;
+      }).attr('transform', function (d) {
         return 'rotate(' + layout.blocks[d.key].start * 360 / (2 * Math.PI) + ')';
       });
 

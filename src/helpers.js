@@ -140,6 +140,18 @@ export function resetChromosomeCheckboxes() {
   });
 };
 
+/**
+ * Resets both inputs and selects on any animation: dragging, flipping, or swapping
+ *
+ * @param {boolean} [value=null] Disabling value
+ */
+export function resetInputsAndSelectsOnAnimation(value = null) {
+  d3.selectAll("input")
+    .attr("disabled", value);
+
+  d3.selectAll("select")
+    .attr("disabled", value);
+};
 
 /**
  * Gets the transform values based on how many additional tracks are outside
@@ -302,7 +314,7 @@ export function getChordsRadius() {
   if (isAdditionalTrackAdded()) {
     // Inner and outer radius
     const { heatmap, histogram } = getInnerAndOuterRadiusAdditionalTracks();
-    console.log('HEATMAP AND HISTOGRAM FOR CHORD RADIUS: ', heatmap, histogram);
+
     // Take the minimum between both track innerRadius
     const innerRadius = Math.min(heatmap.innerRadius, histogram.innerRadius);
     if (innerRadius < 1.00) {
