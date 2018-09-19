@@ -17,6 +17,7 @@ import * as d3 from 'd3';
 import cloneDeep from 'lodash/cloneDeep';
 
 import {
+  getFlippedGenesPosition,
   removeBlockView,
   resetInputsAndSelectsOnAnimation
 } from './helpers';
@@ -25,6 +26,7 @@ import {
 import { getBlockDictionary } from './variables/blockDictionary';
 import { getGeneDictionary } from './variables/geneDictionary';
 import { getGffDictionary } from './variables/gffDictionary';
+import { getCurrentFlippedChromosomes } from './variables/currentFlippedChromosomes';
 
 // Contants
 import {
@@ -247,32 +249,61 @@ export default function generateBlockView(data) {
   // Calling zoom for the block, so it works for every path
   svgBlock.call(zoom);
 
+  const currentFlippedChromosomes = getCurrentFlippedChromosomes();
+
+  // Data from current block
   const blockArray = blockDictionary[blockID];
+
+  // Assuming source and target chromosomes are the same in all blocks
+  // Thus, only need to check for the first one
+  const { sourceChromosome, targetChromosome } = blockArray[0];
+  const isFlippedSource = currentFlippedChromosomes.indexOf(sourceChromosome) !== (-1);
+  const isFlippedTarget = currentFlippedChromosomes.indexOf(targetChromosome) !== (-1);
+
   for (let i = 0; i < blockArray.length; i++) {
     const blockSource = blockArray[i].connectionSource;
     const blockTarget = blockArray[i].connectionTarget;
     const connectionID = blockArray[i].connection;
-    const currentSource = geneDictionary[blockSource];
-    const currentTarget = geneDictionary[blockTarget];
+    let { start: sourceStart, end: sourceEnd } = geneDictionary[blockSource];
+    let { start: targetStart, end: targetEnd } = geneDictionary[blockTarget];
     const eValueConnection = blockArray[i].eValueConnection;
     const isFlipped = blockArray.blockPositions.isFlipped;
 
+    if (isFlippedSource) {
+      const { start, end } = getFlippedGenesPosition(gffPositionDictionary[sourceChromosome], {
+        start: sourceStart,
+        end: sourceEnd
+      });
+      sourceStart = start;
+      sourceEnd = end;
+    }
+
+    if (isFlippedTarget) {
+      const { start, end } = getFlippedGenesPosition(gffPositionDictionary[targetChromosome], {
+        start: targetStart,
+        end: targetEnd
+      });
+      targetStart = start;
+      targetEnd = end;
+    }
+
     // Points are the determined using the midpoint between start and end
+    // TODO: Need to change this to use polygons
     const currentData = [
-      (currentSource.start + currentSource.end) / 2,
-      (currentTarget.start + currentTarget.end) / 2
+      (sourceStart + sourceEnd) / 2,
+      (targetStart + targetEnd) / 2
     ];
 
     dataBlock.push({
       source: {
         id: blockSource,
-        start: currentSource.start,
-        end: currentSource.end
+        start: sourceStart,
+        end: sourceEnd
       },
       target: {
         id: blockTarget,
-        start: currentTarget.start,
-        end: currentTarget.end
+        start: targetStart,
+        end: targetEnd
       },
       data: currentData,
       connection: connectionID,

@@ -7,6 +7,44 @@ svg#genome-view {
   &.dark-mode {
     background-color: #222222;
   }
+
+  &.blur-view {
+    filter: blur(4px);
+  }
+}
+
+div.genome-view-container {
+  .progress {
+    display: none;
+    left: 50%;
+    height: 32px;
+    top: 625px;
+    position: absolute;
+    transform: translate(-50%, 0);
+    width: 40%;
+
+    .progress-bar {
+      color: black;
+      display: none;
+      transition: none;
+    }
+  }
+
+  svg#genome-view {
+    &.dark-mode + .progress {
+      .progress-bar {
+        color: #ffffff;
+      }
+    }
+
+    &.blur-view + .progress {
+      display: flex;
+
+      .progress-bar {
+        display: flex;
+      }
+    }
+  }
 }
 
 .cs-layout > g {

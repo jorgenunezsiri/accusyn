@@ -15,11 +15,6 @@ Function file: generateGenomeView.js
 
 import * as d3 from 'd3';
 
-// React
-import React from 'react';
-import ReactDOM from 'react-dom';
-import AlertWithTimeout from './../reactComponents/Alert';
-
 // Lodash
 import cloneDeep from 'lodash/cloneDeep';
 import defaultsDeep from 'lodash/defaultsDeep';
@@ -33,10 +28,12 @@ import {
   calculateMiddleValue,
   getChordsRadius,
   getInnerAndOuterRadiusAdditionalTracks,
+  getFlippedGenesPosition,
   getSelectedCheckboxes,
   getTransformValuesAdditionalTracks,
   removeBlockView,
   resetInputsAndSelectsOnAnimation,
+  renderReactAlert,
   roundFloatNumber,
   updateBlockNumberHeadline
 } from './../helpers';
@@ -67,6 +64,10 @@ import {
   getCurrentChromosomeOrder,
   getDefaultChromosomeOrder
 } from './../variables/currentChromosomeOrder';
+import {
+  getCurrentFlippedChromosomes,
+  setCurrentFlippedChromosomes
+} from './../variables/currentFlippedChromosomes';
 import { getGffDictionary } from './../variables/gffDictionary';
 import {
   getAdditionalTrackArray,
@@ -88,8 +89,7 @@ import {
 } from './../variables/constants';
 
 // Local variables
-const currentFlippedChromosomes = []; // Array that stores the current set of chromosomes with flipped locations
-let currentSelectedBlock = {}; // To store the data of the current selected block
+let currentSelectedBlock = null; // To store the block id of the current selected block
 const currentRemovedBlocks = []; // Array that stores the current set of blocks that are removed
 let dataChords = []; // Array that stores the plotting information for each block chord
 let dataChromosomes = []; // Array that stores the current chromosomes in the Circos plot
@@ -238,18 +238,20 @@ function generateAdditionalTrack(trackName) {
       logScale: false,
       color: trackColor,
       tooltipContent: function(d) {
+        // Activate if SA is not running
+        if (d3.select(".best-guess > input").attr("disabled")) return;
         // Only show tooltip if the user is not dragging
+        // Note: Still need this, because we don't want to view the tooltip when
+        // holding a chromosome
         const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
-        if (currentChromosomeMouseDown === "") {
-          const { block_id, start, end, value } = d;
-          return `<h6><u>Bin information</u></h6>
+        if (!isEmpty(currentChromosomeMouseDown)) return;
+
+        const { block_id, start, end, value } = d;
+        return `<h6><u>Bin information</u></h6>
           <h6>Chromosome: ${block_id}</h6>
           <h6>Start: ${start}</h6>
           <h6>End: ${end}</h6>
           <h6>Value: ${value}</h6>`;
-        }
-
-        return;
       }
     };
 
@@ -282,11 +284,16 @@ function generateCircosLayout() {
         // To prevent default right click action
         event.preventDefault();
 
+        // Activate if SA is not running
+        if (d3.select(".best-guess > input").attr("disabled")) return;
+
         // Disabling inputs and selects before calling the animation
         resetInputsAndSelectsOnAnimation(true);
 
         // Before flipping, set all chords with the same opacity
         d3.selectAll("path.chord").attr("opacity", 0.7);
+
+        let currentFlippedChromosomes = getCurrentFlippedChromosomes();
 
         const currentID = d.id;
         const currentPosition = currentFlippedChromosomes.indexOf(currentID);
@@ -316,6 +323,11 @@ function generateCircosLayout() {
 
         console.log('CURRENT FLIPPED CHR: ', currentFlippedChromosomes);
 
+        setCurrentFlippedChromosomes(currentFlippedChromosomes);
+
+        // Resetting chr mouse down because of flipping (contextmenu is not mousedown)
+        setCurrentChromosomeMouseDown("");
+
         setTimeout(() => {
           // Enabling inputs and selects after calling the animation
           resetInputsAndSelectsOnAnimation();
@@ -328,6 +340,9 @@ function generateCircosLayout() {
         }, FLIPPING_CHROMOSOME_TIME + (FLIPPING_CHROMOSOME_TIME / 2));
       },
       'mousedown.chr': function(d) {
+        // Activate if SA is not running
+        if (d3.select(".best-guess > input").attr("disabled")) return;
+
         setCurrentChromosomeMouseDown(d.id);
       }
     }
@@ -356,7 +371,8 @@ function generateCircosLayout() {
 
   // Updating block view using current selected block if not empty
   if (!isEmpty(currentSelectedBlock)) {
-    generateBlockView(currentSelectedBlock);
+    const currentPosition = findIndex(dataChords, ['source.value.id', currentSelectedBlock]);
+    if (currentPosition !== (-1)) generateBlockView(dataChords[currentPosition]);
   }
 
   // Adding additional tracks
@@ -393,8 +409,8 @@ function unhighlightCurrentSelectedBlock() {
   // Removing block view
   removeBlockView(REMOVE_BLOCK_VIEW_TRANSITION_TIME);
 
-  // Resetting current selected block object
-  currentSelectedBlock = {};
+  // Resetting current selected block to null value
+  currentSelectedBlock = null;
 }
 
 /**
@@ -454,7 +470,7 @@ function generatePathGenomeView({
     logScale: false,
     opacity: function(d) {
       if (foundCurrentSelectedBlock) {
-        if (isEqual(d, currentSelectedBlock)) {
+        if (isEqual(d.source.value.id, currentSelectedBlock)) {
           return 0.9;
         } else {
           return 0.3;
@@ -471,47 +487,60 @@ function generatePathGenomeView({
       return CONNECTION_COLOR;
     },
     tooltipContent: function(d) {
+      // Activate if SA is not running
+      if (d3.select(".best-guess > input").attr("disabled")) return;
       // Only show tooltip if the user is not dragging
+      // Note: Still need this, because we don't want to view the tooltip when
+      // holding a chromosome
       const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
-      if (currentChromosomeMouseDown === "") {
-        const { id: sourceID } = d.source;
-        const { id: targetID } = d.target;
-        const { id: blockID, score, eValue, length, isFlipped } = d.source.value;
-        return `<h6>${sourceID} ➤ ${targetID}</h6>
-          <h6><u>Block information</u></h6>
-          <h6>ID: ${blockID}</h6>
-          <h6>Score: ${score}</h6>
-          <h6>E-value: ${eValue}</h6>
-          <h6>Size: ${length}</h6>
-          <h6>Flipped: ${(isFlipped ? "Yes" : "No")}</h6>`;
-      }
+      if (!isEmpty(currentChromosomeMouseDown)) return;
 
-      return;
+      const { id: sourceID } = d.source;
+      const { id: targetID } = d.target;
+      const { id: blockID, score, eValue, length, isFlipped } = d.source.value;
+      return `<h6>${sourceID} ➤ ${targetID}</h6>
+        <h6><u>Block information</u></h6>
+        <h6>ID: ${blockID}</h6>
+        <h6>Score: ${score}</h6>
+        <h6>E-value: ${eValue}</h6>
+        <h6>Size: ${length}</h6>
+        <h6>Flipped: ${(isFlipped ? "Yes" : "No")}</h6>`;
     },
     events: {
       'click.block': function() {
+        // Activate if SA is not running
+        if (d3.select(".best-guess > input").attr("disabled")) return;
+
         unhighlightCurrentSelectedBlock();
       },
       'mouseover.block': function(d, i, nodes) {
+        // Activate if SA is not running
+        if (d3.select(".best-guess > input").attr("disabled")) return;
+
         // Only update block view if the user is not dragging
+        // Note: Still need this, because we don't want to mouseover and highlight
+        // when holding a chromosome
         const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
-        if (currentChromosomeMouseDown === "") {
-          currentSelectedBlock = d;
+        if (!isEmpty(currentChromosomeMouseDown)) return;
 
-          d3.selectAll(nodes).attr("opacity", 0.7);
+        currentSelectedBlock = d.source.value.id;
 
-          if (d3.selectAll(nodes).attr("opacity") != 0.3) {
-            d3.selectAll(nodes).attr("opacity", 0.3);
-            d3.select(nodes[i]).raise().attr("opacity", 0.9);
-          }
+        d3.selectAll(nodes).attr("opacity", 0.7);
 
-          // Showing block view for current block
-          generateBlockView(d);
+        if (d3.selectAll(nodes).attr("opacity") != 0.3) {
+          d3.selectAll(nodes).attr("opacity", 0.3);
+          d3.select(nodes[i]).raise().attr("opacity", 0.9);
         }
+
+        // Showing block view for current block
+        generateBlockView(d);
       },
       'contextmenu.block': function(d, i, nodes, event) {
         // To prevent default right click action
         event.preventDefault();
+
+        // Activate if SA is not running
+        if (d3.select(".best-guess > input").attr("disabled")) return;
 
         unhighlightCurrentSelectedBlock();
 
@@ -551,6 +580,7 @@ function generatePathGenomeView({
     myCircos.render();
   }
 
+  // Changing transform attribute based on the additional tracks
   const { rotate: currentRotate, scale: currentScale, translate: currentTranslate } =
     getTransformValuesAdditionalTracks();
 
@@ -568,6 +598,7 @@ function generatePathGenomeView({
 
   // Highlighting flipped chromosomes if checkbox is selected
   if (highlightFlippedChromosomes) {
+    const currentFlippedChromosomes = getCurrentFlippedChromosomes();
     for (let i = 0; i < currentFlippedChromosomes.length; i++) {
       // d3.select(`g.${currentFlippedChromosomes[i]}`).attr("opacity", 0.6);
       d3.select(`g.${currentFlippedChromosomes[i]} path#arc-label${currentFlippedChromosomes[i]}`)
@@ -605,13 +636,8 @@ function generatePathGenomeView({
       const collisionCount = getCollisionCount();
       saveToCollisionsDictionary(dataChromosomes, collisionCount, dataChords);
 
-      ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
-      ReactDOM.render(
-        <AlertWithTimeout
-            message={"The layout was successfully saved."}
-          />,
-        document.getElementById('alert-container')
-      );
+      // Showing alert using react
+      renderReactAlert("The layout was successfully saved.", "success");
     });
 
   // Reset layout button
@@ -698,6 +724,8 @@ export default function generateGenomeView({
     }
   }
 
+  const currentFlippedChromosomes = getCurrentFlippedChromosomes();
+
   for (let i = 0; i < blockKeys.length; i++) {
     const currentBlock = blockKeys[i];
 
@@ -739,28 +767,16 @@ export default function generateGenomeView({
         end: blockPositions.maxTarget
       };
 
-      // Example for flipped chromosomes:
-      // Positions -> 20-28, 1-13
-      // newStart = lastChrPosition - (endBlock)
-      // newEnd = lastChrPosition - (startBlock)
-      // 28-28 = 0, 28-20 = 8
-      // 28-13 = 15, 28-1 = 27
-
-      // newStart = lastChrPosition - (endBlock)
-      // newEnd = lastChrPosition - (startBlock)
-      let tmpStart = 0;
       if (currentFlippedChromosomes.indexOf(sourceID) !== (-1)) {
-        tmpStart = sourcePositions.start;
-
-        sourcePositions.start = gffPositionDictionary[sourceID].end - sourcePositions.end;
-        sourcePositions.end = gffPositionDictionary[sourceID].end - tmpStart;
+        const { start, end } = getFlippedGenesPosition(gffPositionDictionary[sourceID], sourcePositions);
+        sourcePositions.start = start;
+        sourcePositions.end = end;
       }
 
       if (currentFlippedChromosomes.indexOf(targetID) !== (-1)) {
-        tmpStart = targetPositions.start;
-
-        targetPositions.start = gffPositionDictionary[targetID].end - targetPositions.end;
-        targetPositions.end = gffPositionDictionary[targetID].end - tmpStart;
+        const { start, end } = getFlippedGenesPosition(gffPositionDictionary[targetID], targetPositions);
+        targetPositions.start = start;
+        targetPositions.end = end;
       }
 
       dataChords.push({
@@ -783,7 +799,9 @@ export default function generateGenomeView({
         }
       });
 
-      if (isEqual(dataChords[dataChords.length - 1], currentSelectedBlock)) {
+      // Only checking when variable is still false
+      if (!foundCurrentSelectedBlock &&
+          isEqual(dataChords[dataChords.length - 1].source.value.id, currentSelectedBlock)) {
         foundCurrentSelectedBlock = true;
       }
     }
@@ -821,7 +839,7 @@ export default function generateGenomeView({
   // Resetting currentSelectedBlock object back to default if no block is found
   if (!foundCurrentSelectedBlock && !isEmpty(currentSelectedBlock)) {
     console.log('HERE RESETTING!!!!');
-    currentSelectedBlock = {};
+    currentSelectedBlock = null;
   }
 
   // Updating the label showing the number of blocks and flipped blocks
@@ -834,13 +852,7 @@ export default function generateGenomeView({
         .attr("disabled", true);
 
       // TODO: Workaround for this?
-      setTimeout(() => {
-        simulatedAnnealing(dataChromosomes, dataChords);
-
-        d3.select(this)
-          .property("value", "Minimize collisions")
-          .attr("disabled", null);
-      }, 50);
+      setTimeout(() => simulatedAnnealing(dataChromosomes, dataChords), 50);
     });
 
   // Remove block view if user is filtering

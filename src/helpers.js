@@ -1,10 +1,16 @@
 import * as d3 from 'd3';
 
+// React
+import React from 'react';
+import ReactDOM from 'react-dom';
+import AlertWithTimeout from './reactComponents/Alert';
+
 import find from 'lodash/find';
 import findIndex from 'lodash/findIndex';
 import sortedUniq from 'lodash/sortedUniq';
 
 import generateGenomeView from './genomeView/generateGenomeView';
+import { calculateDeclutteringETA } from './genomeView/blockCollisions';
 
 import { getDefaultChromosomeOrder } from './variables/currentChromosomeOrder';
 import { isAdditionalTrackAdded } from './variables/additionalTrack';
@@ -154,6 +160,54 @@ export function resetInputsAndSelectsOnAnimation(value = null) {
 };
 
 /**
+ * Renders alert using AlertWithTimeout React component
+ *
+ * @param  {string} alertMessage Alert message
+ * @param  {string} color        Alert color
+ * @return {undefined}      undefined
+ */
+export function renderReactAlert(alertMessage = "", color = "danger") {
+  const alertContainerElement = document.getElementById('alert-container');
+  ReactDOM.unmountComponentAtNode(alertContainerElement);
+  ReactDOM.render(
+    <AlertWithTimeout
+      color = {color}
+      message = {alertMessage}
+    />,
+    alertContainerElement
+  );
+};
+
+/**
+ * Get flipped genes position
+ *
+ * @param  {Object} chromosome Chromosome start and end object
+ * @param  {Object} gene       Original gene positions
+ * @return {Object}            Flipped gene positions
+ */
+export function getFlippedGenesPosition(chromosome, gene) {
+  // Example for flipped chromosomes:
+  // Positions -> 20-28, 1-13
+  // newStart = lastChrPosition - (endBlock)
+  // newEnd = lastChrPosition - (startBlock)
+  // 28-28 = 0, 28-20 = 8
+  // 28-13 = 15, 28-1 = 27
+
+  // newStart = lastChrPosition - (endBlock)
+  // newEnd = lastChrPosition - (startBlock)
+
+  const tmpStart = gene.start;
+
+  const start = chromosome.end - gene.end;
+  const end = chromosome.end - tmpStart;
+
+  return {
+    start,
+    end
+  };
+};
+
+/**
  * Gets the transform values based on how many additional tracks are outside
  *
  * Note: For each outside track, scale will decrease 6% for each additional track
@@ -173,14 +227,14 @@ export function getTransformValuesAdditionalTracks() {
 
   if (isAdditionalTrackAdded()) {
     const selectedHeatmapTrack = d3.select("div.heatmap-track-input select") &&
-    d3.select("div.heatmap-track-input select").property("value");
+      d3.select("div.heatmap-track-input select").property("value");
     const trackPlacementHeatmapTrack = d3.select("div.heatmap-track-placement select") &&
-    d3.select("div.heatmap-track-placement select").property("value");
+      d3.select("div.heatmap-track-placement select").property("value");
 
     const selectedHistogramTrack = d3.select("div.histogram-track-input select") &&
-    d3.select("div.histogram-track-input select").property("value");
+      d3.select("div.histogram-track-input select").property("value");
     const trackPlacementHistogramTrack = d3.select("div.histogram-track-placement select") &&
-    d3.select("div.histogram-track-placement select").property("value");
+      d3.select("div.histogram-track-placement select").property("value");
 
     // TODO: Come back to this after generalizing the additional tracks
     // Need to include current position attribute inside each track object,
@@ -197,7 +251,7 @@ export function getTransformValuesAdditionalTracks() {
     }
   }
 
-  console.log('ROTATE, SCALE, AND TRANSLATE: ', rotate, scale, translate);
+  // console.log('ROTATE, SCALE, AND TRANSLATE: ', rotate, scale, translate);
 
   return {
     rotate,
@@ -555,6 +609,34 @@ export function updateAngle(nAngle = 0, nDragging = 0) {
 };
 
 /**
+ * Updates the temperature for the Simulated Annealing algorithm in the genome view
+ *
+ * @param  {number} temperature Current temperature between 100 and 30,000
+ * @return {undefined}          undefined
+ */
+export function updateTemperature(temperature) {
+  // Adjust the text on the temperature range slider
+  d3.select("#filter-sa-temperature-value").text(d3.format(",")(temperature));
+  d3.select("#filter-sa-temperature").property("value", temperature);
+
+  calculateDeclutteringETA();
+};
+
+/**
+ * Updates the ratio for the Simulated Annealing algorithm in the genome view
+ *
+ * @param  {number} ratio Current ratio between 0.001 and 0.1
+ * @return {undefined}    undefined
+ */
+export function updateRatio(ratio) {
+  // Adjust the text on the ratio range slider
+  d3.select("#filter-sa-ratio-value").text(ratio);
+  d3.select("#filter-sa-ratio").property("value", ratio);
+
+  calculateDeclutteringETA();
+};
+
+/**
  * Updating the label showing the number of blocks and flipped blocks
  *
  * @param  {Array<Object>} dataChords Plotting information for each block chord
@@ -565,9 +647,10 @@ export function updateBlockNumberHeadline(dataChords) {
   d3.select(".block-number-headline")
     .text(function() {
       const blockSize = dataChords.length.toString();
+      const blockSizeString = d3.format(",")(blockSize);
       let textToShow = "";
-      textToShow += blockSize === "1" ? `${blockSize} block` :
-        `${blockSize} blocks`;
+      textToShow += blockSize === "1" ? `${blockSizeString} block` :
+        `${blockSizeString} blocks`;
       return textToShow;
     });
 
@@ -581,9 +664,10 @@ export function updateBlockNumberHeadline(dataChords) {
   d3.select(".flipped-blocks-headline")
     .text(function() {
       const blockSize = flippedBlockSize.toString();
+      const blockSizeString = d3.format(",")(blockSize);
       let textToShow = "";
-      textToShow += blockSize === "1" ? `${blockSize} flipped block` :
-        `${blockSize} flipped blocks`;
+      textToShow += blockSize === "1" ? `${blockSizeString} flipped block` :
+        `${blockSizeString} flipped blocks`;
       return textToShow;
     });
 };
@@ -607,7 +691,8 @@ export function updateFilter({
   value = 1
 }) {
   // Adjust the text on the filter range slider
-  d3.select("#filter-block-size-value").text(value === 1 ? `${value} connection` : `${value} connections`);
+  const valueString = d3.format(",")(value);
+  d3.select("#filter-block-size-value").text(value === 1 ? `${valueString} connection` : `${valueString} connections`);
   d3.select("#filter-block-size").property("value", value);
 
   if (shouldUpdatePath) {

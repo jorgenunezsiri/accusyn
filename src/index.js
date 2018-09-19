@@ -1,14 +1,10 @@
 import * as d3 from 'd3';
 
-// React
-import React from 'react';
-import ReactDOM from 'react-dom';
-import AlertWithTimeout from './reactComponents/Alert';
-
 import generateData from './generateData';
 import {
   getQueryString,
-  isUrlFound
+  isUrlFound,
+  renderReactAlert
 } from './helpers';
 
 // Variables
@@ -249,12 +245,7 @@ const processCollinearity = function processCollinearity(fileName, callback) {
 
     q.await(generateData);
   } else {
-    ReactDOM.render(
-      <AlertWithTimeout
-        color = "danger"
-        message = {"The current url parameters are not valid. Please, try again!"}
-      />,
-      document.getElementById('alert-container')
-    );
+    // Showing alert using react
+    renderReactAlert("The current url parameters are not valid. Please, try again!");
   }
 })();

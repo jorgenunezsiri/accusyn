@@ -295,7 +295,8 @@ function onStartDragging(dataChromosomes) {
   const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
   console.log('CURRENT MOUSE DOWN: ', currentChromosomeMouseDown);
 
-  if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "") return;
+  if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "" ||
+    d3.select(".best-guess > input").attr("disabled")) return;
 
   // Removing clones if they exists
   d3.selectAll(`g.${currentChromosomeMouseDown}-clone`).remove();
@@ -352,7 +353,8 @@ function onDragging(dataChromosomes) {
   const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
   console.log('CURRENT MOUSE DOWN: ', currentChromosomeMouseDown);
 
-  if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "") return;
+  if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "" ||
+    d3.select(".best-guess > input").attr("disabled")) return;
 
   updateWaitingBlockCollisionHeadline();
 
@@ -399,7 +401,8 @@ function onEndDragging(dataChromosomes) {
   const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
   console.log('CURRENT MOUSE DOWN: ', currentChromosomeMouseDown);
 
-  if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "") return;
+  if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "" ||
+    d3.select(".best-guess > input").attr("disabled")) return;
 
   let currentChromosomeOrder = getCurrentChromosomeOrder();
 
@@ -423,7 +426,7 @@ function onEndDragging(dataChromosomes) {
     if (lastChrPosition < 0) lastChrPosition = 360 + lastChrPosition;
     else if (lastChrPosition > 360) lastChrPosition = lastChrPosition - 360;
 
-    console.log('INSIDE LOOP: ', currentChromosomeMouseDown, key, lastChrPosition, draggingAnglesDictionary[key].startAngle);
+    // console.log('INSIDE LOOP: ', currentChromosomeMouseDown, key, lastChrPosition, draggingAnglesDictionary[key].startAngle);
 
     if (lastChrPosition >= draggingAnglesDictionary[key].startAngle &&
       lastChrPosition <= draggingAnglesDictionary[key].endAngle) {

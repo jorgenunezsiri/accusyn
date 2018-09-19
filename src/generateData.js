@@ -35,7 +35,9 @@ import {
   showChromosomeConnectionInformation,
   sortGffKeys,
   updateAngle,
-  updateFilter
+  updateFilter,
+  updateRatio,
+  updateTemperature
 } from './helpers';
 
 // Variables getters and setters
@@ -321,6 +323,15 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   d3.select("#form-config")
     .append("h6")
     .attr("class", "superimposed-block-collisions-headline");
+
+  // Decluttering ETA
+  d3.select("#form-config")
+    .append("h6")
+    .attr("class", "filter-sa-hint-title");
+
+  d3.select("#form-config")
+    .append("h6")
+    .attr("class", "filter-sa-hint");
 
   // Layout title
   d3.select("#form-config")
@@ -629,6 +640,43 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .attr("type", "button")
     .attr("value", "Reset");
 
+  // Decluttering title
+  d3.select("#form-config")
+    .append("h5")
+    .text("Decluttering");
+
+  // Filter Simulated Annealing temperature
+  d3.select("#form-config")
+    .append("div")
+    .attr("class", "filter-sa-temperature-div")
+    .html(function() {
+      return `
+        <label for="filter-sa-temperature">
+          <span>Temperature = </span>
+          <span id="filter-sa-temperature-value">…</span>
+        </label>
+        <p>
+          <input type="range" min="100" max="100000" step="100" id="filter-sa-temperature">
+        </p>
+      `;
+    });
+
+  // Filter Simulated Annealing ratio
+  d3.select("#form-config")
+    .append("div")
+    .attr("class", "filter-sa-ratio-div")
+    .html(function() {
+      return `
+        <label for="filter-sa-ratio">
+          <span>Ratio = </span>
+          <span id="filter-sa-ratio-value">…</span>
+        </label>
+        <p>
+          <input type="range" min="0.001" max="0.2" step="0.001" id="filter-sa-ratio">
+        </p>
+      `;
+    });
+
   // Minimize collisions button
   d3.select("#form-config")
     .append("p")
@@ -932,12 +980,28 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   const svg = d3.select("#page-container .row")
     .append("div")
     .attr("class", function() {
-      return "col-lg-6 text-center";
+      return "genome-view-container col-lg-6 text-center";
     })
     .append("svg")
     .attr("id", "genome-view")
     .attr("width", WIDTH)
     .attr("height", HEIGHT);
+
+  d3.select(".genome-view-container")
+    .append("div")
+    .attr("class", "progress")
+    // .style("display", "none")
+    .html(function() {
+      return `
+        <div class="progress-bar"
+          role="progressbar"
+          aria-valuenow="75"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          style="width: 0%">0%
+        </div>
+      `;
+    });
 
   // svg
   //   .call(d3.zoom().on("zoom", function() {
@@ -963,6 +1027,22 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
 
   // Initial starting angle of the genome view (0 degrees for default and dragging angle)
   updateAngle(0, 0);
+
+  // Initial temperature and input event
+  updateTemperature(5000);
+
+  d3.select("#filter-sa-temperature")
+    .on("input", function() {
+      updateTemperature(+this.value);
+    });
+
+  // Initial ratio and input event
+  updateRatio(0.05);
+
+  d3.select("#filter-sa-ratio")
+    .on("input", function() {
+      updateRatio(+this.value);
+    });
 
   /**
    * Calling updateFilter with all parameters

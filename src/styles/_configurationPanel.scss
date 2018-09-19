@@ -17,7 +17,7 @@
 #form-config {
   // overflow-y: scroll; // To consider later
   // height: 1300px; // To consider later
-  padding: 20px 0 0 20px;
+  padding: 20px 20px 0;
   margin-bottom: 20px;
 
   div.draw-blocks-order,
@@ -32,7 +32,10 @@
     }
   }
 
-  p.filter-connections, div.filter-angle-div p {
+  p.filter-connections,
+  div.filter-angle-div p,
+  div.filter-sa-temperature-div p,
+  div.filter-sa-ratio-div p {
     input {
       margin-left: 45px;
       width: 195px;
@@ -54,9 +57,18 @@
     }
   }
 
-  div.filter-angle-div {
+  div.filter-angle-div,
+  div.filter-sa-temperature-div,
+  div.filter-sa-ratio-div {
     label {
       margin-bottom: 0;
+    }
+  }
+
+  div.filter-sa-temperature-div,
+  div.filter-sa-ratio-div {
+    p {
+      margin-bottom: 10px;
     }
   }
 
@@ -88,7 +100,7 @@
     span.chr-box-extra > em {
       display: inline-block;
       text-align: right;
-      width: 75px;
+      width: 74px;
     }
 
     .select-all {

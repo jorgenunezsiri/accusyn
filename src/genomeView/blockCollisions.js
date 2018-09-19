@@ -1,4 +1,5 @@
 import {
+  format as d3Format,
   ribbon as d3Ribbon,
   select as d3Select,
   selectAll as d3SelectAll
@@ -6,11 +7,6 @@ import {
 
 // ParallelJS
 import Parallel from 'paralleljs';
-
-// React
-import React from 'react';
-import ReactDOM from 'react-dom';
-import AlertWithTimeout from './../reactComponents/Alert';
 
 // Lodash
 import cloneDeep from 'lodash/cloneDeep';
@@ -21,15 +17,21 @@ import generateGenomeView from './generateGenomeView';
 import { updateAdditionalTracksWhileDragging } from './dragging';
 import {
   getChordsRadius,
+  renderReactAlert,
   resetInputsAndSelectsOnAnimation,
+  roundFloatNumber,
   sortGffKeys
 } from './../helpers';
 import { getCircosObject } from './../variables/myCircos';
 import {
   getCollisionCount,
+  getCollisionCalculationTime,
   getSuperimposedCollisionCount,
+  getTotalNumberOfIterations,
   setCollisionCount,
-  setSuperimposedCollisionCount
+  setCollisionCalculationTime,
+  setSuperimposedCollisionCount,
+  setTotalNumberOfIterations
 } from './../variables/collisionCount';
 import {
   setCurrentChromosomeOrder,
@@ -143,6 +145,7 @@ function isSuperimposed(R1, R2) {
  * @return {number} Number of collisions and superimposed collisions
  */
 export function getBlockCollisions(dataChromosomes, dataChords, shouldReturnPromise = true) {
+  const t0 = performance.now();
   let collisionCount = 0;
   let superimposedCollisionCount = 0;
 
@@ -194,10 +197,15 @@ export function getBlockCollisions(dataChromosomes, dataChords, shouldReturnProm
     }
   }
 
+  const t1 = performance.now();
+  // Total time in seconds that getBlockCollisions function took to fully execute.
+  const totalTime = (t1 - t0) / 1000;
+
   if (!shouldReturnPromise) {
     return {
       collisionCount,
-      superimposedCollisionCount
+      superimposedCollisionCount,
+      totalTime
     };
   }
 
@@ -219,8 +227,98 @@ export function updateWaitingBlockCollisionHeadline() {
   d3Select(".block-collisions-headline")
     .text("Updating block collisions ...");
 
+  d3Select(".filter-sa-hint")
+    .style("color", "#000")
+    .text("Updating decluttering ETA ...");
+
   d3Select(".superimposed-block-collisions-headline")
     .text("Updating superimposed collisions ...");
+};
+
+/**
+ * Calculates decluttering ETA and updating the label with time and number of
+ * iterations of the SA algorithm
+ *
+ * @return {undefined} undefined
+ */
+export function calculateDeclutteringETA() {
+  const collisionCount = getCollisionCount();
+  const totalTime = getCollisionCalculationTime();
+
+  // Filtering value for temperature
+  const filterTemperatureValue = (d3Select('.filter-sa-temperature-div #filter-sa-temperature') &&
+    d3Select('.filter-sa-temperature-div #filter-sa-temperature').property("value")) || 5000;
+
+  // Filtering value for ratio
+  const filterRatioValue = (d3Select('.filter-sa-ratio-div #filter-sa-ratio') &&
+    d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.05;
+
+  console.log('FILTER TEMP AND RATIO: ', filterTemperatureValue, filterRatioValue);
+
+  let temperature = filterTemperatureValue;
+  let ratio = filterRatioValue;
+
+  let howMany = 0;
+  const complementRatio = (1 - ratio);
+
+  while (temperature > 1.0) {
+    howMany++;
+
+    temperature *= complementRatio;
+  }
+
+  const oneRunTime = roundFloatNumber(totalTime, 6);
+  const finalTime = roundFloatNumber(oneRunTime * howMany, 2);
+
+  console.log('HOW MANY TIMES NEW: ', howMany);
+  console.log('time and totalTime: ', oneRunTime, finalTime);
+
+  setTotalNumberOfIterations(howMany);
+
+  let colorMessage = "green";
+  if (finalTime > 60) colorMessage = "#ffc82f"; // yellow-ish
+  if (finalTime > 120) colorMessage = "red";
+
+  d3Select('.filter-sa-hint-title')
+    .attr("display", "block")
+    .text("Decluttering ETA:");
+
+  d3Select(".filter-sa-hint")
+    .attr("display", "block")
+    .style("color", colorMessage)
+    .text(function() {
+      let textToShow = "";
+      const finalTimeString = d3Format(",")(finalTime);
+      const howManyString = d3Format(",")(howMany);
+
+      if (collisionCount === 0) textToShow += "0 seconds";
+      else if (finalTime === 1) textToShow += "1 second";
+      else textToShow += `${finalTimeString} seconds`;
+
+      if (howMany === 1) textToShow += `, ${howManyString} iteration`;
+      else textToShow += `, ${howManyString} iterations`;
+
+      return textToShow;
+    });
+
+  // Default temperature/ratio is 5,000/0.05
+  // Entering loop around 150 times
+  // temperature = 5000;
+  // ratio = 0.05;
+
+  // Update temperature/ratio to 5,000/0.006 if collision count is between 100 and 500
+  // Entering loop around 1500 times
+  // if (collisionCount > 100 && collisionCount <= 500) {
+  //   temperature = 6000;
+  //   ratio = 0.006;
+  // }
+
+  // Update temperature/ratio to 10,000/0.003 if less than 100 collisions available
+  // Entering loop around 3000 times
+  // if (collisionCount <= 100) {
+  //   temperature = 10000;
+  //   ratio = 0.003;
+  // }
 };
 
 /**
@@ -260,7 +358,8 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
   }).then(function (data) {
     const {
       collisionCount,
-      superimposedCollisionCount
+      superimposedCollisionCount,
+      totalTime
     } = data;
 
     const currentDataChromosomes = getDataChromosomes();
@@ -274,6 +373,7 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
     if (shouldUpdateCollisionCount) {
       // Saving up-to-date collision counts
       setCollisionCount(collisionCount);
+      setCollisionCalculationTime(totalTime);
       setSuperimposedCollisionCount(superimposedCollisionCount);
 
       console.log("COLLISION COUNT: " + collisionCount);
@@ -287,22 +387,26 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
 
       // Update block-collisions-headline with current collision count
       d3Select(".block-collisions-headline")
-      .text(function() {
-        let textToShow = "";
-        textToShow += collisionCount === 1 ?
-        `${collisionCount} block collision` : `${collisionCount} block collisions`;
-        return textToShow;
-      });
+        .text(function() {
+          let textToShow = "";
+          const collisionCountString = d3Format(",")(collisionCount);
+          textToShow += collisionCount === 1 ?
+            `${collisionCountString} block collision` : `${collisionCountString} block collisions`;
+          return textToShow;
+        });
 
       // Update block-collisions-headline with current collision count
       d3Select(".superimposed-block-collisions-headline")
-      .text(function() {
-        let textToShow = "";
-        textToShow += superimposedCollisionCount === 1 ?
-        `${superimposedCollisionCount} superimposed collision` :
-        `${superimposedCollisionCount} superimposed collisions`;
-        return textToShow;
-      });
+        .text(function() {
+          let textToShow = "";
+          const superimposedCollisionCountString = d3Format(",")(superimposedCollisionCount);
+          textToShow += superimposedCollisionCount === 1 ?
+            `${superimposedCollisionCountString} superimposed collision` :
+            `${superimposedCollisionCountString} superimposed collisions`;
+          return textToShow;
+        });
+
+      calculateDeclutteringETA();
     }
   });
 };
@@ -706,23 +810,15 @@ export function callSwapPositionsAnimation(dataChromosomes, bestSolution, update
       // Calling the actual animation
       setTimeout(() => swapPositionsAnimation(dataChromosomes, bestSolution, swapPositions), 50);
 
-      ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
-      ReactDOM.render(
-        <AlertWithTimeout
-          message = {"The layout was successfully updated."}
-        />,
-        document.getElementById('alert-container')
-      );
+      // Showing alert using react
+      renderReactAlert("The layout was successfully updated.", "success");
     }
   } else if (updateWhenSame) {
-    ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
-    ReactDOM.render(
-      <AlertWithTimeout
-        color = "danger"
-        message = {"No better layout was found at this time. Feel free to try again!"}
-      />,
-      document.getElementById('alert-container')
-    );
+    // Showing alert using react
+    renderReactAlert("No better layout was found at this time. Feel free to try again!");
+
+    // Enabling inputs and selects to reset everything
+    resetInputsAndSelectsOnAnimation();
 
     // If they are the same and I can update (the flag is true),
     // it means they have the same number of collisions.
@@ -774,67 +870,35 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
   console.log('CURRENT ENERGY: ', currentEnergy);
 
   // Show notification and return if there are no collisions
-  if (currentEnergy === 0 || dataChords.length === 0) {
-    ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
-    ReactDOM.render(
-      <AlertWithTimeout
-        color = "danger"
-        message = {"There are no collisions in the current layout."}
-      />,
-      document.getElementById('alert-container')
-    );
+  // or if collisionCount equals superimposedCount
+  if (currentEnergy === 0 || dataChords.length === 0 ||
+      currentEnergy === superimposedCollisionCount) {
+    let messageToShow = "";
+
+    if (currentEnergy === 0 || dataChords.length === 0) {
+      messageToShow = "There are no collisions in the current layout.";
+    } else if (currentEnergy === superimposedCollisionCount) {
+      messageToShow = "All the block collisions in the current layout are from superimposed blocks.";
+    }
+
+    // Showing alert using react
+    renderReactAlert(messageToShow);
+
+    // Re-activating button
+    d3Select(".best-guess > input")
+      .property("value", "Minimize collisions")
+      .attr("disabled", null);
 
     return;
   }
 
-  // Do not run SA if having more than 25,000 block collisions
-  // NOTE: For 25,000 block collisions, SA is taking less than 60 seconds approximately,
-  // depending on the amount of chromosomes
-  if (currentEnergy > 25000) {
-    ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
-    ReactDOM.render(
-      <AlertWithTimeout
-        color = "danger"
-        message = {"This feature does not work with more than 25,000 block collisions."}
-      />,
-      document.getElementById('alert-container')
-    );
+  // Filtering value for temperature
+  let temperature = (d3Select('.filter-sa-temperature-div #filter-sa-temperature') &&
+    d3Select('.filter-sa-temperature-div #filter-sa-temperature').property("value")) || 5000;
 
-    return;
-  }
-
-  // Show notification and return if collisionCount equals superimposedCount
-  if (currentEnergy === superimposedCollisionCount) {
-    ReactDOM.unmountComponentAtNode(document.getElementById('alert-container'));
-    ReactDOM.render(
-      <AlertWithTimeout
-        color = "danger"
-        message = {"All the block collisions in the current layout are from superimposed blocks."}
-      />,
-      document.getElementById('alert-container')
-    );
-
-    return;
-  }
-
-  // Default temperature/ratio is 5,000/0.05
-  // Entering loop around 150 times
-  let temperature = 5000;
-  let ratio = 0.05;
-
-  // Update temperature/ratio to 5,000/0.006 if collision count is between 100 and 500
-  // Entering loop around 1500 times
-  if (currentEnergy > 100 && currentEnergy <= 500) {
-    temperature = 6000;
-    ratio = 0.006;
-  }
-
-  // Update temperature/ratio to 10,000/0.003 if less than 100 collisions available
-  // Entering loop around 3000 times
-  if (currentEnergy <= 100) {
-    temperature = 10000;
-    ratio = 0.003;
-  }
+  // Filtering value for ratio
+  const ratio = (d3Select('.filter-sa-ratio-div #filter-sa-ratio') &&
+    d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.05;
 
   const complementRatio = (1 - ratio);
   const myCircos = getCircosObject();
@@ -846,54 +910,103 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
   let bestSolution = cloneDeep(currentSolution);
   let bestEnergy = currentEnergy;
 
-  while (temperature > 1.0) {
-    howMany++;
+  const totalNumberOfIterations = getTotalNumberOfIterations();
+  const totalTime = Math.trunc(getCollisionCalculationTime() * 1000);
 
-    let newSolution = cloneDeep(currentSolution);
-    const pos1 = Math.trunc(newSolution.length * Math.random());
-    const pos2 = Math.trunc(newSolution.length * Math.random());
-    const val1 = newSolution[pos1];
-    const val2 = newSolution[pos2];
-    newSolution[pos2] = val1;
-    newSolution[pos1] = val2;
+  // Making both views look blurry
+  d3SelectAll("svg#genome-view,#block-view-container")
+    .classed("blur-view", true);
 
-    myCircos.layout(newSolution, CIRCOS_CONF);
-    const { collisionCount: neighborEnergy } = await getBlockCollisions(newSolution, dataChords);
-    const probability = acceptanceProbability(currentEnergy, neighborEnergy, temperature);
+  // Initializing the progress bar
+  d3Select(".genome-view-container .progress-bar")
+    .style("width", "0%")
+    .text("0%");
 
-    if (probability === 1.0 || probability > Math.random()) {
-      currentSolution = cloneDeep(newSolution);
-      currentEnergy = neighborEnergy;
+  // Disabling inputs and selects before calling the algorithm
+  resetInputsAndSelectsOnAnimation(true);
 
-      // Keeping the first best solution generated by using <
-      if (neighborEnergy < bestEnergy) {
-        bestSolution = cloneDeep(newSolution);
-        bestEnergy = neighborEnergy;
+  let timeTransition = 0;
 
-        if (bestEnergy === 0) break;
+  console.log('TOTAL TIME: ', totalTime);
+
+  setTimeout(async function simulatedAnnealingLoop() {
+    // TODO: Create a new function
+    while (temperature > 1.0) {
+      howMany++;
+
+      timeTransition += totalTime;
+
+      (function(timeTransition, temperature, howMany) {
+        setTimeout(async function() {
+          if (bestEnergy === 0) return;
+
+          const progressBarWidth = Math.trunc((howMany / totalNumberOfIterations) * 100);
+
+          d3Select(".genome-view-container .progress-bar")
+            .style("width", `${progressBarWidth}%`)
+            .text(`${progressBarWidth}%`);
+
+          let newSolution = cloneDeep(currentSolution);
+          const pos1 = Math.trunc(newSolution.length * Math.random());
+          const pos2 = Math.trunc(newSolution.length * Math.random());
+          const val1 = newSolution[pos1];
+          const val2 = newSolution[pos2];
+          newSolution[pos2] = val1;
+          newSolution[pos1] = val2;
+
+          myCircos.layout(newSolution, CIRCOS_CONF);
+          const { collisionCount: neighborEnergy } = await getBlockCollisions(newSolution, dataChords);
+          const probability = acceptanceProbability(currentEnergy, neighborEnergy, temperature);
+
+          if (probability === 1.0 || probability > Math.random()) {
+            currentSolution = cloneDeep(newSolution);
+            currentEnergy = neighborEnergy;
+
+            // Keeping the first best solution generated by using <
+            if (neighborEnergy < bestEnergy) {
+              bestSolution = cloneDeep(newSolution);
+              bestEnergy = neighborEnergy;
+            }
+          }
+        }, timeTransition);
+      })(timeTransition, temperature, howMany);
+
+      temperature *= complementRatio;
+    }
+
+    setTimeout(function afterSimulatedAnnealingLoop() {
+      console.log('TIME TRAN: ', timeTransition / 1000);
+
+      console.log('HOW MANY TIMES ENTERING: ', howMany);
+
+      console.log('BEST SOLUTION and ENERGY: ', bestSolution, bestEnergy);
+
+      // Autosave functionality
+      // saveToCollisionsDictionary(bestSolution, bestEnergy, dataChords);
+
+      const { currentPosition, key } = loopUpPositionCollisionsDictionary(bestSolution, dataChords);
+      const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
+      if (currentPosition !== (-1)) {
+        const { collisionCount } = savedCollisionSolutionsDictionary[key][currentPosition];
+
+        if (collisionCount > bestEnergy) {
+          // Disable checkbox because saved solution is worse than actual one
+          d3Select('p.show-best-layout input').property("checked", false);
+        }
       }
-    }
 
-    temperature *= complementRatio;
-  }
+      // Getting rid of the blurred view
+      d3SelectAll("svg#genome-view,#block-view-container")
+        .classed("blur-view", false);
 
-  console.log('HOW MANY TIMES ENTERING: ', howMany);
+      setTimeout(() => {
+        d3Select(".best-guess > input")
+          .property("value", "Minimize collisions")
+          .attr("disabled", null);
 
-  console.log('BEST SOLUTION and ENERGY: ', bestSolution, bestEnergy);
+        callSwapPositionsAnimation(dataChromosomes, bestSolution);
+      }, 200);
+    }, timeTransition);
 
-  // Autosave functionality
-  // saveToCollisionsDictionary(bestSolution, bestEnergy, dataChords);
-
-  const { currentPosition, key } = loopUpPositionCollisionsDictionary(bestSolution, dataChords);
-  const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
-  if (currentPosition !== (-1)) {
-    const { collisionCount } = savedCollisionSolutionsDictionary[key][currentPosition];
-
-    if (collisionCount > bestEnergy) {
-      // Disable checkbox because saved solution is worse than actual one
-      d3Select('p.show-best-layout input').property("checked", false);
-    }
-  }
-
-  callSwapPositionsAnimation(dataChromosomes, bestSolution);
+  }, 100);
 };
