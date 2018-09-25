@@ -26,11 +26,25 @@ p {
   }
 }
 
+input:disabled,
+select:disabled {
+  background-color: #eeeeee;
+  color: #666666;
+  cursor: default;
+  opacity: 0.7;
+}
+
 label {
   // To add spacing to any span adjacent to an input checkbox inside a label
-  input[type="checkbox"] + span {
-    cursor: pointer;
-    padding-left: 4px;
+  input[type="checkbox"] {
+    + span {
+      cursor: default;
+      padding-left: 4px;
+    }
+
+    &:not(:disabled) + span {
+      cursor: pointer;
+    }
   }
 }
 

@@ -102,7 +102,7 @@ export function showChromosomeConnectionInformation(connectionDictionary, select
     d3.select(this.parentNode.parentNode).select("span.chr-box-extra").html(function() {
       // Finding the index of the connection in the dictionary
       const indexConnection = findIndex(connectionDictionary[selectedChromosomes[0]], ['connection', d]);
-      let connectionAmount = 0;
+      let connectionAmount = 0; // Number of block connections
       let textToShow = "";
       if (indexConnection === (-1)) {
         textToShow += `<em class="disabled">0 blocks</em>`;
@@ -123,10 +123,12 @@ export function showChromosomeConnectionInformation(connectionDictionary, select
     // d is the current chromosome id (e.g. N1, N2, N10)
     if (visitedChr[d]) {
       d3.select(this).attr("disabled", null);
+      d3.select(this).classed("disabled", false);
       d3.select(this.parentNode).classed("disabled", false);
     } else {
       // Only disable not visited chromosomes
       d3.select(this).attr("disabled", true);
+      d3.select(this).classed("disabled", true);
       d3.select(this.parentNode).classed("disabled", true);
     }
   });
@@ -142,6 +144,7 @@ export function resetChromosomeCheckboxes() {
     d3.select(this.parentNode).classed("disabled", false);
     d3.select(this.parentNode).select("span.chr-box-text").text(d);
     d3.select(this.parentNode.parentNode).select("span.chr-box-extra").text("");
+    d3.select(this).classed("disabled", false);
     d3.select(this).attr("disabled", null);
   });
 };
@@ -152,7 +155,7 @@ export function resetChromosomeCheckboxes() {
  * @param {boolean} [value=null] Disabling value
  */
 export function resetInputsAndSelectsOnAnimation(value = null) {
-  d3.selectAll("input")
+  d3.selectAll("input:not(.disabled)")
     .attr("disabled", value);
 
   d3.selectAll("select")
@@ -432,6 +435,7 @@ export function roundFloatNumber(value, decimalPlaces = 0) {
 
 /**
  * Async function to check if an url is valid
+ * More info: https://stackoverflow.com/a/42696480
  *
  * @param  {string}  url Complete url
  * @return {boolean}     True if valid url, false otherwise

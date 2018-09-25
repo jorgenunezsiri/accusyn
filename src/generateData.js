@@ -240,7 +240,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
       connectionDictionary[sourceID].push({
         blockIDs: [currentBlock],
         connection: targetID,
-        connectionAmount: 1
+        connectionAmount: 1 // Total number of individual connections
       });
     } else {
       // If a connection is found, then find index, update connection amount,
@@ -258,7 +258,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
       connectionDictionary[targetID].push({
         blockIDs: [currentBlock],
         connection: sourceID,
-        connectionAmount: 1
+        connectionAmount: 1 // Total number of individual connections
       });
     } else {
       // If a connection is found, then find index,
@@ -295,51 +295,74 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   // Setting blockDictionary with all the connections and the blockPositions
   setBlockDictionary(blockDictionary);
 
-  // Updating the style of the configuration panel
-  d3.select("#config")
-    .style("display", "block");
-
   // Information title
   d3.select("#form-config")
     .append("h5")
+    .attr("class", "panel-title information-panel-title")
     .text("Information");
 
-  // Block number headline
   d3.select("#form-config")
+    .append("div")
+    .attr("class", "panel information-panel")
+    // Block number headline
     .append("h6")
     .attr("class", "block-number-headline");
 
   // Flipped blocks headline
-  d3.select("#form-config")
+  d3.select("#form-config .information-panel")
     .append("h6")
     .attr("class", "flipped-blocks-headline");
 
   // Block collisions headline
-  d3.select("#form-config")
+  d3.select("#form-config .information-panel")
     .append("h6")
     .attr("class", "block-collisions-headline");
 
   // Superimposed block collisions headline
-  d3.select("#form-config")
+  d3.select("#form-config .information-panel")
     .append("h6")
     .attr("class", "superimposed-block-collisions-headline");
 
   // Decluttering ETA
-  d3.select("#form-config")
+  d3.select("#form-config .information-panel")
     .append("h6")
     .attr("class", "filter-sa-hint-title");
 
-  d3.select("#form-config")
+  d3.select("#form-config .information-panel")
     .append("h6")
     .attr("class", "filter-sa-hint");
+
+  // Connections title
+  d3.select("#form-config")
+    .append("h5")
+    .attr("class", "panel-title connections-panel-title")
+    .text("Connections");
+
+  d3.select("#form-config")
+    .append("div")
+    .attr("class", "panel connections-panel");
+
+  // Chromosome checkboxes
+  d3.select("#form-config .connections-panel")
+    .append("div")
+    .attr("class", "container")
+    .append("div")
+    .attr("class", function() {
+      return "row for-chr-boxes";
+    });
 
   // Layout title
   d3.select("#form-config")
     .append("h5")
+    .attr("class", "panel-title layout-panel-title")
     .text("Layout");
 
-  // Color blocks checkbox
   d3.select("#form-config")
+    .append("div")
+    .attr("class", "panel layout-panel");
+
+  // Color blocks checkbox
+  d3.select("#form-config .layout-panel")
     .append("p")
     .attr("class", "color-blocks")
     .attr("title", "If selected, all connections will be colored.")
@@ -350,7 +373,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .attr("value", "Color blocks")
     .property("checked", false); // Color blocks is not checked by default
 
-  d3.select("#form-config").select("p.color-blocks > label")
+  d3.select("#form-config p.color-blocks > label")
     .append("span")
     .text("Color blocks");
 
@@ -363,7 +386,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     });
 
   // Dark mode checkbox
-  d3.select("#form-config")
+  d3.select("#form-config .layout-panel")
     .append("p")
     .attr("class", "dark-mode")
     .attr("title", "If selected, both views will have black background.")
@@ -374,7 +397,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .attr("value", "Dark mode")
     .property("checked", false); // Dark mode is not checked by default
 
-  d3.select("#form-config").select("p.dark-mode > label")
+  d3.select("#form-config p.dark-mode > label")
     .append("span")
     .text("Dark mode");
 
@@ -388,7 +411,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     });
 
   // Highlight flipped chromosomes checkbox
-  d3.select("#form-config")
+  d3.select("#form-config .layout-panel")
     .append("p")
     .attr("class", "highlight-flipped-chromosomes")
     .attr("title", "If selected, all flipped chromosomes will be highlighted.")
@@ -399,7 +422,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .attr("value", "Highlight flipped chromosomes")
     .property("checked", true); // Highligh flipped chromosomes is checked by default
 
-  d3.select("#form-config").select("p.highlight-flipped-chromosomes > label")
+  d3.select("#form-config p.highlight-flipped-chromosomes > label")
     .append("span")
     .text("Highlight flipped chromosomes");
 
@@ -414,7 +437,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     });
 
   // Highlight flipped blocks checkbox
-  d3.select("#form-config")
+  d3.select("#form-config .layout-panel")
     .append("p")
     .attr("class", "highlight-flipped-blocks")
     .attr("title", "If selected, all connections with flipped blocks will be highlighted.")
@@ -425,7 +448,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .attr("value", "Highlight flipped blocks")
     .property("checked", false); // Highligh flipped blocks is not checked by default
 
-  d3.select("#form-config").select("p.highlight-flipped-blocks > label")
+  d3.select("#form-config p.highlight-flipped-blocks > label")
     .append("span")
     .text("Highlight flipped blocks");
 
@@ -438,30 +461,8 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
       });
     });
 
-  // Show all checkbox
-  d3.select("#form-config")
-    .append("p")
-    .attr("class", "show-all")
-    .attr("title", "If selected, all chromosomes will show.")
-    .append("label")
-    .append("input")
-    .attr("type", "checkbox")
-    .attr("name", "show-all")
-    .attr("value", "Show all")
-    .property("checked", true); // Show All is checked by default
-
-  d3.select("#form-config").select("p.show-all > label")
-    .append("span")
-    .text("Show all chromosomes");
-
-  d3.select("p.show-all input")
-    .on("change", function() {
-      // Calling genome view for updates
-      generateGenomeView({});
-    });
-
   // Show saved layout checkbox
-  d3.select("#form-config")
+  d3.select("#form-config .layout-panel")
     .append("p")
     .attr("class", "show-best-layout")
     .attr("title", "If selected, the last saved layout will be shown by default.")
@@ -472,7 +473,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .attr("value", "Show saved layout")
     .property("checked", true); // Show best layout is checked by default
 
-  d3.select("#form-config").select(".show-best-layout > label")
+  d3.select("#form-config .show-best-layout > label")
     .append("span")
     .text("Show saved layout");
 
@@ -492,7 +493,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     });
 
   // Chromosomes palette
-  d3.select("#form-config")
+  d3.select("#form-config .layout-panel")
     .append("div")
     .attr("class", "chromosomes-palette")
     .append("p")
@@ -531,7 +532,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     });
 
   // Draw blocks ordered by: Block ID or Block length (ascending or descending)
-  d3.select("#form-config")
+  d3.select("#form-config .layout-panel")
     .append("div")
     .attr("class", "draw-blocks-order")
     .append("p")
@@ -558,8 +559,36 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
       });
     });
 
-  // Filter connections input range
+  // Save layout button
+  d3.select("#form-config .layout-panel")
+    .append("p")
+    .attr("class", "save-layout")
+    .attr("title", "Save layout")
+    .append("input")
+    .attr("type", "button")
+    .attr("value", "Save");
+
+  // Reset layout button
+  d3.select("#form-config .layout-panel")
+    .append("p")
+    .attr("class", "reset-layout")
+    .attr("title", "Reset layout")
+    .append("input")
+    .attr("type", "button")
+    .attr("value", "Reset");
+
+  // Decluttering title
   d3.select("#form-config")
+    .append("h5")
+    .attr("class", "panel-title decluttering-panel-title")
+    .text("Decluttering");
+
+  d3.select("#form-config")
+    .append("div")
+    .attr("class", "panel decluttering-panel");
+
+  // Filter connections input range
+  d3.select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-connections-div")
     .append("p")
@@ -578,8 +607,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
         `;
     });
 
-  d3.select(".filter-connections-div")
-    .select("select.filter-connections")
+  d3.select(".filter-connections-div select.filter-connections")
     .on("change", function() {
       // Calling genome view for updates with default transition
       generateGenomeView({
@@ -607,7 +635,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     });
 
   // Filter angle input range
-  d3.select("#form-config")
+  d3.select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-angle-div")
     .html(function() {
@@ -622,31 +650,14 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
       `;
     });
 
-  // Save layout button
-  d3.select("#form-config")
+  // Parameters title inside decluttering panel
+  d3.select("#form-config .decluttering-panel")
     .append("p")
-    .attr("class", "save-layout")
-    .attr("title", "Save layout")
-    .append("input")
-    .attr("type", "button")
-    .attr("value", "Save");
-
-  // Reset layout button
-  d3.select("#form-config")
-    .append("p")
-    .attr("class", "reset-layout")
-    .attr("title", "Reset layout")
-    .append("input")
-    .attr("type", "button")
-    .attr("value", "Reset");
-
-  // Decluttering title
-  d3.select("#form-config")
-    .append("h5")
-    .text("Decluttering");
+    .attr("class", "panel-subtitle")
+    .html("<strong>Algorithm parameters</strong>");
 
   // Filter Simulated Annealing temperature
-  d3.select("#form-config")
+  d3.select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-sa-temperature-div")
     .html(function() {
@@ -662,7 +673,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     });
 
   // Filter Simulated Annealing ratio
-  d3.select("#form-config")
+  d3.select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-sa-ratio-div")
     .html(function() {
@@ -678,7 +689,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     });
 
   // Minimize collisions button
-  d3.select("#form-config")
+  d3.select("#form-config .decluttering-panel")
     .append("p")
     .attr("class", "best-guess")
     .attr("title", "Minimize collisions")
@@ -710,13 +721,19 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     // Additional tracks title
     d3.select("#form-config")
       .append("h5")
+      .attr("class", "panel-title additional-tracks-panel-title")
       .text("Additional tracks");
 
-    // Heatmap track
     d3.select("#form-config")
+      .append("div")
+      .attr("class", "panel additional-tracks-panel");
+
+    // Heatmap track
+    d3.select("#form-config .additional-tracks-panel")
       .append("div")
       .attr("class", "heatmap-track additional-track")
       .append("p")
+      .attr("class", "panel-subtitle")
       .html("<strong>Heatmap track</strong>");
 
     // Heatmap additional track select input
@@ -733,15 +750,15 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
 
     // Heatmap color scale
     d3.select(".heatmap-track")
-    .append("div")
-    .attr("class", "heatmap-track-color additional-track-block")
-    .append("p")
-    .text("Palette: ");
+      .append("div")
+      .attr("class", "heatmap-track-color additional-track-block")
+      .append("p")
+      .text("Palette: ");
 
     d3.select("div.heatmap-track-color")
-    .append("p")
-    .append("select")
-    .html(colorOptions);
+      .append("p")
+      .append("select")
+      .html(colorOptions);
 
     // Heatmap placement
     d3.select(".heatmap-track")
@@ -761,10 +778,11 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
       });
 
     // Histogram track
-    d3.select("#form-config")
+    d3.select("#form-config .additional-tracks-panel")
       .append("div")
       .attr("class", "histogram-track additional-track")
       .append("p")
+      .attr("class", "panel-subtitle")
       .html("<strong>Histogram track</strong>");
 
     // Histogram additional track select input
@@ -781,15 +799,15 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
 
     // Histogram color scale
     d3.select(".histogram-track")
-    .append("div")
-    .attr("class", "histogram-track-color additional-track-block")
-    .append("p")
-    .text("Palette: ");
+      .append("div")
+      .attr("class", "histogram-track-color additional-track-block")
+      .append("p")
+      .text("Palette: ");
 
     d3.select("div.histogram-track-color")
-    .append("p")
-    .append("select")
-    .html(colorOptions);
+      .append("p")
+      .append("select")
+      .html(colorOptions);
 
     // Histogram placement
     d3.select(".histogram-track")
@@ -820,19 +838,37 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
       });
   }
 
-  // Connections title
-  d3.select("#form-config")
-    .append("h5")
-    .text("Connections");
+  d3.select("div.for-chr-boxes")
+    .append("div")
+    .attr("class", "chr-options col-lg-12");
 
-  // Chromosome checkboxes
-  d3.select("#form-config")
-    .append("div")
-    .attr("class", "container")
-    .append("div")
-    .attr("class", function() {
-      return "row for-chr-boxes";
+  // Show all checkbox
+  d3.select("#form-config div.chr-options")
+    .append("p")
+    .attr("class", "show-all")
+    .attr("title", "If selected, all chromosomes will show.")
+    .append("label")
+    .append("input")
+    .attr("type", "checkbox")
+    .attr("name", "show-all")
+    .attr("value", "Show all")
+    .property("checked", true); // Show All is checked by default
+
+  d3.select("#form-config p.show-all > label")
+    .append("span")
+    .text("Show all chromosomes");
+
+  d3.select("p.show-all input")
+    .on("change", function() {
+      // Calling genome view for updates
+      generateGenomeView({});
     });
+
+  // Chromosomes title inside connections panel
+  d3.select("#form-config div.chr-options")
+    .append("p")
+    .attr("class","panel-subtitle")
+    .html("<strong>Chromosomes</strong>");
 
   // Partitioning gff keys to get the checkboxes division
   const { gffPartitionedDictionary, partitionedGffKeys } = partitionGffKeys(gffKeys);
@@ -990,12 +1026,10 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   d3.select(".genome-view-container")
     .append("div")
     .attr("class", "progress")
-    // .style("display", "none")
     .html(function() {
       return `
-        <div class="progress-bar"
+        <div class="progress-bar progress-bar-striped progress-bar-animated"
           role="progressbar"
-          aria-valuenow="75"
           aria-valuemin="0"
           aria-valuemax="100"
           style="width: 0%">0%
@@ -1021,6 +1055,25 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   //   .attr("height", height);
   //
   // svg.select(".all").append("g").attr("clip-path", "url(#clip-block)");
+
+
+  // More info: https://www.w3schools.com/howto/howto_js_accordion.asp
+  d3.selectAll(".panel-title")
+    .on("click", function() {
+      const currentNode = d3.select(this).node();
+      // Toggle between adding and removing the "active" class,
+      // to highlight the title that controls the panel
+      currentNode.classList.toggle("active");
+
+      const panel = currentNode.nextElementSibling;
+
+      // Hiding and showing the active panel by changing the max height
+      if (panel.style.maxHeight) {
+        panel.style.maxHeight = null;
+      } else {
+        panel.style.maxHeight = panel.scrollHeight + "px";
+      }
+    });
 
   // Setting initial Circos object
   setCircosObject();
@@ -1094,4 +1147,12 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
 
   d3.select("#page-container")
     .style("display", "block");
+
+  // Updating the style of the configuration panel
+  d3.select("#config")
+    .style("display", "block");
+
+  // Clicking informational and connections panel by default
+  d3.select(".information-panel-title").node().click();
+  d3.select(".connections-panel-title").node().click();
 };

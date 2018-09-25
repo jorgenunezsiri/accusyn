@@ -16,10 +16,10 @@ svg#genome-view {
 div.genome-view-container {
   .progress {
     display: none;
-    left: 50%;
     height: 32px;
-    top: 625px;
+    left: 50%;
     position: absolute;
+    top: 625px;
     transform: translate(-50%, 0);
     width: 40%;
 
@@ -37,11 +37,17 @@ div.genome-view-container {
       }
     }
 
-    &.blur-view + .progress {
-      display: flex;
-
-      .progress-bar {
+    &.blur-view {
+      + .progress {
         display: flex;
+
+        .progress-bar {
+          display: flex;
+        }
+      }
+
+      .cs-layout > g {
+        cursor: default;
       }
     }
   }

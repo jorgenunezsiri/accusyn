@@ -17,8 +17,49 @@
 #form-config {
   // overflow-y: scroll; // To consider later
   // height: 1300px; // To consider later
-  padding: 20px 20px 0;
+  padding: 20px;
   margin-bottom: 20px;
+
+  .panel-title {
+    background-color: #eee;
+    border: none;
+    color: #444;
+    cursor: pointer;
+    outline: none;
+    padding: 10px;
+    text-align: left;
+    transition: 0.4s;
+    width: 100%;
+
+    &.active, &:hover {
+      background-color: #ccc;
+    }
+
+    &:after {
+      color: #777;
+      content: '\02795'; // Unicode character for "plus" sign (+)
+      float: right;
+      font-size: 13px;
+      margin: 5px;
+    }
+
+    &.active:after {
+      content: "\2796"; // Unicode character for "minus" sign (-)
+    }
+  }
+
+  .show-all,
+  .panel-subtitle {
+    margin-bottom: 8px;
+  }
+
+  // Style the accordion panel. Note: hidden by default
+  .panel {
+    background-color: white;
+    max-height: 0;
+    transition: max-height 0.2s ease-out;
+    overflow: hidden;
+  }
 
   div.draw-blocks-order,
   div.additional-track-block,
@@ -53,7 +94,7 @@
     }
 
     &:nth-child(4) {
-      margin: 5px 0;
+      margin: 5px 0 8px;
     }
   }
 
@@ -63,12 +104,9 @@
     label {
       margin-bottom: 0;
     }
-  }
 
-  div.filter-sa-temperature-div,
-  div.filter-sa-ratio-div {
     p {
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
   }
 
@@ -84,18 +122,16 @@
     margin-right: 10px;
   }
 
-  div.additional-track {
-    > p {
-      margin-bottom: 8px;
-    }
-  }
-
   .disabled {
     color: gainsboro;
   }
 
+  div.chr-options {
+    padding: 0;
+  }
+
   .chr-boxes {
-    padding: 0 0 10px;
+    padding: 0 0 16px;
 
     span.chr-box-extra > em {
       display: inline-block;
@@ -105,6 +141,7 @@
 
     .select-all {
       padding-top: 5px;
+      margin-bottom: 0;
     }
   }
 }
