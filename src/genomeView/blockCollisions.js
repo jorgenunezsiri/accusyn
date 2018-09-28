@@ -551,15 +551,14 @@ export function minSwapToMakeArraySame(a, b) {
 }
 
 /**
- * Generates the transition from old chromosome data to new one
+ * Calculates the angle for doing the swapping transition
  *
  * @param  {Array<Object>}  dataChromosomes Data for current chromosomes in the Circos plot
  * @param  {Array<Object>}  bestSolution    Data for best solution chromosomes
  * @param  {string}        currentChr       ID of current chromosome to do the transition
- * @param  {Array<Object>} hasMovedDragging Dictionary to know when each chromosome moves
  * @return {undefined}                      undefined
  */
-function transitionSwapOldToNew(dataChromosomes, bestSolution, currentChr, hasMovedDragging) {
+function calculateAngleTransitionSwap(dataChromosomes, bestSolution, currentChr) {
   let angle = 0;
 
   const firstPositionOld = findIndex(dataChromosomes, ['id', currentChr]);
@@ -577,6 +576,26 @@ function transitionSwapOldToNew(dataChromosomes, bestSolution, currentChr, hasMo
   }
   // else angle is 0 by default
 
+  return angle;
+}
+
+/**
+ * Generates the transition from old chromosome data to new one
+ *
+ * @param  {Array<Object>}  dataChromosomes  Data for current chromosomes in the Circos plot
+ * @param  {Array<Object>}  bestSolution     Data for best solution chromosomes
+ * @param  {number}         angle            Current swapping angle
+ * @param  {string}         currentChr       ID of current chromosome to do the transition
+ * @param  {Array<Object>}  hasMovedDragging Dictionary to know when each chromosome moves
+ * @return {undefined}                       undefined
+ */
+function transitionSwapOldToNew({
+  dataChromosomes,
+  bestSolution,
+  angle,
+  currentChr,
+  hasMovedDragging
+}) {
   d3Select(`.cs-layout g.${currentChr}`)
     .raise()
     .transition()
@@ -762,44 +781,72 @@ export function swapPositionsAnimation(dataChromosomes, bestSolution, swapPositi
   let transitionTime = 0;
   let index = 0;
 
-  while (transitionTime < (TRANSITION_SWAPPING_TIME * swapPositions.length)) {
+  while (transitionTime < (TRANSITION_SWAPPING_TIME * swapPositions.length) &&
+    index < swapPositions.length) {
+    const firstAngle = calculateAngleTransitionSwap(dataChromosomes, bestSolution, swapPositions[index][0]);
+    const secondAngle = calculateAngleTransitionSwap(dataChromosomes, bestSolution, swapPositions[index][1]);
 
-    (function(transitionTime, index) {
-      setTimeout(function() {
-        /*
-          The angle is only affecting each chromosome in their first rotation.
-          It should be the same to just traverse in order, and change each chromosome
-          (That would imply 19 swaps always)
-          Right now we are getting less than 19 (so it's better in theory)
-        */
-        transitionSwapOldToNew(dataChromosomes, bestSolution, swapPositions[index][0], hasMovedDragging);
-        transitionSwapOldToNew(dataChromosomes, bestSolution, swapPositions[index][1], hasMovedDragging);
+    // Only do swap transition with chromosomes if one of the angles from the
+    // swapPositions pair is not equal to zero
+    if (firstAngle !== 0 || secondAngle !== 0) {
+      (function(transitionTime, index) {
+        setTimeout(function() {
+          /*
+           * The angle is only affecting each chromosome in their first rotation.
+           * It should be the same to just traverse in order, and change each chromosome
+           * (That would imply 19 swaps always)
+           * Right now we are getting less than 19 (so it's better in theory)
+           */
+          transitionSwapOldToNew({
+            dataChromosomes: dataChromosomes,
+            bestSolution: bestSolution,
+            angle: firstAngle,
+            currentChr: swapPositions[index][0],
+            hasMovedDragging: hasMovedDragging
+          });
+          transitionSwapOldToNew({
+            dataChromosomes: dataChromosomes,
+            bestSolution: bestSolution,
+            angle: secondAngle,
+            currentChr: swapPositions[index][1],
+            hasMovedDragging: hasMovedDragging
+          });
 
-        console.log('SWAP POSITIONS i: ', index, swapPositions[index]);
-      }, transitionTime);
-    })(transitionTime, index);
+          console.log('SWAP POSITIONS i: ', index, swapPositions[index]);
+        }, transitionTime);
+      })(transitionTime, index);
 
+      transitionTime += TRANSITION_SWAPPING_TIME;
+    }
 
-    transitionTime += TRANSITION_SWAPPING_TIME;
     index++;
   }
-
-  console.log('transition time: ', transitionTime);
 
   let newTransitionTime = transitionTime;
   index = 0;
 
-  while ((newTransitionTime - transitionTime) < (TRANSITION_SWAPPING_TIME * positionsNotBeingSwapped.length)) {
+  while ((newTransitionTime - transitionTime) < (TRANSITION_SWAPPING_TIME * positionsNotBeingSwapped.length) &&
+    index < positionsNotBeingSwapped.length) {
+    const angle = calculateAngleTransitionSwap(dataChromosomes, bestSolution, positionsNotBeingSwapped[index]);
+    // Only do swap transition with remaining chromosomes if their angle is not equal to zero
+    if (angle !== 0) {
+      (function(newTransitionTime, index) {
+        setTimeout(function() {
+          transitionSwapOldToNew({
+            dataChromosomes: dataChromosomes,
+            bestSolution: bestSolution,
+            angle: angle,
+            currentChr: positionsNotBeingSwapped[index],
+            hasMovedDragging: hasMovedDragging
+          });
 
-    (function(newTransitionTime, index) {
-      setTimeout(function() {
-        transitionSwapOldToNew(dataChromosomes, bestSolution, positionsNotBeingSwapped[index], hasMovedDragging);
+          console.log('POSITIONS NOT SWAPPED i: ', index, positionsNotBeingSwapped[index]);
+        }, newTransitionTime);
+      })(newTransitionTime, index);
 
-        console.log('POSITIONS NOT SWAPPED i: ', index, positionsNotBeingSwapped[index]);
-      }, newTransitionTime);
-    })(newTransitionTime, index);
+      newTransitionTime += TRANSITION_SWAPPING_TIME;
+    }
 
-    newTransitionTime += TRANSITION_SWAPPING_TIME;
     index++;
   }
 
@@ -814,8 +861,8 @@ export function swapPositionsAnimation(dataChromosomes, bestSolution, swapPositi
         shouldUpdateLayout: true
       });
     }, TRANSITION_SWAPPING_TIME +
-    (TRANSITION_SWAPPING_TIME * swapPositions.length) +
-    (TRANSITION_SWAPPING_TIME * positionsNotBeingSwapped.length));
+    transitionTime +
+    (newTransitionTime - transitionTime));
 }
 
 /**
@@ -976,13 +1023,14 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
 
       (function(timeTransition, temperature, howMany) {
         setTimeout(async function() {
-          if (bestEnergy === 0) return;
-
           const progressBarWidth = Math.trunc((howMany / totalNumberOfIterations) * 100);
 
           d3Select(".genome-view-container .progress-bar")
             .style("width", `${progressBarWidth}%`)
             .text(`${progressBarWidth}%`);
+
+          // Return early if bestEnergy is already 0 (i.e. no collisions)
+          if (bestEnergy === 0) return;
 
           let newSolution = cloneDeep(currentSolution);
           const pos1 = Math.trunc(newSolution.length * Math.random());
