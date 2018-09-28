@@ -852,13 +852,35 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .attr("type", "checkbox")
     .attr("name", "show-all")
     .attr("value", "Show all")
-    .property("checked", true); // Show All is checked by default
+    .property("checked", true); // Show all is checked by default
 
   d3.select("#form-config p.show-all > label")
     .append("span")
     .text("Show all chromosomes");
 
   d3.select("p.show-all input")
+    .on("change", function() {
+      // Calling genome view for updates
+      generateGenomeView({});
+    });
+
+  // Show self connections checkbox
+  d3.select("#form-config div.chr-options")
+    .append("p")
+    .attr("class", "show-self-connections")
+    .attr("title", "If selected, chromosomes will show connections with themselves.")
+    .append("label")
+    .append("input")
+    .attr("type", "checkbox")
+    .attr("name", "show-self-connections")
+    .attr("value", "Show self connections")
+    .property("checked", true); // Show self connections is checked by default
+
+  d3.select("#form-config p.show-self-connections > label")
+    .append("span")
+    .text("Show self connections");
+
+  d3.select("p.show-self-connections input")
     .on("change", function() {
       // Calling genome view for updates
       generateGenomeView({});

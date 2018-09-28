@@ -698,8 +698,11 @@ export default function generateGenomeView({
   const filterValue = (d3.select('.filter-connections-div #filter-block-size') &&
     d3.select('.filter-connections-div #filter-block-size').property("value")) || 1;
 
-  // To keep track of the Show All input state
+  // To keep track of the Show all input state
   const showAllChromosomes = d3.select("p.show-all input").property("checked");
+
+  // To keep track of the Show self connections input state
+  const showSelfConnections = d3.select("p.show-self-connections input").property("checked");
 
   const blockDictionary = getBlockDictionary();
   // Array that includes the keys from the blockDictionary
@@ -739,7 +742,7 @@ export default function generateGenomeView({
     if (oneToMany) {
       // For one to many
       // Either the source or the target needs to be currently selected
-      // Unless Show All is not selected meaning that both source and target
+      // Unless Show all is not selected meaning that both source and target
       // need to be the same selected chromosome
       shouldAddDataChord = showAllChromosomes ?
         (lookID.indexOf(sourceID) > -1 || lookID.indexOf(targetID) > -1) :
@@ -747,6 +750,12 @@ export default function generateGenomeView({
     } else {
       // For many to many all connections need to be between selected chromosomes
       shouldAddDataChord = lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1;
+    }
+
+    if (!showSelfConnections) {
+      // If no self connections are allowed, only add current connection if source
+      // and target are different
+      shouldAddDataChord = shouldAddDataChord && (sourceID !== targetID);
     }
 
     // Only add data chord if the filter condition is satisfied
