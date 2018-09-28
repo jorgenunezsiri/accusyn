@@ -655,5 +655,5 @@ export default function generateBlockView(data) {
     .attr("class", "axis-label")
     .attr("x", (widthBlock / 2))
     .attr("y", 0 - (margin.top / 3))
-    .text(`${sourceChromosomeID} vs. ${targetChromosomeID} - Block ${blockID}`);
+    .text(`${sourceChromosomeID} vs. ${targetChromosomeID} - Block ${d3.format(",")(blockID)}`);
 }

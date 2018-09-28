@@ -249,9 +249,9 @@ function generateAdditionalTrack(trackName) {
         const { block_id, start, end, value } = d;
         return `<h6><u>Bin information</u></h6>
           <h6>Chromosome: ${block_id}</h6>
-          <h6>Start: ${start}</h6>
-          <h6>End: ${end}</h6>
-          <h6>Value: ${value}</h6>`;
+          <h6>Start: ${d3.format(",")(start)}</h6>
+          <h6>End: ${d3.format(",")(end)}</h6>
+          <h6>Value: ${d3.format(",")(value)}</h6>`;
       }
     };
 
@@ -500,10 +500,10 @@ function generatePathGenomeView({
       const { id: blockID, score, eValue, length, isFlipped } = d.source.value;
       return `<h6>${sourceID} ➤ ${targetID}</h6>
         <h6><u>Block information</u></h6>
-        <h6>ID: ${blockID}</h6>
-        <h6>Score: ${score}</h6>
+        <h6>ID: ${d3.format(",")(blockID)}</h6>
+        <h6>Score: ${d3.format(",")(score)}</h6>
         <h6>E-value: ${eValue}</h6>
-        <h6>Size: ${length}</h6>
+        <h6>Size: ${d3.format(",")(length)}</h6>
         <h6>Flipped: ${(isFlipped ? "Yes" : "No")}</h6>`;
     },
     events: {

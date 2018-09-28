@@ -268,6 +268,7 @@ export function calculateDeclutteringETA() {
   }
 
   const oneRunTime = roundFloatNumber(totalTime, 6);
+  // This is the final time in seconds
   const finalTime = roundFloatNumber(oneRunTime * howMany, 2);
 
   console.log('HOW MANY TIMES NEW: ', howMany);
@@ -276,7 +277,7 @@ export function calculateDeclutteringETA() {
   setTotalNumberOfIterations(howMany);
 
   let colorMessage = "green";
-  if (finalTime > 60) colorMessage = "#ffc82f"; // yellow-ish
+  if (finalTime > 60) colorMessage = "#ffb42f"; // yellow-ish
   if (finalTime > 120) colorMessage = "red";
 
   d3Select('.filter-sa-hint-title')
@@ -288,15 +289,52 @@ export function calculateDeclutteringETA() {
     .style("color", colorMessage)
     .text(function() {
       let textToShow = "";
-      const finalTimeString = d3Format(",")(finalTime);
+      // More info: https://stackoverflow.com/a/6118983
+      const hours = Math.trunc(finalTime / 3600).toString();
+      const minutes = Math.trunc((finalTime % 3600) / 60).toString();
+      const seconds = Math.trunc(finalTime % 60).toString();
+
+      let finalTimeString = "";
+      if (hours !== '0') {
+        // If hours is not zero, then set it with at least two characters
+        finalTimeString += `${hours.padStart(2, '0')}h `;
+      }
+
+      if (minutes !== '0') {
+        // If minutes is not zero, then set it with at least two characters
+        finalTimeString += `${minutes.padStart(2, '0')}m `;
+      }
+
+      if (seconds !== '0') {
+        if (finalTimeString === '') {
+          // If seconds is not zero, and finalTimeString is empty,
+          // then set seconds without padding and the whole 'seconds' word
+          // e.g. above zero case: 1, 2, 38 seconds ...
+          finalTimeString += (seconds === '1') ? `${seconds} second` :
+            `${seconds} seconds`;
+        } else {
+          // If seconds is not zero and finalTimeString is not empty,
+          // then set seconds with padding and abbreviation
+          finalTimeString += `${seconds.padStart(2, '0')}s`;
+        }
+      }
+
+      if (seconds === '0' && finalTimeString === '') {
+        // Note: This can happen because 'seconds' is an integer variable
+        // If seconds is still zero, and finalTimeString is empty,
+        // then set it with finalTime (which has the accurate float time
+        // in seconds rounded to two decimals)
+        // e.g. below zero case: 0.55, 0.32 seconds ...
+        finalTimeString += `${finalTime} seconds`;
+      }
+
+      if (collisionCount === 0) textToShow += '0 seconds';
+      else textToShow += `${finalTimeString}`;
+
       const howManyString = d3Format(",")(howMany);
 
-      if (collisionCount === 0) textToShow += "0 seconds";
-      else if (finalTime === 1) textToShow += "1 second";
-      else textToShow += `${finalTimeString} seconds`;
-
       if (howMany === 1) textToShow += `, ${howManyString} iteration`;
-      else textToShow += `, ${howManyString} iterations`;
+      else textToShow += ` - ${howManyString} iterations`;
 
       return textToShow;
     });

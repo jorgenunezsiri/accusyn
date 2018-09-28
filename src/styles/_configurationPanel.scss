@@ -23,7 +23,7 @@
   .panel-title {
     background-color: #eee;
     border: none;
-    color: #444;
+    color: #000;
     cursor: pointer;
     outline: none;
     padding: 10px;
@@ -36,7 +36,7 @@
     }
 
     &:after {
-      color: #777;
+      color: #000;
       content: '\02795'; // Unicode character for "plus" sign (+)
       float: right;
       font-size: 13px;
