@@ -69,32 +69,29 @@ export default function generateBlockView(data) {
 
   // Set the ranges for x and y
   const y = [d3.scaleLinear().range([heightBlock, 0]), d3.scaleLinear().range([heightBlock, 0])];
-
   const x = d3.scalePoint().rangeRound([0, widthBlock]);
-  const dimensions = [0, 1];
-  x.domain(dimensions);
-
-  const line = d3.line();
+  x.domain([0, 1]);
 
   /**
    * Defines the path for each data point in the block view
    *
    * d3 is looping through each data array
-   * i can be either 0 or 1 (the dimensions),
-   * thus dataArray[i] is the value for each dimension in the current array
-   * y[i](dataArray[i]) is scaling the current value in the dimension
+   * i can be either 0 or 1
+   * y[i](currentData) is scaling the current value in the dimension
    *
    * @param  {Array<number>}   dataArray Current dataArray with [y0, y1] coordinates
    * @param  {Array<Function>} y         Current array of y scales
-   * @return {Array<number>}             Current path line defined with the
-   *                                     points [x0, projectionOfY0] and
-   *                                     [x1, projectionOfY1]
+   * @return {Array<string>}             Current polygon points defined by the
+   *                                     connection of all the start and end points
    */
   function path(dataArray, y) {
-    dataArray = dataArray.data;
-    return line(dimensions.map(function(i) {
-      return [x(i), y[i](dataArray[i])];
-    }));
+    const currentData = dataArray.data;
+    return [
+      [x(0), y[0](currentData.source.start)].join(","),
+      [x(0), y[0](currentData.source.end)].join(","),
+      [x(1), y[1](currentData.target.end)].join(","),
+      [x(1), y[1](currentData.target.start)].join(",")
+    ].join(" ");
   }
 
   // Remove block view if it is present
@@ -113,7 +110,7 @@ export default function generateBlockView(data) {
    * @return {Array<Object>}           Flipped array
    */
   function flipTargetDataBlock(dataBlock) {
-    const index = 1; // Flipping target by default
+    const index = 'target'; // Flipping target by default
     let temp = 0;
     const tempArray = cloneDeep(dataBlock);
 
@@ -134,9 +131,11 @@ export default function generateBlockView(data) {
     .attr("class", function() {
       let classes = 'col-lg-4 text-center';
       return darkMode ? 'dark-mode ' + classes : classes;
-    });
+    })
+    .append("div")
+    .attr("class", "block-view-content");
 
-  const svgBlock = d3.select("#block-view-container")
+  const svgBlock = d3.select("#block-view-container .block-view-content")
     .append("svg")
     .attr("class", "block-view")
     .attr("width", widthBlock + margin.left + margin.right)
@@ -144,8 +143,8 @@ export default function generateBlockView(data) {
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  // Reset button
-  d3.select("#block-view-container")
+  // Outer content with reset button
+  d3.select("#block-view-container .block-view-content")
     .append("div")
     .attr("class", "outer-content")
     .append("div")
@@ -157,16 +156,6 @@ export default function generateBlockView(data) {
     .attr("value", "Reset")
     .attr("title", "Resets the block view to its original scale.")
     .on("click", function() {
-      if (isFlipped && !onInputChange) {
-        onInputChange = true;
-        isFlipped = false;
-      } else {
-        onInputChange = false;
-      }
-
-      d3.select("#block-view-container p.flip-orientation input")
-        .property("checked", false);
-
       // Resetting by calling path block view
       generatePathBlockView();
     });
@@ -207,6 +196,7 @@ export default function generateBlockView(data) {
     });
 
   // Rectangle that has the block view size to catch any zoom event
+  // This is needed outside the clip-path to cath the events easily
   const zoomView = svgBlock.append("rect")
     .attr("class", "rect-clip-block")
     .attr("width", widthBlock)
@@ -214,18 +204,16 @@ export default function generateBlockView(data) {
 
   // Defining a clip-path so that lines always stay inside the block view,
   // thus paths will be clipped when zooming
-  const clip = svgBlock.append("defs").append("svg:clipPath")
+  const clip = svgBlock.append("defs svg:clipPath")
     .attr("id", "clip-block")
     .append("svg:rect")
     .attr("id", "clip-rect-block")
-    .attr("x", "0")
-    .attr("y", "0")
     .attr("width", widthBlock)
     .attr("height", heightBlock);
 
   // Zoom behavior
   const zoom = d3.zoom()
-    .scaleExtent([0.01, 100])
+    .scaleExtent([0.01, 1000])
     .on("zoom", function() {
       if (gY0 && gY1) {
         const zoomTransform = d3.event.transform;
@@ -238,16 +226,13 @@ export default function generateBlockView(data) {
         const newY = [zoomTransform.rescaleY(y[0]), zoomTransform.rescaleY(y[1])];
 
         // Plotting the lines path using the new scales
-        svgBlock.selectAll("path.line")
+        svgBlock.selectAll("polygon.line")
           .data(dataBlock)
-          .attr("d", function(data) {
+          .attr("points", function(data) {
             return path(data, newY);
           });
       }
     });
-
-  // Calling zoom for the block, so it works for every path
-  svgBlock.call(zoom);
 
   const currentFlippedChromosomes = getCurrentFlippedChromosomes();
 
@@ -287,12 +272,18 @@ export default function generateBlockView(data) {
       targetEnd = end;
     }
 
-    // Points are the determined using the midpoint between start and end
-    // TODO: Need to change this to use polygons
-    const currentData = [
-      (sourceStart + sourceEnd) / 2,
-      (targetStart + targetEnd) / 2
-    ];
+    // Points are the determined using a polygon from the start to the end
+    // Dividing into matrix for source and target, so flipping can work by only flipping target
+    const currentData = {
+      source: {
+        start: sourceStart,
+        end: sourceEnd
+      },
+      target: {
+        start: targetStart,
+        end: targetEnd
+      }
+    };
 
     dataBlock.push({
       source: {
@@ -312,18 +303,6 @@ export default function generateBlockView(data) {
     });
   }
 
-  // Numeric scale used for the stroke-width of each line path in the block
-  const strokeWidthScale = d3.scaleQuantize()
-    .domain([
-      d3.min(dataBlock, function(d) {
-        return (d.source.end - d.source.start) + (d.target.end - d.target.start);
-      }),
-      d3.max(dataBlock, function(d) {
-        return (d.source.end - d.source.start) + (d.target.end - d.target.start);
-      })
-    ])
-    .range([1, 2, 3, 4, 5]);
-
   /**
    * Generates all paths in the blockView using the current selected
    * block in the genomeView
@@ -338,10 +317,13 @@ export default function generateBlockView(data) {
      * @return {number}   Minimum value
      */
     function minData(d) {
+      const reference = d === 0 ? 'source' : 'target';
       let minValue = Number.MAX_SAFE_INTEGER;
       for (let i = 0; i < dataBlock.length; i++) {
-        minValue = Math.min(minValue, dataBlock[i].data[d]);
+        minValue = Math.min(minValue, dataBlock[i].data[reference].start,
+          dataBlock[i].data[reference].end);
       }
+
       return minValue;
     }
 
@@ -352,16 +334,18 @@ export default function generateBlockView(data) {
      * @return {number}   Maximum value
      */
     function maxData(d) {
+      const reference = d === 0 ? 'source' : 'target';
       let maxValue = 0;
       for (let i = 0; i < dataBlock.length; i++) {
-        maxValue = Math.max(maxValue, dataBlock[i].data[d]);
+        maxValue = Math.max(maxValue, dataBlock[i].data[reference].start,
+          dataBlock[i].data[reference].end);
       }
+
       return maxValue;
     }
 
     // Hint label about perfectly inverted
-    const d3HintElement = d3.select("#block-view-container")
-      .select(".flip-hint");
+    const d3HintElement = d3.select("#block-view-container .flip-hint");
 
     if (!isFlipped) {
       if (dataBlock[0].isFlipped) {
@@ -390,11 +374,11 @@ export default function generateBlockView(data) {
       resetInputsAndSelectsOnAnimation(true);
 
       // Change paths color to lightblue
-      svgBlock.selectAll("path.line")
+      svgBlock.selectAll("polygon.line")
         .transition()
         .duration(COLOR_CHANGE_TIME)
         .ease(d3.easeLinear)
-        .attr("stroke", "lightblue");
+        .attr("fill", "lightblue");
 
       // Flipping transition
       let transitionTime = COLOR_CHANGE_TIME;
@@ -434,20 +418,20 @@ export default function generateBlockView(data) {
           setTimeout(function() {
             let offsetTransition = 0;
             /*
-            1 -> 2
-            2 -> 4
-            3 -> 8
-            4 -> 16
-            5 -> 32
-            6 -> 64
-            7 -> 128 -> 64
-            8 -> 32
-            9 -> 16
-            10 -> 8
-            11 -> 4
-            12 -> 2
-            13 -> 1
-            */
+             * 1 -> 2
+             * 2 -> 4
+             * 3 -> 8
+             * 4 -> 16
+             * 5 -> 32
+             * 6 -> 64
+             * 7 -> 128 -> 64
+             * 8 -> 32
+             * 9 -> 16
+             * 10 -> 8
+             * 11 -> 4
+             * 12 -> 2
+             * 13 -> 1
+             */
 
             if (transitionHeightDivision >= 2) {
               offsetTransition = (heightBlock - (heightBlock / transitionHeightDivision)) / 2;
@@ -476,9 +460,9 @@ export default function generateBlockView(data) {
               });
 
             // Plotting the lines path using the new scales
-            svgBlock.selectAll("path.line")
+            svgBlock.selectAll("polygon.line")
               .data(dataBlock)
-              .attr("d", function(data) {
+              .attr("points", function(data) {
                 return path(data, newY);
               });
 
@@ -498,7 +482,7 @@ export default function generateBlockView(data) {
     function drawPathBlockView() {
 
       // Remove old paths if they are present
-      if (!svgBlock.selectAll("path.line").empty()) {
+      if (!svgBlock.selectAll("polygon.line").empty()) {
         svgBlock.select("g.clip-block-group").remove(); // Removing complete clip block group
       }
 
@@ -510,19 +494,14 @@ export default function generateBlockView(data) {
       svgBlock.append("g")
         .attr("class", "clip-block-group")
         .attr("clip-path", "url(#clip-block)")
-        .selectAll("path")
+        .selectAll("polygon")
         .data(dataBlock).enter()
-        .append("path")
+        .append("polygon")
         .attr("class", "line")
-        .attr("d", function(data) {
+        .attr("points", function(data) {
           return path(data, y);
         })
-        .attr("stroke-width", function(d) {
-          // Returning stroke-width based on defined scale
-          return strokeWidthScale(
-            (d.source.end - d.source.start) + (d.target.end - d.target.start)
-          );
-        });
+        .attr("opacity", "0.7");
 
       // To keep track of the value of the color blocks checkbox
       const coloredBlocks = d3.select("p.color-blocks input").property("checked");
@@ -530,19 +509,19 @@ export default function generateBlockView(data) {
       const pathLineColor = coloredBlocks ? gffPositionDictionary[sourceChromosomeID].color : CONNECTION_COLOR;
 
       if (!onInputChange) {
-        svgBlock.selectAll("path.line")
-          .attr("stroke", darkMode ? "#222222" : "#ffffff")
+        svgBlock.selectAll("polygon.line")
+          .attr("fill", darkMode ? "#222222" : "#ffffff")
           .transition()
           .duration(500)
           .ease(d3.easeLinear)
-          .attr("stroke", pathLineColor);
+          .attr("fill", pathLineColor);
       } else {
-        svgBlock.selectAll("path.line")
-          .attr("stroke", "lightblue")
+        svgBlock.selectAll("polygon.line")
+          .attr("fill", "lightblue")
           .transition()
           .duration(COLOR_CHANGE_TIME)
           .ease(d3.easeLinear)
-          .attr("stroke", pathLineColor);
+          .attr("fill", pathLineColor);
 
         // Enabling inputs and selects after calling the animation
         resetInputsAndSelectsOnAnimation();
@@ -552,9 +531,9 @@ export default function generateBlockView(data) {
       const tooltipDiv = d3.select("div.circos-tooltip")
         .style("opacity", 0);
 
-      svgBlock.selectAll("path.line")
+      svgBlock.selectAll("polygon.line")
         .on("mouseover", function(d, i, nodes) {
-          tooltipDiv.transition().style("opacity", .9);
+          tooltipDiv.transition().style("opacity", 0.9);
 
           tooltipDiv.html(function() {
               return `<h6 style="margin-bottom: 0;">${d.source.id}</h6>
@@ -567,9 +546,9 @@ export default function generateBlockView(data) {
             .style("left", `${(d3.event.pageX)}px`)
             .style("top", `${(d3.event.pageY - 28)}px`);
 
-          if (d3.selectAll(nodes).attr("opacity") != 0.30) {
-            d3.selectAll(nodes).attr("opacity", 0.30);
-            d3.select(nodes[i]).attr("opacity", 1);
+          if (d3.selectAll(nodes).attr("opacity") !== 0.3) {
+            d3.selectAll(nodes).attr("opacity", 0.3);
+            d3.select(nodes[i]).attr("opacity", 0.9);
           }
         })
         .on("mouseout", function(d, i, nodes) {
@@ -577,8 +556,8 @@ export default function generateBlockView(data) {
             .duration(500)
             .style("opacity", 0);
 
-          if (d3.selectAll(nodes).attr("opacity") != 1) {
-            d3.selectAll(nodes).attr("opacity", 1);
+          if (d3.selectAll(nodes).attr("opacity") !== 0.7) {
+            d3.selectAll(nodes).attr("opacity", 0.7);
           }
         });
 
@@ -615,11 +594,12 @@ export default function generateBlockView(data) {
 
       onInputChange = false;
 
+      // Calling zoom for the block, so it works for every path
       // Changing zoom scale to default
-      svgBlock.call(zoom.transform, d3.zoomIdentity.scale(1));
+      svgBlock
+        .call(zoom)
+        .call(zoom.transform, d3.zoomIdentity.scale(1));
     }
-
-    // Total time: COLOR_CHANGE_TIME+(130*13)+(130*2) = 2080
 
     console.log('TOTAL TIME: ', COLOR_CHANGE_TIME + (TRANSITION_NORMAL_TIME * MAX_INDEX_TRANSITION) + TRANSITION_FLIPPING_TIME);
     if (onInputChange) {

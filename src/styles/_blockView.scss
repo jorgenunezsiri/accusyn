@@ -1,17 +1,26 @@
 // _blockView.scss partial file
 
 #block-view-container {
-  margin-top: 150px;
   padding-right: 0;
+
+  svg.block-view {
+    margin-top: 150px;
+  }
+
+  div.block-view-content {
+    position: sticky;
+    top: 0;
+  }
 
   &.blur-view {
     filter: blur(4px);
   }
 
   &.dark-mode {
-    svg {
+    svg.block-view {
       background-color: #222222;
       border-radius: 20px;
+      margin-top: 160px; // +10px in dark-mode
     }
 
     text.axis-label,

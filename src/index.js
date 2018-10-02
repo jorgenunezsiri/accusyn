@@ -204,6 +204,30 @@ const processCollinearity = function processCollinearity(fileName, callback) {
 };
 
 (async function main() {
+  // Alerting the user and returning early if not Google Chrome
+  if (!window.chrome) {
+    // Showing alert using react
+    renderReactAlert(
+      "Please, use the latest version of Google Chrome for the best app experience.",
+      "danger",
+      10000
+    );
+
+    return;
+  }
+
+  // Alerting the user and returning early if not Desktop resolution
+  if (window.screen.width < 1024) {
+    // Showing alert using react
+    renderReactAlert(
+      "Please, use a Desktop resolution of at least 1024x768 pixels for the best app experience.",
+      "danger",
+      10000
+    );
+
+    return;
+  }
+
   // Reading query parameters
   let gff = getQueryString('gff');
   let gffType = getQueryString('gffType');
@@ -246,6 +270,12 @@ const processCollinearity = function processCollinearity(fileName, callback) {
     q.await(generateData);
   } else {
     // Showing alert using react
-    renderReactAlert("The current url parameters are not valid. Please, try again!");
+    renderReactAlert(
+      "The current url parameters are not valid. Please, try again!",
+      "danger",
+      10000
+    );
   }
+
+  return;
 })();

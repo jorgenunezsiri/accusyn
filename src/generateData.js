@@ -28,6 +28,7 @@ import { updateWaitingBlockCollisionHeadline } from './genomeView/blockCollision
 
 import {
   getSelectedCheckboxes,
+  isInViewport,
   lookForBlocksPositions,
   partitionGffKeys,
   resetChromosomeCheckboxes,
@@ -490,6 +491,30 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
           shouldUpdateLayout: true
         });
       }
+    });
+
+  // Show tooltip inside checkbox
+  d3.select("#form-config .layout-panel")
+    .append("p")
+    .attr("class", "show-tooltip-inside")
+    .attr("title", "If selected, the tooltip will be shown next to the cursor.")
+    .append("label")
+    .append("input")
+    .attr("type", "checkbox")
+    .attr("name", "show-tooltip-inside")
+    .attr("value", "Show tooltip inside")
+    .property("checked", true); // Show tooltip inside is checked by default
+
+  d3.select("#form-config .show-tooltip-inside > label")
+    .append("span")
+    .text("Show tooltip inside");
+
+  d3.select("p.show-tooltip-inside input")
+    .on("change", function() {
+      const showTooltipOutside = !d3.select(this).property("checked");
+
+      d3.select(".circos-tooltip")
+        .classed("outside", showTooltipOutside);
     });
 
   // Chromosomes palette
@@ -1037,15 +1062,15 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   // SVG element that will include the Circos plot
   const svg = d3.select("#page-container .row")
     .append("div")
-    .attr("class", function() {
-      return "genome-view-container col-lg-6 text-center";
-    })
+    .attr("class", "col-lg-6 text-center")
+    .append("div")
+    .attr("class", "genome-view-container")
     .append("svg")
     .attr("id", "genome-view")
     .attr("width", WIDTH)
     .attr("height", HEIGHT);
 
-  d3.select(".genome-view-container")
+  d3.select("div.genome-view-container")
     .append("div")
     .attr("class", "progress")
     .html(function() {
@@ -1078,7 +1103,6 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   //
   // svg.select(".all").append("g").attr("clip-path", "url(#clip-block)");
 
-
   // More info: https://www.w3schools.com/howto/howto_js_accordion.asp
   d3.selectAll(".panel-title")
     .on("click", function() {
@@ -1095,6 +1119,18 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
       } else {
         panel.style.maxHeight = panel.scrollHeight + "px";
       }
+
+      // Move scroll to the end of the page, if element is not in viewport
+      setTimeout(() => {
+        if (!isInViewport(panel)) {
+          // More info: https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView
+          d3.select("#config").node().scrollIntoView({
+            behavior: "smooth",
+            block: "end",
+            inline: "nearest"
+          });
+        }
+      }, 200);
     });
 
   // Setting initial Circos object

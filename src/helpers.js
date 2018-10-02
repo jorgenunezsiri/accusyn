@@ -167,13 +167,15 @@ export function resetInputsAndSelectsOnAnimation(value = null) {
  *
  * @param  {string} alertMessage Alert message
  * @param  {string} color        Alert color
+ * @param  {number} timeout      Alert timeout
  * @return {undefined}      undefined
  */
-export function renderReactAlert(alertMessage = "", color = "danger") {
+export function renderReactAlert(alertMessage = "", color = "danger", timeout = 5000) {
   const alertContainerElement = document.getElementById('alert-container');
   ReactDOM.unmountComponentAtNode(alertContainerElement);
   ReactDOM.render(
     <AlertWithTimeout
+      alertTimeout = {timeout}
       color = {color}
       message = {alertMessage}
     />,
@@ -431,6 +433,24 @@ export function roundFloatNumber(value, decimalPlaces = 0) {
   // Integer % 1 will always be equal to zero
   // More info: https://stackoverflow.com/a/2304062
   return value % 1 !== 0 ? parseFloat(value.toFixed(decimalPlaces)) : value;
+};
+
+/**
+ * Verifies if element is currently visible in the viewport
+ * More info: https://gomakethings.com/how-to-test-if-an-element-is-in-the-viewport-with-vanilla-javascript/
+ *
+ * @param  {Object}  elem Current node element
+ * @return {oolean}       True if element is in viewport, false otherwise
+ */
+export function isInViewport(elem) {
+  const bounding = elem.getBoundingClientRect();
+  const html = document.documentElement;
+  return (
+      bounding.top >= 0 &&
+      bounding.left >= 0 &&
+      bounding.bottom <= (window.innerHeight || html.clientHeight) &&
+      bounding.right <= (window.innerWidth || html.clientWidth)
+  );
 };
 
 /**

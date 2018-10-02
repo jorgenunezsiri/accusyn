@@ -59,9 +59,10 @@ label {
 // Container for bootstrap alert
 .alert {
   left: 50%;
-  position: absolute;
-  top: 10px;
+  position: fixed;
+  top: 20px;
   transform: translate(-50%, 0);
+  z-index: 10;
 }
 
 // Button for bootstrap alert
