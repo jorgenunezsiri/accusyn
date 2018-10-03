@@ -43,6 +43,7 @@
   .rect-clip-block {
     fill: none;
     pointer-events: all;
+    visibility: hidden;
   }
 
   .axis-label {
@@ -52,7 +53,7 @@
 
   .outer-content {
     margin: 0 auto;
-    max-width: 550px;
+    max-width: 570px; // block-view width
   }
 
   .outer-clickable-content {
@@ -75,7 +76,7 @@
       margin-right: 25px;
     }
 
-    &.flip-hint {
+    &.zoom-state-hint {
       margin-right: 25px;
       text-align: right;
     }

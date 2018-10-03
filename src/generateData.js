@@ -1075,7 +1075,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .attr("class", "progress")
     .html(function() {
       return `
-        <div class="progress-bar progress-bar-striped progress-bar-animated"
+        <div class="progress-bar progress-bar-striped"
           role="progressbar"
           aria-valuemin="0"
           aria-valuemax="100"

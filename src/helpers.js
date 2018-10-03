@@ -201,10 +201,8 @@ export function getFlippedGenesPosition(chromosome, gene) {
   // newStart = lastChrPosition - (endBlock)
   // newEnd = lastChrPosition - (startBlock)
 
-  const tmpStart = gene.start;
-
   const start = chromosome.end - gene.end;
-  const end = chromosome.end - tmpStart;
+  const end = chromosome.end - gene.start;
 
   return {
     start,
@@ -231,14 +229,14 @@ export function getTransformValuesAdditionalTracks() {
   const rotate = getCircosRotateValue();
 
   if (isAdditionalTrackAdded()) {
-    const selectedHeatmapTrack = d3.select("div.heatmap-track-input select") &&
+    const selectedHeatmapTrack = !d3.select("div.heatmap-track-input select").empty() &&
       d3.select("div.heatmap-track-input select").property("value");
-    const trackPlacementHeatmapTrack = d3.select("div.heatmap-track-placement select") &&
+    const trackPlacementHeatmapTrack = !d3.select("div.heatmap-track-placement select").empty() &&
       d3.select("div.heatmap-track-placement select").property("value");
 
-    const selectedHistogramTrack = d3.select("div.histogram-track-input select") &&
+    const selectedHistogramTrack = !d3.select("div.histogram-track-input select").empty() &&
       d3.select("div.histogram-track-input select").property("value");
-    const trackPlacementHistogramTrack = d3.select("div.histogram-track-placement select") &&
+    const trackPlacementHistogramTrack = !d3.select("div.histogram-track-placement select").empty() &&
       d3.select("div.histogram-track-placement select").property("value");
 
     // TODO: Come back to this after generalizing the additional tracks
@@ -274,14 +272,14 @@ export function getTransformValuesAdditionalTracks() {
  * @return {Object} Inner and outer radius
  */
 export function getInnerAndOuterRadiusAdditionalTracks() {
-  const selectedHeatmapTrack = d3.select("div.heatmap-track-input select") &&
+  const selectedHeatmapTrack = !d3.select("div.heatmap-track-input select").empty() &&
     d3.select("div.heatmap-track-input select").property("value");
-  const trackPlacementHeatmapTrack = d3.select("div.heatmap-track-placement select") &&
+  const trackPlacementHeatmapTrack = !d3.select("div.heatmap-track-placement select").empty() &&
     d3.select("div.heatmap-track-placement select").property("value");
 
-  const selectedHistogramTrack = d3.select("div.histogram-track-input select") &&
+  const selectedHistogramTrack = !d3.select("div.histogram-track-input select").empty() &&
     d3.select("div.histogram-track-input select").property("value");
-  const trackPlacementHistogramTrack = d3.select("div.histogram-track-placement select") &&
+  const trackPlacementHistogramTrack = !d3.select("div.histogram-track-placement select").empty() &&
     d3.select("div.histogram-track-placement select").property("value");
 
   // Placing both additionalTracks outside by default

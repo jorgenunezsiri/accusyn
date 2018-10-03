@@ -274,10 +274,10 @@ export function updateChordsWhileDragging({
 function getAngleFromCoordinates() {
   const containerNode = d3.select("svg#main-container").node();
 
-  // Points are equal to current mouse coordinate minus 50 minus 350
-  // width / 2 = 400 and height / 2 = 400
-  // but svg object inside is 700,700
-  // which means that center is in coordinate 350
+  // Points are equal to current mouse coordinate minus 550
+  // width / 2 = 550 and height / 2 = 550
+  // but svg object inside is 850,850
+  // which means that center is in coordinate 425,425
   const x = d3.mouse(containerNode)[0] - (WIDTH / 2);
   const y = d3.mouse(containerNode)[1] - (HEIGHT / 2);
 

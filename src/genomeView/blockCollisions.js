@@ -246,11 +246,11 @@ export function calculateDeclutteringETA() {
   const totalTime = getCollisionCalculationTime();
 
   // Filtering value for temperature
-  const filterTemperatureValue = (d3Select('.filter-sa-temperature-div #filter-sa-temperature') &&
+  const filterTemperatureValue = (!d3Select('.filter-sa-temperature-div #filter-sa-temperature').empty() &&
     d3Select('.filter-sa-temperature-div #filter-sa-temperature').property("value")) || 5000;
 
   // Filtering value for ratio
-  const filterRatioValue = (d3Select('.filter-sa-ratio-div #filter-sa-ratio') &&
+  const filterRatioValue = (!d3Select('.filter-sa-ratio-div #filter-sa-ratio').empty() &&
     d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.05;
 
   console.log('FILTER TEMP AND RATIO: ', filterTemperatureValue, filterRatioValue);
@@ -267,14 +267,12 @@ export function calculateDeclutteringETA() {
     temperature *= complementRatio;
   }
 
-  const oneRunTime = roundFloatNumber(totalTime, 6);
   // This is the final time in seconds
-  const finalTime = roundFloatNumber(oneRunTime * howMany, 2);
+  const finalTime = roundFloatNumber(totalTime * howMany, 2);
+  setTotalNumberOfIterations(howMany);
 
   console.log('HOW MANY TIMES NEW: ', howMany);
-  console.log('time and totalTime: ', oneRunTime, finalTime);
-
-  setTotalNumberOfIterations(howMany);
+  console.log('time and totalTime: ', totalTime, finalTime);
 
   let colorMessage = "green";
   if (finalTime > 60) colorMessage = "#ffb42f"; // yellow-ish
@@ -379,6 +377,7 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
   d3Select(".save-layout > input")
     .attr("disabled", true);
 
+  // I want to get the results from the last set of chromosomes that was called
   setDataChromosomes(dataChromosomes);
   setDataChords(dataChords);
 
@@ -978,11 +977,11 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
   }
 
   // Filtering value for temperature
-  let temperature = (d3Select('.filter-sa-temperature-div #filter-sa-temperature') &&
+  let temperature = (!d3Select('.filter-sa-temperature-div #filter-sa-temperature').empty() &&
     d3Select('.filter-sa-temperature-div #filter-sa-temperature').property("value")) || 5000;
 
   // Filtering value for ratio
-  const ratio = (d3Select('.filter-sa-ratio-div #filter-sa-ratio') &&
+  const ratio = (!d3Select('.filter-sa-ratio-div #filter-sa-ratio').empty() &&
     d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.05;
 
   const complementRatio = (1 - ratio);

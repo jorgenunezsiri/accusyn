@@ -28,6 +28,7 @@ div.genome-view-container {
     width: 40%;
 
     .progress-bar {
+      background-color: #3498db;
       color: black;
       display: none;
       transition: none;
@@ -69,7 +70,7 @@ div.circos-tooltip {
   }
 
   &.outside {
-    border: 1px solid #ea4848;
+    border: 2px solid #ea4848;
     left: 65% !important;
     position: fixed;
     top: 1000px !important; // genome-view height

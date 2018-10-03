@@ -54,7 +54,13 @@ import {
 // Variable getters and setters
 import { getBlockDictionary } from './../variables/blockDictionary';
 import {
-  getCollisionCount
+  getBlockViewZoomStateDictionary,
+  setBlockViewZoomStateDictionary
+} from './../variables/blockViewZoomStateDictionary';
+import {
+  getCollisionCount,
+  getCollisionCalculationTime,
+  getTotalNumberOfIterations
 } from './../variables/collisionCount';
 import {
   getCurrentChromosomeMouseDown,
@@ -80,6 +86,7 @@ import { getSavedCollisionSolutionsDictionary } from './../variables/savedCollis
 import {
   CIRCOS_CONF,
   CONNECTION_COLOR,
+  DEFAULT_BLOCK_VIEW_ZOOM_STATE,
   DEFAULT_GENOME_TRANSITION_TIME,
   FLIPPING_CHROMOSOME_TIME,
   GENOME_INNER_RADIUS,
@@ -203,14 +210,14 @@ function getCurrentTrack(selectedTrack) {
 function generateAdditionalTrack(trackName) {
   const myCircos = getCircosObject();
 
-  const selectedTrack = d3.select(`div.${trackName}-track-input select`) &&
+  const selectedTrack = !d3.select(`div.${trackName}-track-input select`).empty() &&
     d3.select(`div.${trackName}-track-input select`).property("value");
 
   // Resetting heatmap or histogram by removing it first
   myCircos.removeTracks(trackName);
 
   if (selectedTrack !== 'None') {
-    const trackColor = (d3.select(`div.${trackName}-track-color select`) &&
+    const trackColor = (!d3.select(`div.${trackName}-track-color select`).empty() &&
       d3.select(`div.${trackName}-track-color select`).property("value")) || 'YlOrRd';
 
     // Inner and outer radius
@@ -295,7 +302,26 @@ function generateCircosLayout() {
 
         let currentFlippedChromosomes = getCurrentFlippedChromosomes();
 
-        const currentID = d.id;
+        const currentID = d.id; // Current chromosome ID
+        const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
+
+        // Resetting zoom state object for all affected chords
+        for (let i = 0; i < dataChords.length; i++) {
+          if (dataChords[i].source.id !== currentID && dataChords[i].target.id !== currentID) continue;
+          const blockID = dataChords[i].source.value.id;
+          console.log('AFFECTED BLOCK ID: ', blockID);
+
+          if (isEqual(blockZoomStateDictionary[blockID], DEFAULT_BLOCK_VIEW_ZOOM_STATE)) continue;
+
+          // Resetting zoom state object
+          blockZoomStateDictionary[blockID] = defaultsDeep({
+            // Not modifying flipped state when resetting zoom
+            flipped: !!(blockZoomStateDictionary[blockID] || {}).flipped
+          }, cloneDeep(DEFAULT_BLOCK_VIEW_ZOOM_STATE));
+        }
+
+        setBlockViewZoomStateDictionary(blockZoomStateDictionary);
+
         const currentPosition = currentFlippedChromosomes.indexOf(currentID);
 
         d3.selectAll(`path.chord.${currentID}`)
@@ -602,8 +628,8 @@ function generatePathGenomeView({
     for (let i = 0; i < currentFlippedChromosomes.length; i++) {
       // d3.select(`g.${currentFlippedChromosomes[i]}`).attr("opacity", 0.6);
       d3.select(`g.${currentFlippedChromosomes[i]} path#arc-label${currentFlippedChromosomes[i]}`)
-      .style("stroke", "#ea4848")
-      .style("stroke-width", "1px");
+        .style("stroke", "#ea4848")
+        .style("stroke-width", "2px");
       // d3.select(`g.${currentFlippedChromosomes[i]}`).style("stroke", "#ea4848");
     }
   }
@@ -691,11 +717,11 @@ export default function generateGenomeView({
   transition
 }) {
   // Default filtering select for block size
-  const filterSelect = (d3.select('.filter-connections-div select') &&
+  const filterSelect = (!d3.select('.filter-connections-div select').empty() &&
     d3.select('.filter-connections-div select').property("value")) || 'At Least';
 
   // Default filtering value for block size
-  const filterValue = (d3.select('.filter-connections-div #filter-block-size') &&
+  const filterValue = (!d3.select('.filter-connections-div #filter-block-size').empty() &&
     d3.select('.filter-connections-div #filter-block-size').property("value")) || 1;
 
   // To keep track of the Show all input state
@@ -817,7 +843,7 @@ export default function generateGenomeView({
   }
 
   // Sorting the chords according to the drawing order
-  const filterDrawOrder = (d3.select('div.draw-blocks-order select') &&
+  const filterDrawOrder = (!d3.select('div.draw-blocks-order select').empty() &&
     d3.select('div.draw-blocks-order select').property("value")) || 'Block ID (↑)';
 
   dataChords.sort(function compare(a, b) {
@@ -856,12 +882,25 @@ export default function generateGenomeView({
 
   d3.select(".best-guess > input")
     .on("click", function() {
-      d3.select(this)
-        .property("value", "Minimizing ...")
-        .attr("disabled", true);
+      const totalTime = getCollisionCalculationTime();
+      const totalNumberOfIterations = getTotalNumberOfIterations();
+      const finalTime = roundFloatNumber(totalTime * totalNumberOfIterations, 2);
 
-      // TODO: Workaround for this?
-      setTimeout(() => simulatedAnnealing(dataChromosomes, dataChords), 50);
+      let confirming = true;
+      // Taking the calculated time string from the hint
+      const timeString = d3.select(".filter-sa-hint").text().split("-")[0].trim();
+      if (finalTime > 120) {
+        confirming = confirm(`Are you willing to wait at least ${timeString} for the calculation to finish?`);
+      }
+
+      if (confirming) {
+        d3.select(this)
+          .property("value", "Minimizing ...")
+          .attr("disabled", true);
+
+        // TODO: Workaround for this?
+        setTimeout(() => simulatedAnnealing(dataChromosomes, dataChords), 50);
+      }
     });
 
   // Remove block view if user is filtering

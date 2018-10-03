@@ -1,3 +1,4 @@
+import { zoomIdentity as d3ZoomIdentity } from 'd3';
 import {
   schemeAccent,
   schemeDark2,
@@ -104,6 +105,14 @@ const TRANSITION_SWAPPING_TIME = 200;
 const OFFSET_DOMAIN = 50000; // Offset to be used for the scales domain
 const REMOVE_BLOCK_VIEW_TRANSITION_TIME = 250;
 
+// Default block view zoom state
+const DEFAULT_BLOCK_VIEW_ZOOM_STATE = {
+  flipped: false,
+  y0: {},
+  y1: {},
+  zoom: d3ZoomIdentity.scale(1).translate(0, 0)
+};
+
 // Flipping block view constants
 const COLOR_CHANGE_TIME = 75;
 const MAX_INDEX_TRANSITION = 13;
@@ -139,6 +148,7 @@ export {
   TRANSITION_DRAG_TIME,
   TRANSITION_SWAPPING_TIME,
   // Block view
+  DEFAULT_BLOCK_VIEW_ZOOM_STATE,
   OFFSET_DOMAIN,
   REMOVE_BLOCK_VIEW_TRANSITION_TIME,
   // Block view transition constants

@@ -1,9 +1,10 @@
 // _configurationPanel.scss partial file
 
 #config {
-  margin: 20px 0 0 20px;
-  min-width: 340px; // width = 800 / 2.5 + 20px
-  max-width: 340px; // width = 800 / 2.5 + 20px
+  margin: 20px 20px 0;
+  min-width: 310px; // width = 800 / 2.5 - 10px
+  max-width: 310px; // width = 800 / 2.5 - 10px
+  padding: 0;
 }
 
 #page-container #documentation-container {
