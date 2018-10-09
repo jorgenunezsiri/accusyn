@@ -25,6 +25,7 @@ import findIndex from 'lodash/findIndex';
 import generateBlockView from './../generateBlockView';
 
 import {
+  assignFlippedChromosomeColors,
   calculateMiddleValue,
   getChordsRadius,
   getInnerAndOuterRadiusAdditionalTracks,
@@ -74,7 +75,10 @@ import {
   getCurrentFlippedChromosomes,
   setCurrentFlippedChromosomes
 } from './../variables/currentFlippedChromosomes';
-import { getGffDictionary } from './../variables/gffDictionary';
+import {
+  getGffDictionary,
+  setGffDictionary
+} from './../variables/gffDictionary';
 import {
   getAdditionalTrackArray,
   isAdditionalTrackAdded
@@ -84,6 +88,7 @@ import { getSavedCollisionSolutionsDictionary } from './../variables/savedCollis
 
 // Contants
 import {
+  CATEGORICAL_COLOR_SCALES,
   CIRCOS_CONF,
   CONNECTION_COLOR,
   DEFAULT_BLOCK_VIEW_ZOOM_STATE,
@@ -345,6 +350,16 @@ function generateCircosLayout() {
           currentFlippedChromosomes.splice(currentPosition, 1);
         } else {
           currentFlippedChromosomes.push(currentID);
+        }
+
+        const selected = d3.select("div.chromosomes-palette select").property("value");
+        if (selected === 'Flipped') {
+          setGffDictionary(assignFlippedChromosomeColors({
+            colorScale: d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES['Flipped']).domain([0, 1]),
+            currentFlippedChromosomes: currentFlippedChromosomes,
+            gffKeys: getDefaultChromosomeOrder(),
+            gffPositionDictionary: getGffDictionary()
+          }));
         }
 
         console.log('CURRENT FLIPPED CHR: ', currentFlippedChromosomes);

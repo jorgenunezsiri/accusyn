@@ -69,7 +69,10 @@ const CATEGORICAL_COLOR_SCALES = {
   Normal: schemeSet2,
   Accent: schemeAccent,
   Dark: schemeDark2,
-  Pastel: schemePastel2
+  Pastel: schemePastel2,
+  Disabled: "Disabled",
+  Flipped: ["#00bfff", "#dc143c"], // deepskyblue and crimson colors (blue-ish and red-ish)
+  Multiple: schemeSet2
 };
 
 // Sequential color scales - palettes

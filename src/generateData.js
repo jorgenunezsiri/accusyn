@@ -27,6 +27,7 @@ import generateGenomeView from './genomeView/generateGenomeView';
 import { updateWaitingBlockCollisionHeadline } from './genomeView/blockCollisions';
 
 import {
+  assignFlippedChromosomeColors,
   getSelectedCheckboxes,
   isInViewport,
   lookForBlocksPositions,
@@ -47,6 +48,7 @@ import {
   setCurrentChromosomeOrder,
   setDefaultChromosomeOrder
 } from './variables/currentChromosomeOrder';
+import { getCurrentFlippedChromosomes } from './variables/currentFlippedChromosomes';
 import { setGeneDictionary } from './variables/geneDictionary';
 import { setGffDictionary } from './variables/gffDictionary';
 import {
@@ -141,6 +143,10 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
 
   // Obtaining keys from dictionary and sorting them in ascending order
   gffKeys = sortGffKeys(Object.keys(gffPositionDictionary)).slice();
+  // Setting default color domain for chromosome palettes
+  const defaultColorDomain = [];
+  for (let i = 0; i < gffKeys.length; i++) defaultColorDomain.push(i);
+  colors.domain(defaultColorDomain);
 
   let totalChrEnd = 0;
   // Setting the color for each chromosome after sorting the gffKeys
@@ -524,13 +530,25 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .append("p")
     .text("Chromosomes palette: ");
 
+  // Partitioning gff keys to get the checkboxes division
+  const { gffPartitionedDictionary, partitionedGffKeys } = partitionGffKeys(gffKeys);
+
   const allCategoricalColors = Object.keys(CATEGORICAL_COLOR_SCALES);
   let categoricalColorOptions = "";
   for (let i = 0; i < allCategoricalColors.length; i++) {
     const key = allCategoricalColors[i];
-    categoricalColorOptions += `
-      <option value="${key}">${key}</option>
-      `;
+    if (key === "Disabled") {
+      categoricalColorOptions += `
+        <option disabled>─────</option>
+        `;
+    } else {
+      // Only adding Multiple key when visualizing multiple genomes
+      if (key === "Multiple" && partitionedGffKeys.length === 1) continue;
+
+      categoricalColorOptions += `
+        <option value="${key}">${key}</option>
+        `;
+    }
   }
 
   d3.select("div.chromosomes-palette")
@@ -542,13 +560,41 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .on("change", function() {
       const selected = d3.select(this).property("value");
       const colors = d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES[selected]);
+      colors.domain(defaultColorDomain);
 
-      // Setting the color for each chromosome with new color scale
-      for (let i = 0; i < gffKeys.length; i++) {
-        gffPositionDictionary[gffKeys[i]].color = colors(i);
+      if (selected === 'Flipped') {
+        setGffDictionary(assignFlippedChromosomeColors({
+          colorScale: colors.domain([0, 1]),
+          currentFlippedChromosomes: getCurrentFlippedChromosomes(),
+          gffKeys: gffKeys,
+          gffPositionDictionary: gffPositionDictionary
+        }));
+      } else if( selected === 'Multiple') {
+        const uniqueDomain = []; // Unique domain for multiple chromosomes
+        const gffKeysHashDictionary = {}; // Hash dictionary between the identifiers and color domain
+
+        // Assigning the domain and hash for each identifier
+        for (let i = 0; i < partitionedGffKeys.length; i++) {
+          uniqueDomain.push(i);
+          gffKeysHashDictionary[partitionedGffKeys[i]] = i;
+        }
+
+        colors.domain(uniqueDomain);
+
+        for (let i = 0; i < gffKeys.length; i++) {
+          // Removing all non-letters from current chr id
+          const currentIdentifier = gffKeys[i].replace(/[^a-zA-Z]+/g, '');
+          gffPositionDictionary[gffKeys[i]].color = colors(gffKeysHashDictionary[currentIdentifier]);
+        }
+      } else {
+        // Setting the color for each chromosome with new color scale
+        for (let i = 0; i < gffKeys.length; i++) {
+          gffPositionDictionary[gffKeys[i]].color = colors(i);
+        }
       }
 
-      setGffDictionary(gffPositionDictionary);
+      // For 'Flipped' case the dictionary is already being set
+      if (selected !== 'Flipped') setGffDictionary(gffPositionDictionary);
 
       // Calling genome view for updates with default transition
       generateGenomeView({
@@ -917,9 +963,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .attr("class","panel-subtitle")
     .html("<strong>Chromosomes</strong>");
 
-  // Partitioning gff keys to get the checkboxes division
-  const { gffPartitionedDictionary, partitionedGffKeys } = partitionGffKeys(gffKeys);
-
+  // Adding the checkbox by using the partitionedGffKeys
   for (let i = 0; i < partitionedGffKeys.length; i++) {
     d3.select("div.for-chr-boxes")
       .append("div")

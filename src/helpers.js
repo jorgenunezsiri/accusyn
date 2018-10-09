@@ -5,6 +5,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import AlertWithTimeout from './reactComponents/Alert';
 
+import cloneDeep from 'lodash/cloneDeep';
 import find from 'lodash/find';
 import findIndex from 'lodash/findIndex';
 import sortedUniq from 'lodash/sortedUniq';
@@ -528,6 +529,31 @@ export function removeBlockView(transitionTime = 0) {
   } else {
     d3.select("#block-view-container").remove();
   }
+};
+
+/**
+ * Assigns flipped colors to the genome chromosomes
+ *
+ * @param  {Function} colorScale                     Current flipped color scale (1 for flipped, 0 otherwise)
+ * @param  {Array<string>} currentFlippedChromosomes Array of flipped chromosomes
+ * @param  {Array<string} gffKeys                    Array of all the chromosomes
+ * @param  {Array<Object>} gffPositionDictionary     Array of positions and colors for the chromosomes
+ * @return {undefined}                               undefined
+ */
+export function assignFlippedChromosomeColors({
+  colorScale,
+  currentFlippedChromosomes,
+  gffKeys,
+  gffPositionDictionary
+}) {
+  const tmpGffDictionary = cloneDeep(gffPositionDictionary);
+
+  for (let i = 0; i < gffKeys.length; i++) {
+    const isFlipped = currentFlippedChromosomes.indexOf(gffKeys[i]) !== (-1);
+    tmpGffDictionary[gffKeys[i]].color = colorScale(!isFlipped ? 0 : 1);
+  }
+
+  return tmpGffDictionary;
 };
 
 /**
