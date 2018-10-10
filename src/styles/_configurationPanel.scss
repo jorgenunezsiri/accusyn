@@ -79,7 +79,8 @@
   p.filter-connections,
   div.filter-angle-div p,
   div.filter-sa-temperature-div p,
-  div.filter-sa-ratio-div p {
+  div.filter-sa-ratio-div p,
+  div.filter-sa-flipping-frequency-div p {
     input {
       margin-left: 45px;
       width: 195px;
@@ -103,7 +104,8 @@
 
   div.filter-angle-div,
   div.filter-sa-temperature-div,
-  div.filter-sa-ratio-div {
+  div.filter-sa-ratio-div,
+  div.filter-sa-flipping-frequency-div {
     label {
       margin-bottom: 0;
     }

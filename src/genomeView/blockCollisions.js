@@ -1,4 +1,5 @@
 import {
+  easeLinear as d3EaseLinear,
   format as d3Format,
   ribbon as d3Ribbon,
   select as d3Select,
@@ -10,19 +11,28 @@ import Parallel from 'paralleljs';
 
 // Lodash
 import cloneDeep from 'lodash/cloneDeep';
+import difference from 'lodash/difference';
 import findIndex from 'lodash/findIndex';
+import isEmpty from 'lodash/isEmpty';
 import isEqual from 'lodash/isEqual';
+import union from 'lodash/union';
 
 import generateGenomeView from './generateGenomeView';
+import { resetZoomBlockView } from './../generateBlockView';
 import { updateAdditionalTracksWhileDragging } from './dragging';
 import {
+  flipGenesPosition,
   getChordsRadius,
+  getFlippedGenesPosition,
   renderReactAlert,
   resetInputsAndSelectsOnAnimation,
   roundFloatNumber,
-  sortGffKeys
+  sortGffKeys,
+  updateRatio,
+  updateTemperature
 } from './../helpers';
 import { getCircosObject } from './../variables/myCircos';
+import { getBlockDictionary } from './../variables/blockDictionary';
 import {
   getCollisionCount,
   getCollisionCalculationTime,
@@ -38,8 +48,13 @@ import {
   toChromosomeOrder
 } from './../variables/currentChromosomeOrder';
 import {
+  getCurrentFlippedChromosomes,
+  setCurrentFlippedChromosomes
+} from './../variables/currentFlippedChromosomes';
+import {
   getDataChords,
-  setDataChords
+  setDataChords,
+  toChordsOrder
 } from './../variables/dataChords';
 import {
   getDataChromosomes,
@@ -53,7 +68,9 @@ import {
 // Constants
 import {
   CIRCOS_CONF,
+  DEFAULT_BLOCK_VIEW_ZOOM_STATE,
   DEGREES_TO_RADIANS,
+  FLIPPING_CHROMOSOME_TIME,
   GENOME_INNER_RADIUS,
   RADIANS_TO_DEGREES,
   TRANSITION_SWAPPING_TIME
@@ -82,6 +99,133 @@ export function getChordAngles(dataChromosomes, chord, reference) {
     middle: (startAngle + endAngle) / 2,
     end: endAngle
   }
+};
+
+/**
+ * Generates the transition to add a stroke to flipped chromosomes
+ *
+ * @param  {string} currentChr       Current chromosome
+ * @param  {boolean} [flipping=true] Flag to determine whether or not to add the stroke
+ * @return {undefined}               undefined
+ */
+export function transitionFlipChromosomeStroke(currentChr, flipping = true) {
+  d3Select(`g.${currentChr} path#arc-label${currentChr}`)
+    .transition()
+    .duration(FLIPPING_CHROMOSOME_TIME - 25)
+    .style("stroke", flipping ? "#ea4848" : "none")
+    .style("stroke-width", flipping ? "2px" : "0");
+};
+
+/**
+ * Generates the flipping transition for the current chromosome
+ *
+ * @param  {string} currentChr                Current chromosome
+ * @param  {Array<string>}  currentFlippedChromosomes List of flipped chromosomes
+ * @param  {Array<Object>}  dataChromosomes   Current chromosomes in the Circos plot
+ * @param  {Array<boolean>} [visitedBlock=[]] List of visited blocks
+ * @return {Array<string>}                    List of affected chords in the transition
+ */
+export function transitionFlipping({
+  currentChr,
+  currentFlippedChromosomes,
+  dataChromosomes,
+  visitedBlock = []
+}) {
+  // Current fill dictionary
+  const currentFill = {};
+
+  if (!d3SelectAll(`path.chord.${currentChr}`).empty()) {
+    const visitedBlockForFlipping = visitedBlock.slice();
+
+    d3SelectAll("path.chord")
+      .attr("opacity", 0.7);
+
+    const blockDictionary = getBlockDictionary();
+    const ribbon = d3Ribbon().radius(getChordsRadius());
+    d3SelectAll(`path.chord.${currentChr}`)
+      .transition()
+      .duration(FLIPPING_CHROMOSOME_TIME - 25)
+      .ease(d3EaseLinear)
+      .attr("d", function(d) {
+        const blockID = d.source.value.id;
+        currentFill[blockID] = d3Select(this).style("fill");
+
+        let raiseAndBlueColor = false;
+        if (!isEmpty(visitedBlockForFlipping)) {
+          if (visitedBlockForFlipping[blockID]) {
+            d3Select(this).style("fill", currentFill[blockID]);
+          } else {
+            visitedBlockForFlipping[blockID] = true;
+            raiseAndBlueColor = true;
+          }
+        } else raiseAndBlueColor = true;
+        // visitedBlockForFlipping is not defined when manually flipping a chr
+
+        if (raiseAndBlueColor) {
+          d3Select(this).raise();
+          d3Select(this).style("fill", "lightblue");
+        }
+
+        const { sourcePositions, targetPositions } = flipGenesPosition({
+          blockPositions: blockDictionary[d.source.value.id].blockPositions,
+          currentFlippedChromosomes: currentFlippedChromosomes,
+          sourceID: d.source.id,
+          targetID: d.target.id
+        });
+
+        // (Un)Highlighting the flipped chromosomes with a stroke
+        transitionFlipChromosomeStroke(d.source.id, currentFlippedChromosomes.indexOf(d.source.id) > (-1));
+        transitionFlipChromosomeStroke(d.target.id, currentFlippedChromosomes.indexOf(d.target.id) > (-1));
+
+        const positions = {
+          source: {
+            id: d.source.id,
+            start: sourcePositions.start,
+            end: sourcePositions.end
+          },
+          target: {
+            id: d.target.id,
+            start: targetPositions.start,
+            end: targetPositions.end
+          }
+        };
+
+        // For source
+        const sourceObject = getChordAngles(dataChromosomes, positions, 'source');
+        let sourceStartAngle = sourceObject.start;
+        let sourceEndAngle = sourceObject.end;
+
+        // For target
+        const targetObject = getChordAngles(dataChromosomes, positions, 'target');
+        let targetStartAngle = targetObject.start;
+        let targetEndAngle = targetObject.end;
+
+        const sourceAngles = {
+          startAngle: sourceStartAngle,
+          endAngle: sourceEndAngle
+        };
+
+        const targetAngles = {
+          startAngle: targetStartAngle,
+          endAngle: targetEndAngle
+        };
+
+        return ribbon({
+          source: sourceAngles,
+          target: targetAngles
+        });
+      });
+
+    setTimeout(() => {
+      // Setting the fill style back
+      d3SelectAll(`path.chord.${currentChr}`)
+        .style("fill", function(d) {
+          return currentFill[d.source.value.id];
+        });
+    }, FLIPPING_CHROMOSOME_TIME);
+  }
+
+  return Object.keys(currentFill);
 };
 
 /**
@@ -245,12 +389,51 @@ export function calculateDeclutteringETA() {
   const collisionCount = getCollisionCount();
   const totalTime = getCollisionCalculationTime();
 
+  if (d3Select("p.calculate-temperature-ratio input").property("checked")) {
+    // Update temperature and ratio based on block collisions
+    // Default temperature/ratio is 5,000/0.05
+    // Entering loop around 150 times
+    let updatedTemperature = 5000, updatedRatio = 0.05;
+
+    // TODO: Create a hash table for this?
+
+
+    // Update temperature/ratio to 10,000/0.003 if less than 100 collisions available
+    // Entering loop around 3000 times
+    if (collisionCount <= 100) {
+      updatedTemperature = 10000;
+      updatedRatio = 0.003;
+    }
+
+    // Entering loop around 4000 times
+    if (collisionCount <= 10) {
+      updatedTemperature = 200000;
+      updatedRatio = 0.003;
+    }
+
+    // Update temperature/ratio to 5,000/0.006 if collision count is between 100 and 500
+    // Entering loop around 1500 times
+    if (collisionCount > 100 && collisionCount <= 500) {
+      updatedTemperature = 6000;
+      updatedRatio = 0.006;
+    }
+
+    // Entering loop around 500 times
+    if (collisionCount > 500 && collisionCount <= 1500) {
+      updatedTemperature = 40000;
+      updatedRatio = 0.02;
+    }
+
+    updateTemperature(updatedTemperature, false);
+    updateRatio(updatedRatio, false);
+  }
+
   // Filtering value for temperature
-  const filterTemperatureValue = (!d3Select('.filter-sa-temperature-div #filter-sa-temperature').empty() &&
+  const filterTemperatureValue = Number(!d3Select('.filter-sa-temperature-div #filter-sa-temperature').empty() &&
     d3Select('.filter-sa-temperature-div #filter-sa-temperature').property("value")) || 5000;
 
   // Filtering value for ratio
-  const filterRatioValue = (!d3Select('.filter-sa-ratio-div #filter-sa-ratio').empty() &&
+  const filterRatioValue = Number(!d3Select('.filter-sa-ratio-div #filter-sa-ratio').empty() &&
     d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.05;
 
   console.log('FILTER TEMP AND RATIO: ', filterTemperatureValue, filterRatioValue);
@@ -336,25 +519,6 @@ export function calculateDeclutteringETA() {
 
       return textToShow;
     });
-
-  // Default temperature/ratio is 5,000/0.05
-  // Entering loop around 150 times
-  // temperature = 5000;
-  // ratio = 0.05;
-
-  // Update temperature/ratio to 5,000/0.006 if collision count is between 100 and 500
-  // Entering loop around 1500 times
-  // if (collisionCount > 100 && collisionCount <= 500) {
-  //   temperature = 6000;
-  //   ratio = 0.006;
-  // }
-
-  // Update temperature/ratio to 10,000/0.003 if less than 100 collisions available
-  // Entering loop around 3000 times
-  // if (collisionCount <= 100) {
-  //   temperature = 10000;
-  //   ratio = 0.003;
-  // }
 };
 
 /**
@@ -599,6 +763,7 @@ function transitionSwapOldToNew({
     .raise()
     .transition()
     .duration(TRANSITION_SWAPPING_TIME)
+    .ease(d3EaseLinear)
     .attr("transform", `rotate(${angle})`);
 
   updateAdditionalTracksWhileDragging({
@@ -611,11 +776,14 @@ function transitionSwapOldToNew({
   if (!d3SelectAll(`path.chord.${currentChr}`).empty()) {
     const ribbon = d3Ribbon().radius(getChordsRadius());
 
+    d3SelectAll("path.chord")
+      .attr("opacity", 0.7);
+
     d3SelectAll(`path.chord.${currentChr}`)
       .raise()
       .transition()
       .duration(TRANSITION_SWAPPING_TIME)
-      .attr("opacity", 0.9)
+      .ease(d3EaseLinear)
       .attr("d", function(d) {
 
         // For source
@@ -660,7 +828,6 @@ function transitionSwapOldToNew({
           targetEndAngle += angleToMove;
         }
 
-
         const sourceAngles = {
           startAngle: sourceStartAngle,
           endAngle: sourceEndAngle
@@ -675,14 +842,8 @@ function transitionSwapOldToNew({
           source: sourceAngles,
           target: targetAngles
         });
-
-      })
+      });
   }
-
-  hasMovedDragging[currentChr] = {
-    angle: angle,
-    hasMoved: true
-  };
 }
 
 /**
@@ -693,7 +854,7 @@ function transitionSwapOldToNew({
  * @param  {Array<Object>} dataChords   Plotting information for each block chord
  * @return {Object}                     Position and key in collisions dictionary
  */
-export function loopUpPositionCollisionsDictionary(bestSolution, dataChords) {
+export function lookUpPositionCollisionsDictionary(bestSolution, dataChords) {
   const bestSolutionChromosomeOrder = toChromosomeOrder(bestSolution);
 
   // Look for current savedCollisionSolutionsDictionary
@@ -702,7 +863,7 @@ export function loopUpPositionCollisionsDictionary(bestSolution, dataChords) {
 
   // Finding positions for the chromosomes in key with current dataChords
   const currentPosition = findIndex(savedCollisionSolutionsDictionary[key], function(d) {
-    return isEqual(d.dataChords, dataChords);
+    return isEqual(toChordsOrder(d.dataChords), toChordsOrder(dataChords));
   });
 
   return {
@@ -714,29 +875,37 @@ export function loopUpPositionCollisionsDictionary(bestSolution, dataChords) {
 /**
  * Save configuration to collisions dictionary
  *
+ * @param  {Array<string>} bestFlippedChromosomes Data for best flipped chromosomes
  * @param  {Array<Object>} bestSolution   Data for best solution chromosomes
  * @param  {number}        collisionCount Number of collisions
  * @param  {Array<Object>} dataChords     Plotting information for each block chord
  * @return {undefined}                    undefined
  */
-export function saveToCollisionsDictionary(bestSolution, collisionCount, dataChords) {
-  const { currentPosition, key } = loopUpPositionCollisionsDictionary(bestSolution, dataChords);
+export function saveToCollisionsDictionary({
+  bestFlippedChromosomes,
+  bestSolution,
+  collisionCount,
+  dataChords
+}) {
+  const { currentPosition, key } = lookUpPositionCollisionsDictionary(bestSolution, dataChords);
   const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
 
   if (!(key in savedCollisionSolutionsDictionary)) {
     savedCollisionSolutionsDictionary[key] = [];
   }
 
+  const currentObject = {
+    bestFlippedChromosomes: cloneDeep(bestFlippedChromosomes),
+    bestSolution: cloneDeep(bestSolution),
+    collisionCount: collisionCount,
+    dataChords: cloneDeep(dataChords)
+  };
+
   if (currentPosition !== (-1)) {
     // For this configuration, I want to save another combination (could be better or not)
-    savedCollisionSolutionsDictionary[key][currentPosition].bestSolution = cloneDeep(bestSolution);
-    savedCollisionSolutionsDictionary[key][currentPosition].collisionCount = collisionCount;
+    savedCollisionSolutionsDictionary[key][currentPosition] = currentObject;
   } else {
-    savedCollisionSolutionsDictionary[key].push({
-      bestSolution: cloneDeep(bestSolution),
-      collisionCount: collisionCount,
-      dataChords: cloneDeep(dataChords)
-    });
+    savedCollisionSolutionsDictionary[key].push(currentObject);
   }
 
   setSavedCollisionSolutionsDictionary(savedCollisionSolutionsDictionary);
@@ -748,109 +917,373 @@ export function saveToCollisionsDictionary(bestSolution, collisionCount, dataCho
  * @param  {Array<Object>} dataChromosomes Data for current chromosomes in the Circos plot
  * @param  {Array<Object>} bestSolution    Data for best solution chromosomes
  * @param  {Array<Array<string>>} swapPositions Swap positions array
+ * @param  {Array<string>} bestFlippedChromosomes Data for best flipped chromosomes
  * @return {undefined}                     undefined
  */
-export function swapPositionsAnimation(dataChromosomes, bestSolution, swapPositions) {
-  const chromosomeOrder = toChromosomeOrder(dataChromosomes);
+export function swapPositionsAnimation({
+  dataChromosomes,
+  bestSolution,
+  swapPositions,
+  bestFlippedChromosomes
+}) {
+  const allFlippedChromosomes = getCurrentFlippedChromosomes();
+  let transitionTime = 0, positionsNotSwappedTransitionTime = 0, flippedTransitionTime = 0;
 
-  let visited = [];
-  let hasMovedDragging = [];
-  for (let i = 0; i < chromosomeOrder.length; i++) {
-    hasMovedDragging[chromosomeOrder[i]] = {
-      angle: 0,
-      hasMoved: false
-    };
-    visited[chromosomeOrder[i]] = false;
-  }
+  if (swapPositions.length > 0 || !isEqual(allFlippedChromosomes, bestFlippedChromosomes)) {
+    // Setting chromosome order with all the chromosomes
+    // NOTE: Current chromosome order variable always includes all the chromosomes
+    setCurrentChromosomeOrder(toChromosomeOrder(bestSolution, true));
 
-  for (let i = 0; i < swapPositions.length; i++) {
-    visited[swapPositions[i][0]] = true;
-    visited[swapPositions[i][1]] = true;
-  }
+    // NOTE: Flipped chromosomes already includes the other flipped chromosomes from the global array
+    setCurrentFlippedChromosomes(bestFlippedChromosomes);
 
-  const positionsNotBeingSwapped = [];
-  for (let i = 0; i < chromosomeOrder.length; i++) {
-    if (visited[chromosomeOrder[i]] === false) {
-      positionsNotBeingSwapped.push(chromosomeOrder[i]);
-    }
-  }
+    // Showing alert using react
+    renderReactAlert("The layout was successfully updated.", "success");
 
-  console.log('POSITIONS NOT SWAPPED: ', positionsNotBeingSwapped);
 
-  let transitionTime = 0;
-  let index = 0;
+    const chromosomeOrder = toChromosomeOrder(dataChromosomes);
 
-  while (transitionTime < (TRANSITION_SWAPPING_TIME * swapPositions.length) &&
-    index < swapPositions.length) {
-    const firstAngle = calculateAngleTransitionSwap(dataChromosomes, bestSolution, swapPositions[index][0]);
-    const secondAngle = calculateAngleTransitionSwap(dataChromosomes, bestSolution, swapPositions[index][1]);
-
-    // Only do swap transition with chromosomes if one of the angles from the
-    // swapPositions pair is not equal to zero
-    if (firstAngle !== 0 || secondAngle !== 0) {
-      (function(transitionTime, index) {
-        setTimeout(function() {
-          /*
-           * The angle is only affecting each chromosome in their first rotation.
-           * It should be the same to just traverse in order, and change each chromosome
-           * (That would imply 19 swaps always)
-           * Right now we are getting less than 19 (so it's better in theory)
-           */
-          transitionSwapOldToNew({
-            dataChromosomes: dataChromosomes,
-            bestSolution: bestSolution,
-            angle: firstAngle,
-            currentChr: swapPositions[index][0],
-            hasMovedDragging: hasMovedDragging
-          });
-          transitionSwapOldToNew({
-            dataChromosomes: dataChromosomes,
-            bestSolution: bestSolution,
-            angle: secondAngle,
-            currentChr: swapPositions[index][1],
-            hasMovedDragging: hasMovedDragging
-          });
-
-          console.log('SWAP POSITIONS i: ', index, swapPositions[index]);
-        }, transitionTime);
-      })(transitionTime, index);
-
-      transitionTime += TRANSITION_SWAPPING_TIME;
+    let visited = [];
+    let hasMovedDragging = [];
+    for (let i = 0; i < chromosomeOrder.length; i++) {
+      hasMovedDragging[chromosomeOrder[i]] = {
+        angle: 0,
+        hasMoved: false
+      };
+      visited[chromosomeOrder[i]] = false;
     }
 
-    index++;
-  }
-
-  let newTransitionTime = transitionTime;
-  index = 0;
-
-  while ((newTransitionTime - transitionTime) < (TRANSITION_SWAPPING_TIME * positionsNotBeingSwapped.length) &&
-    index < positionsNotBeingSwapped.length) {
-    const angle = calculateAngleTransitionSwap(dataChromosomes, bestSolution, positionsNotBeingSwapped[index]);
-    // Only do swap transition with remaining chromosomes if their angle is not equal to zero
-    if (angle !== 0) {
-      (function(newTransitionTime, index) {
-        setTimeout(function() {
-          transitionSwapOldToNew({
-            dataChromosomes: dataChromosomes,
-            bestSolution: bestSolution,
-            angle: angle,
-            currentChr: positionsNotBeingSwapped[index],
-            hasMovedDragging: hasMovedDragging
-          });
-
-          console.log('POSITIONS NOT SWAPPED i: ', index, positionsNotBeingSwapped[index]);
-        }, newTransitionTime);
-      })(newTransitionTime, index);
-
-      newTransitionTime += TRANSITION_SWAPPING_TIME;
+    for (let i = 0; i < swapPositions.length; i++) {
+      visited[swapPositions[i][0]] = true;
+      visited[swapPositions[i][1]] = true;
     }
 
-    index++;
-  }
+    const positionsNotBeingSwapped = [];
+    for (let i = 0; i < chromosomeOrder.length; i++) {
+      if (visited[chromosomeOrder[i]] === false) {
+        positionsNotBeingSwapped.push(chromosomeOrder[i]);
+      }
+    }
 
-  // TODO: Think about performance when calling generateGenomeView again
-  setTimeout(() => {
+    console.log('POSITIONS NOT SWAPPED: ', positionsNotBeingSwapped);
+
+    transitionTime = 0;
+    let index = 0;
+
+    while (transitionTime < (TRANSITION_SWAPPING_TIME * swapPositions.length) &&
+      index < swapPositions.length) {
+      const firstAngle = calculateAngleTransitionSwap(dataChromosomes, bestSolution, swapPositions[index][0]);
+      const secondAngle = calculateAngleTransitionSwap(dataChromosomes, bestSolution, swapPositions[index][1]);
+
+      // Only do swap transition with chromosomes if one of the angles from the
+      // swapPositions pair is not equal to zero
+      if (firstAngle !== 0 || secondAngle !== 0) {
+        (function(transitionTime, index) {
+          setTimeout(function() {
+            /*
+             * The angle is only affecting each chromosome in their first rotation.
+             * It should be the same to just traverse in order, and change each chromosome
+             * (That would imply 19 swaps always)
+             * Right now we are getting less than 19 (so it's better in theory)
+             */
+            transitionSwapOldToNew({
+              dataChromosomes: dataChromosomes,
+              bestSolution: bestSolution,
+              angle: firstAngle,
+              currentChr: swapPositions[index][0],
+              hasMovedDragging: hasMovedDragging
+            });
+            hasMovedDragging[swapPositions[index][0]] = {
+              angle: firstAngle,
+              hasMoved: true
+            };
+
+            transitionSwapOldToNew({
+              dataChromosomes: dataChromosomes,
+              bestSolution: bestSolution,
+              angle: secondAngle,
+              currentChr: swapPositions[index][1],
+              hasMovedDragging: hasMovedDragging
+            });
+            hasMovedDragging[swapPositions[index][1]] = {
+              angle: secondAngle,
+              hasMoved: true
+            };
+
+            console.log('SWAP POSITIONS i: ', index, swapPositions[index]);
+          }, transitionTime);
+        })(transitionTime, index);
+
+        transitionTime += TRANSITION_SWAPPING_TIME;
+      }
+
+      index++;
+    }
+
+    positionsNotSwappedTransitionTime = transitionTime;
+    index = 0;
+
+    while ((positionsNotSwappedTransitionTime - transitionTime) <
+      (TRANSITION_SWAPPING_TIME * positionsNotBeingSwapped.length) &&
+      index < positionsNotBeingSwapped.length) {
+      const angle = calculateAngleTransitionSwap(dataChromosomes, bestSolution, positionsNotBeingSwapped[index]);
+      // Only do swap transition with remaining chromosomes if their angle is not equal to zero
+      if (angle !== 0) {
+        (function(positionsNotSwappedTransitionTime, index) {
+          setTimeout(function() {
+            transitionSwapOldToNew({
+              dataChromosomes: dataChromosomes,
+              bestSolution: bestSolution,
+              angle: angle,
+              currentChr: positionsNotBeingSwapped[index],
+              hasMovedDragging: hasMovedDragging
+            });
+            hasMovedDragging[positionsNotBeingSwapped[index]] = {
+              angle: angle,
+              hasMoved: true
+            };
+
+            console.log('POSITIONS NOT SWAPPED i: ', index, positionsNotBeingSwapped[index]);
+          }, positionsNotSwappedTransitionTime);
+        })(positionsNotSwappedTransitionTime, index);
+
+        positionsNotSwappedTransitionTime += TRANSITION_SWAPPING_TIME;
+      }
+
+      index++;
+    }
+
+    flippedTransitionTime = positionsNotSwappedTransitionTime;
+    index = 0;
+
+    console.log('FLIPPED TRANSITION TIME: ', flippedTransitionTime);
+
+    if (!isEqual(allFlippedChromosomes, bestFlippedChromosomes)) {
+      const unionFlippedChromosomes = union(allFlippedChromosomes, bestFlippedChromosomes);
+
+      // Resetting zoom state object for all affected chords
+      d3SelectAll("path.chord")
+        .each(function(d) {
+          // Only resetting the chords that WILL BE present in the flipping animation
+          if (unionFlippedChromosomes.indexOf(d.source.id) === (-1) &&
+            unionFlippedChromosomes.indexOf(d.target.id) === (-1)) return;
+
+          const blockID = d.source.value.id;
+          resetZoomBlockView(blockID);
+        });
+
+      const chrBlockDictionary = {};
+      const blockChrDictionary = {};
+      const visitedChrForFlipping = [];
+      const visitedBlockForFlipping = [];
+
+      for (let i = 0; i < unionFlippedChromosomes.length; i++) {
+        visitedChrForFlipping[unionFlippedChromosomes[i]] = false;
+      }
+
+      /**
+       * Checks for chromosomes that have all blocks visited
+       *
+       * @param  {Array<string>} affectedChromosomes Pair of affected chromosomes from current block
+       * @return {undefined}                         undefined
+       */
+      function checkChrForFlipping(affectedChromosomes) {
+        // List of blocks from source chromosome
+        const sourceList = chrBlockDictionary[affectedChromosomes[0]];
+        // List of blocks from target chromosome
+        const targetList = chrBlockDictionary[affectedChromosomes[1]];
+
+        let allTrue = true;
+        for (let j = 0; j < sourceList.length; j++) {
+          if (!visitedBlockForFlipping[sourceList[j].blockID]) {
+            allTrue = false;
+            break;
+          }
+        }
+
+        if (allTrue) {
+          visitedChrForFlipping[affectedChromosomes[0]] = true;
+        }
+
+        allTrue = true;
+        for (let j = 0; j < targetList.length; j++) {
+          if (!visitedBlockForFlipping[targetList[j].blockID]) {
+            allTrue = false;
+            break;
+          }
+        }
+
+        if (allTrue) {
+          visitedChrForFlipping[affectedChromosomes[1]] = true;
+        }
+      };
+
+      const blockDictionary = getBlockDictionary();
+
+      d3SelectAll("path.chord")
+        .each(function(d) {
+          const blockID = d.source.value.id;
+          visitedBlockForFlipping[blockID] = false;
+
+          const sourceID = d.source.id;
+          const targetID = d.target.id;
+          const blockPositions = blockDictionary[blockID].blockPositions;
+
+          const { sourcePositions, targetPositions } = flipGenesPosition({
+            blockPositions: blockPositions,
+            currentFlippedChromosomes: allFlippedChromosomes,
+            sourceID: sourceID,
+            targetID: targetID
+          });
+
+          const {
+            sourcePositions: finalSourcePositions,
+            targetPositions: finalTargetPositions
+          } = flipGenesPosition({
+            blockPositions: blockPositions,
+            currentFlippedChromosomes: bestFlippedChromosomes,
+            sourceID: sourceID,
+            targetID: targetID
+          });
+
+          if (!(sourceID in chrBlockDictionary)) {
+            chrBlockDictionary[sourceID] = [];
+          }
+
+          if (!(targetID in chrBlockDictionary)) {
+            chrBlockDictionary[targetID] = [];
+          }
+
+          const positionsObject = {
+            current: {
+              source: sourcePositions,
+              target: targetPositions
+            },
+            final: {
+              source: finalSourcePositions,
+              target: finalTargetPositions
+            }
+          };
+
+          chrBlockDictionary[sourceID].push({
+            blockID: blockID,
+            positions: positionsObject
+          });
+          chrBlockDictionary[targetID].push({
+            blockID: blockID,
+            positions: positionsObject
+          });
+
+
+          if (!(blockID in blockChrDictionary)) {
+            blockChrDictionary[blockID] = [];
+          }
+
+          // Each block has a pair of affected chromosomes
+          blockChrDictionary[blockID].push(sourceID);
+          blockChrDictionary[blockID].push(targetID);
+        });
+
+      console.log('CHR BLOCK DICTIONARY: ', chrBlockDictionary);
+      console.log('BLOCK CHR DICTIONARY: ', blockChrDictionary);
+
+      // bestFlippedChromosomes is assuming that the previous flipped chromosomes are going to be included
+      // meaning that it is never going to be empty if we are at this point
+      // With the exception of resetting the layout and restoring the default view.
+      // For those cases, I can't take the initial and final positions and visited decisions into account
+
+      if (bestFlippedChromosomes.length > 0) {
+        for (let i = 0; i < unionFlippedChromosomes.length; i++) {
+          d3SelectAll(`path.chord.${unionFlippedChromosomes[i]}`)
+            .each(function(d) {
+              const blockID = d.source.value.id;
+              const sourceID = d.source.id;
+              const targetID = d.target.id;
+
+              const affectedChromosomes = blockChrDictionary[blockID];
+              const sourceList = chrBlockDictionary[affectedChromosomes[0]];
+              const targetList = chrBlockDictionary[affectedChromosomes[1]];
+
+              let sourcePositionsObject = {};
+              let targetPositionsObject = {};
+              for (let j = 0; j < sourceList.length; j++) {
+                if (sourceList[j].blockID === blockID) {
+                  sourcePositionsObject = cloneDeep(sourceList[j].positions);
+                  break;
+                }
+              }
+
+              for (let j = 0; j < targetList.length; j++) {
+                if (targetList[j].blockID === blockID) {
+                  targetPositionsObject = cloneDeep(targetList[j].positions);
+                  break;
+                }
+              }
+
+              // If positions are the same, mark block as visited
+              if (isEqual(sourcePositionsObject.current, sourcePositionsObject.final) &&
+                isEqual(targetPositionsObject.current, targetPositionsObject.final)) {
+                visitedBlockForFlipping[blockID] = true;
+              }
+
+              checkChrForFlipping(affectedChromosomes);
+            });
+        }
+
+        console.log('VISITED BLOCK FOR FLIPPING: ', visitedBlockForFlipping);
+        console.log('VISITED CHR FOR FLIPPING BEFORE: ');
+
+        for (let r = 0; r < unionFlippedChromosomes.length; r++) {
+          console.log('chr visited: ', unionFlippedChromosomes[r], visitedChrForFlipping[unionFlippedChromosomes[r]]);
+        }
+      }
+
+      while ((flippedTransitionTime - positionsNotSwappedTransitionTime) <
+        ((FLIPPING_CHROMOSOME_TIME + 25) * unionFlippedChromosomes.length) &&
+        index < unionFlippedChromosomes.length) {
+        // If all the blocks are not visited for the current chromosome or
+        // current chromosome has blocks visible i.e. is present in dictionary
+        if (!visitedChrForFlipping[unionFlippedChromosomes[index]] &&
+          (unionFlippedChromosomes[index] in chrBlockDictionary)) {
+          (function(flippedTransitionTime, index) {
+            setTimeout(function() {
+              if (visitedChrForFlipping[unionFlippedChromosomes[index]]) return;
+
+              const affectedBlocks = transitionFlipping({
+                currentChr: unionFlippedChromosomes[index],
+                currentFlippedChromosomes: bestFlippedChromosomes,
+                dataChromosomes: bestSolution,
+                visitedBlock: visitedBlockForFlipping
+              });
+
+              console.log('affectedBlocks: ', affectedBlocks);
+
+              for (let j = 0; j < affectedBlocks.length; j++) {
+                visitedBlockForFlipping[affectedBlocks[j]] = true;
+              }
+
+              for (let j = 0; j < affectedBlocks.length; j++) {
+                const blockID = affectedBlocks[j];
+                const affectedChromosomes = blockChrDictionary[blockID];
+
+                checkChrForFlipping(affectedChromosomes);
+              }
+
+              console.log('VISITED CHR FOR FLIPPING AT INDEX: ', index, visitedChrForFlipping);
+
+              console.log('POSITIONS FLIPPING i: ', index, unionFlippedChromosomes[index]);
+            }, flippedTransitionTime);
+          })(flippedTransitionTime, index);
+
+          flippedTransitionTime += (FLIPPING_CHROMOSOME_TIME + 25);
+        }
+
+        index++;
+      }
+    }
+
+    // TODO: Think about performance when calling generateGenomeView again
+    setTimeout(() => {
       // Enabling inputs and selects after calling the animation
       resetInputsAndSelectsOnAnimation();
 
@@ -861,7 +1294,9 @@ export function swapPositionsAnimation(dataChromosomes, bestSolution, swapPositi
       });
     }, TRANSITION_SWAPPING_TIME +
     transitionTime +
-    (newTransitionTime - transitionTime));
+    (positionsNotSwappedTransitionTime - transitionTime) +
+    (flippedTransitionTime - positionsNotSwappedTransitionTime));
+  }
 }
 
 /**
@@ -869,34 +1304,41 @@ export function swapPositionsAnimation(dataChromosomes, bestSolution, swapPositi
  *
  * @param  {Array<Object>} dataChromosomes  Data for current chromosomes in the Circos plot
  * @param  {Array<Object>} bestSolution     Data for best solution chromosomes
+ * @param  {Array<string>} bestFlippedChromosomes Data for best flipped chromosomes
  * @param  {boolean} [updateWhenSame=true] Still call generateGenomeView to update if same solution
  * @return {undefined}                      undefined
  */
-export function callSwapPositionsAnimation(dataChromosomes, bestSolution, updateWhenSame = true) {
+export function callSwapPositionsAnimation({
+  dataChromosomes,
+  bestSolution,
+  bestFlippedChromosomes,
+  updateWhenSame = true
+}) {
   // bestSolution will always have same or less collisions than dataChromosomes
-  // hence, only enter this condition if it has less (i.e. they are different)
-  if (!isEqual(dataChromosomes, bestSolution)) {
-    const currentChromosomeOrder = toChromosomeOrder(bestSolution);
-    const oldChromosomeOrder = toChromosomeOrder(dataChromosomes);
+  // hence, only enter this condition if it has less (i.e. they are different in order)
+  // OR
+  // Enter condition if best flipped chromosomes is different from actual
+  const allFlippedChromosomes = getCurrentFlippedChromosomes();
+  // The two chromosome order will always have the same amount of chromosomes, just in different order
+  const currentChromosomeOrder = toChromosomeOrder(bestSolution);
+  const oldChromosomeOrder = toChromosomeOrder(dataChromosomes);
 
+  if (!isEqual(oldChromosomeOrder, currentChromosomeOrder) ||
+    !isEqual(allFlippedChromosomes, bestFlippedChromosomes)) {
     const swapPositions = minSwapToMakeArraySame(currentChromosomeOrder,
       oldChromosomeOrder);
 
-    if (swapPositions.length > 0) {
-      // Setting chromosome order with all the chromosomes
-      // NOTE: Current chromosome order variable always includes all the chromosomes
-      setCurrentChromosomeOrder(toChromosomeOrder(bestSolution, true));
+    // Disabling inputs and selects before calling the animation
+    resetInputsAndSelectsOnAnimation(true);
 
-      // Disabling inputs and selects before calling the animation
-      resetInputsAndSelectsOnAnimation(true);
-
-      // TODO: Workaround for this?
-      // Calling the actual animation
-      setTimeout(() => swapPositionsAnimation(dataChromosomes, bestSolution, swapPositions), 50);
-
-      // Showing alert using react
-      renderReactAlert("The layout was successfully updated.", "success");
-    }
+    // TODO: Workaround for this 50 timeout?
+    // Calling the actual animation
+    setTimeout(() => swapPositionsAnimation({
+      dataChromosomes: dataChromosomes,
+      bestSolution: bestSolution,
+      swapPositions: swapPositions,
+      bestFlippedChromosomes: bestFlippedChromosomes
+    }), 50);
   } else if (updateWhenSame) {
     // Showing alert using react
     renderReactAlert("No better layout was found at this time. Feel free to try again!");
@@ -915,6 +1357,45 @@ export function callSwapPositionsAnimation(dataChromosomes, bestSolution, update
       shouldUpdateLayout: true
     });
   }
+};
+
+/**
+ * Applies flipping to data chords
+ *
+ * @param  {Array<Object>} dataChords  Plotting information for each block chord
+ * @param  {Array<string>} flippedChromosomes Current flipped chromosomes
+ * @return {Array<string>}             Final plotting information with blocks flipped
+ */
+function applyFlippingDataChords(dataChords, flippedChromosomes) {
+  const blockDictionary = getBlockDictionary();
+  const tempDataChords = cloneDeep(dataChords);
+  const tempFlippedChromosomes = cloneDeep(flippedChromosomes);
+
+  // Need to always go through all the chords, to reset the ones
+  // that are not flipped anymore. For example: If it is the second
+  // time the algorithm arrives at bn2, it won't be flipped, and I
+  // can't limit the loop to only enter the chords that are flipped, because
+  // in this case bn2 will never be unflipped.
+  //
+  // Another way, is to just reset dataChords each time
+  for (let i = 0; i < tempDataChords.length; i++) {
+    const blockID = tempDataChords[i].source.value.id;
+
+    const { sourcePositions, targetPositions } = flipGenesPosition({
+      blockPositions: blockDictionary[blockID].blockPositions,
+      currentFlippedChromosomes: tempFlippedChromosomes,
+      sourceID: tempDataChords[i].source.id,
+      targetID: tempDataChords[i].target.id
+    });
+
+    tempDataChords[i].source.start = sourcePositions.start;
+    tempDataChords[i].source.end = sourcePositions.end;
+
+    tempDataChords[i].target.start = targetPositions.start;
+    tempDataChords[i].target.end = targetPositions.end;
+  }
+
+  return tempDataChords;
 };
 
 /**
@@ -939,13 +1420,15 @@ function acceptanceProbability(currentEnergy, neighborEnergy, temperature) {
  * Running Simulated Annealing algorithm with the current chords and chromosome data
  * to minimize the number of block collisions
  *
- * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
- * @param  {Array<Object>} dataChords      Plotting information for each block chord
- * @return {undefined}                     undefined
+ * @param  {Array<Object>} dataChromosomes   Current chromosomes in the Circos plot
+ * @param  {Array<Object>} dataChordsSA      Plotting information for each block chord
+ * @return {undefined}                       undefined
  *
  * More info: http://www.theprojectspot.com/tutorial-post/simulated-annealing-algorithm-for-beginners/6
  */
-export async function simulatedAnnealing(dataChromosomes, dataChords) {
+export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
+  let dataChords = cloneDeep(dataChordsSA);
+
   // I do not need to calculate block collisions the first time
   // because I can take the current collision count from the getters
   let currentEnergy = getCollisionCount();
@@ -956,13 +1439,16 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
   // Show notification and return if there are no collisions
   // or if collisionCount equals superimposedCount
   if (currentEnergy === 0 || dataChords.length === 0 ||
-      currentEnergy === superimposedCollisionCount) {
+      currentEnergy === superimposedCollisionCount ||
+      dataChromosomes.length === 1) {
     let messageToShow = "";
 
     if (currentEnergy === 0 || dataChords.length === 0) {
       messageToShow = "There are no collisions in the current layout.";
     } else if (currentEnergy === superimposedCollisionCount) {
       messageToShow = "All the block collisions in the current layout are from superimposed blocks.";
+    } else if (dataChromosomes.length === 1) {
+      messageToShow = "The algorithm needs more than one chromosome to minimize collisions.";
     }
 
     // Showing alert using react
@@ -977,12 +1463,18 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
   }
 
   // Filtering value for temperature
-  let temperature = (!d3Select('.filter-sa-temperature-div #filter-sa-temperature').empty() &&
+  let temperature = Number(!d3Select('.filter-sa-temperature-div #filter-sa-temperature').empty() &&
     d3Select('.filter-sa-temperature-div #filter-sa-temperature').property("value")) || 5000;
 
   // Filtering value for ratio
-  const ratio = (!d3Select('.filter-sa-ratio-div #filter-sa-ratio').empty() &&
+  const ratio = Number(!d3Select('.filter-sa-ratio-div #filter-sa-ratio').empty() &&
     d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.05;
+
+  // Filtering value for flipping frequency
+  const flippingFrequency = Number(!d3Select('.filter-sa-flipping-frequency-div #filter-sa-flipping-frequency').empty() &&
+    d3Select('.filter-sa-flipping-frequency-div #filter-sa-flipping-frequency').property("value")) || 0;
+
+  console.log('FLIPPING FREQ: ', flippingFrequency);
 
   const complementRatio = (1 - ratio);
   const myCircos = getCircosObject();
@@ -990,12 +1482,19 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
   let howMany = 0;
 
   let currentSolution = cloneDeep(dataChromosomes);
+  const allFlippedChromosomes = getCurrentFlippedChromosomes();
 
   let bestSolution = cloneDeep(currentSolution);
   let bestEnergy = currentEnergy;
 
   const totalNumberOfIterations = getTotalNumberOfIterations();
   const totalTime = Math.trunc(getCollisionCalculationTime() * 1000);
+
+  const shouldKeepChromosomesTogether = !d3Select("p.keep-chr-together").empty() &&
+    d3Select("p.keep-chr-together input").property("checked");
+
+  console.log('SHOULD KEEP TOGETHER: ', shouldKeepChromosomesTogether);
+
 
   // Making both views look blurry
   d3SelectAll("svg#genome-view,#block-view-container")
@@ -1010,6 +1509,8 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
   resetInputsAndSelectsOnAnimation(true);
 
   let timeTransition = 0;
+  let flippedChromosomesSimulatedAnnealing = allFlippedChromosomes.slice();
+  let bestFlippedChromosomes = flippedChromosomesSimulatedAnnealing.slice();
 
   console.log('TOTAL TIME: ', totalTime);
 
@@ -1022,7 +1523,11 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
 
       (function(timeTransition, temperature, howMany) {
         setTimeout(async function() {
-          const progressBarWidth = Math.trunc((howMany / totalNumberOfIterations) * 100);
+          let progressBarValue = (howMany / totalNumberOfIterations);
+          if (flippingFrequency === 0) progressBarValue *= 100.0;
+          else progressBarValue *= 95.0;
+
+          const progressBarWidth = Math.trunc(progressBarValue);
 
           d3Select(".genome-view-container .progress-bar")
             .style("width", `${progressBarWidth}%`)
@@ -1032,17 +1537,97 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
           if (bestEnergy === 0) return;
 
           let newSolution = cloneDeep(currentSolution);
-          const pos1 = Math.trunc(newSolution.length * Math.random());
-          const pos2 = Math.trunc(newSolution.length * Math.random());
-          const val1 = newSolution[pos1];
-          const val2 = newSolution[pos2];
-          newSolution[pos2] = val1;
-          newSolution[pos1] = val2;
+          let pos1, pos2;
+          const chooseRandomFlippingOrSwapping = Math.random();
+          const doingFlipping = flippingFrequency > 0 && (
+            flippingFrequency === 100 || chooseRandomFlippingOrSwapping < (flippingFrequency/100.0)
+          );
+
+          if (doingFlipping) {
+            let currentID = null;
+
+            do {
+              // Choose non-empty position to do flipping
+              pos1 = Math.trunc(newSolution.length * Math.random());
+              currentID = newSolution[pos1].id.slice(0);
+            } while (d3SelectAll(`path.chord.${currentID}`).empty());
+
+            const currentPosition = flippedChromosomesSimulatedAnnealing.indexOf(currentID);
+
+            // If chromosome id is present, then remove it
+            if (currentPosition !== (-1)) {
+              flippedChromosomesSimulatedAnnealing.splice(currentPosition, 1);
+              //console.log('HERE REMOVING 1!!!');
+            } else {
+              flippedChromosomesSimulatedAnnealing.push(currentID);
+            }
+
+            dataChords = cloneDeep(applyFlippingDataChords(dataChords, flippedChromosomesSimulatedAnnealing));
+          } else {
+            let currentID = null;
+
+            do {
+              // First chromosome can never be empty, to make sure to never swap
+              // two empty chromosomes
+              pos1 = Math.trunc(newSolution.length * Math.random());
+              currentID = newSolution[pos1].id.slice(0);
+            } while(d3SelectAll(`path.chord.${currentID}`).empty());
+
+            const firstIdentifier = newSolution[pos1].id.slice(0).replace(/[^a-zA-Z]+/g, '');
+            // positionChecking - The chr should be selected from different positions
+            // identifierChecking - The chr should be from same identifier when having
+            // multiple genomes and when possible to do so
+            let positionChecking = true, identifierChecking = false;
+            let multipleChrFirstIdentifier = false;
+            let countFirstIdentifier = 0;
+
+            if (shouldKeepChromosomesTogether) {
+              // Checking if there are multiple chr with same first identifier
+              for (let i = 0; i < newSolution.length; i++) {
+                const currentIdentifier = newSolution[i].id.slice(0).replace(/[^a-zA-Z]+/g, '');
+                if (currentIdentifier === firstIdentifier) {
+                  countFirstIdentifier++;
+                  if (countFirstIdentifier === 2) {
+                    multipleChrFirstIdentifier = true;
+                    break;
+                  }
+                }
+              }
+
+              console.log('MULTIPLE CHR IDENTIFIER: ', multipleChrFirstIdentifier, currentID);
+            }
+
+            pos2 = pos1; // Initializing second position as the first one
+
+            do {
+              // Getting random positions until both positions are different
+              pos2 = Math.trunc(newSolution.length * Math.random());
+
+              positionChecking = pos1 === pos2;
+              currentID = newSolution[pos2].id.slice(0);
+
+              if (shouldKeepChromosomesTogether && multipleChrFirstIdentifier) {
+                const secondIdentifier = currentID.replace(/[^a-zA-Z]+/g, '');
+                console.log('ENTERING IDENTIFIER HERE\n\n', currentID, secondIdentifier);
+
+                identifierChecking = firstIdentifier !== secondIdentifier;
+              }
+
+            } while (positionChecking || identifierChecking);
+
+            const val1 = newSolution[pos1];
+            const val2 = newSolution[pos2];
+            newSolution[pos2] = val1;
+            newSolution[pos1] = val2;
+          }
 
           myCircos.layout(newSolution, CIRCOS_CONF);
           const { collisionCount: neighborEnergy } = await getBlockCollisions(newSolution, dataChords);
           const probability = acceptanceProbability(currentEnergy, neighborEnergy, temperature);
 
+          // Accept as current if probability equals one (meaning that I got a better solution)
+          // Otherwise take the risk. Each time I take risk I'm going out of my comfort zone
+          // by choosing a worse solution, hence increasing my search space
           if (probability === 1.0 || probability > Math.random()) {
             currentSolution = cloneDeep(newSolution);
             currentEnergy = neighborEnergy;
@@ -1051,6 +1636,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
             if (neighborEnergy < bestEnergy) {
               bestSolution = cloneDeep(newSolution);
               bestEnergy = neighborEnergy;
+              bestFlippedChromosomes = flippedChromosomesSimulatedAnnealing.slice();
             }
           }
         }, timeTransition);
@@ -1066,32 +1652,96 @@ export async function simulatedAnnealing(dataChromosomes, dataChords) {
 
       console.log('BEST SOLUTION and ENERGY: ', bestSolution, bestEnergy);
 
-      // Autosave functionality
-      // saveToCollisionsDictionary(bestSolution, bestEnergy, dataChords);
+      console.log('flippedChromosomesSimulatedAnnealing: ', flippedChromosomesSimulatedAnnealing);
 
-      const { currentPosition, key } = loopUpPositionCollisionsDictionary(bestSolution, dataChords);
-      const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
-      if (currentPosition !== (-1)) {
-        const { collisionCount } = savedCollisionSolutionsDictionary[key][currentPosition];
+      console.log('bestFlippedChromosomes: ', bestFlippedChromosomes);
 
-        if (collisionCount > bestEnergy) {
-          // Disable checkbox because saved solution is worse than actual one
-          d3Select('p.show-best-layout input').property("checked", false);
+
+      let afterCheckTime = 0;
+      const excludeFlippedChromosomes = [];
+
+      if (flippingFrequency > 0) {
+        if (bestFlippedChromosomes.length === 0) {
+          // Finishing in 100%
+          d3Select(".genome-view-container .progress-bar")
+            .style("width", "100%")
+            .text("100%");
+          afterCheckTime += totalTime;
+        } else {
+          // Omitting flipped chromosomes that make the final solution worse
+          for (let i = 0; i < bestFlippedChromosomes.length; i++) {
+            (function(afterCheckTime, howMany) {
+              setTimeout(async function() {
+                let progressBarValue = (howMany / bestFlippedChromosomes.length) * 5;
+
+                const progressBarWidth = 95 + Math.trunc(progressBarValue);
+
+                d3Select(".genome-view-container .progress-bar")
+                  .style("width", `${progressBarWidth}%`)
+                  .text(`${progressBarWidth}%`);
+
+                  const afterCheckFlippedChromosomes = bestFlippedChromosomes.slice();
+                  const currentPosition = afterCheckFlippedChromosomes.indexOf(bestFlippedChromosomes[i]);
+                  afterCheckFlippedChromosomes.splice(currentPosition, 1);
+
+                  dataChords = cloneDeep(applyFlippingDataChords(dataChords, afterCheckFlippedChromosomes));
+
+                  const { collisionCount: neighborEnergy } = await getBlockCollisions(bestSolution, dataChords);
+
+                  if (neighborEnergy < bestEnergy) {
+                    console.log('EXCLUDING CHR: ', bestFlippedChromosomes[i]);
+                    bestEnergy = neighborEnergy;
+                    excludeFlippedChromosomes.push(bestFlippedChromosomes[i]);
+                  }
+
+              }, afterCheckTime);
+            })(afterCheckTime, i + 1);
+
+            afterCheckTime += totalTime;
+          }
         }
       }
 
-      // Getting rid of the blurred view
-      d3SelectAll("svg#genome-view,#block-view-container")
-        .classed("blur-view", false);
-
       setTimeout(() => {
-        d3Select(".best-guess > input")
-          .property("value", "Minimize collisions")
-          .attr("disabled", null);
+        // Autosave functionality
+        // saveToCollisionsDictionary(bestSolution, bestEnergy, dataChords);
 
-        callSwapPositionsAnimation(dataChromosomes, bestSolution);
-      }, 200);
-    }, timeTransition);
+        if (excludeFlippedChromosomes.length > 0) {
+          console.log('EXCLUDE: ', excludeFlippedChromosomes);
+          // Excluding chrs that make the final solution worse
+          bestFlippedChromosomes = difference(bestFlippedChromosomes, excludeFlippedChromosomes);
+        }
+
+        // TODO: Revisit this dataChords, create function and centralize
+        const { currentPosition, key } = lookUpPositionCollisionsDictionary(bestSolution, dataChords);
+        const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
+        if (currentPosition !== (-1)) {
+          const { collisionCount } = savedCollisionSolutionsDictionary[key][currentPosition];
+
+          if (collisionCount > bestEnergy) {
+            // Disable checkbox because saved solution is worse than actual one
+            d3Select('p.show-best-layout input').property("checked", false);
+          }
+        }
+
+        // Getting rid of the blurred view
+        d3SelectAll("svg#genome-view,#block-view-container")
+          .classed("blur-view", false);
+
+        setTimeout(() => {
+          d3Select(".best-guess > input")
+            .property("value", "Minimize collisions")
+            .attr("disabled", null);
+
+          callSwapPositionsAnimation({
+            dataChromosomes: dataChromosomes,
+            bestSolution: bestSolution,
+            bestFlippedChromosomes: bestFlippedChromosomes
+          });
+        }, 200);
+      }, afterCheckTime + totalTime);
+
+    }, timeTransition + totalTime);
 
   }, 100);
 };

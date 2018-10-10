@@ -20,3 +20,13 @@ export function getDataChords() {
 export function setDataChords(chords) {
   _dataChords = cloneDeep(chords);
 };
+
+/**
+ * Extracts chords order from chords data
+ *
+ * @param  {Array<Object>}  dataChords     Chords data
+ * @return {Array<string>}  newChrOrder    New chords order
+ */
+export function toChordsOrder(dataChords) {
+  return dataChords.map(x => x.source.value.id);
+};

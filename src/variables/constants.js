@@ -100,7 +100,7 @@ const SEQUENTIAL_COLOR_SCALES = {
 
 // Genome view transitions
 const DEFAULT_GENOME_TRANSITION_TIME = 250;
-const FLIPPING_CHROMOSOME_TIME = 400;
+const FLIPPING_CHROMOSOME_TIME = 350;
 const TRANSITION_DRAG_TIME = 100;
 const TRANSITION_SWAPPING_TIME = 200;
 
@@ -110,17 +110,19 @@ const REMOVE_BLOCK_VIEW_TRANSITION_TIME = 250;
 
 // Default block view zoom state
 const DEFAULT_BLOCK_VIEW_ZOOM_STATE = {
+  defaultY0Domain: [],
+  defaultY1Domain: [],
   flipped: false,
-  y0: {},
-  y1: {},
+  y0Domain: [],
+  y1Domain: [],
   zoom: d3ZoomIdentity.scale(1).translate(0, 0)
 };
 
 // Flipping block view constants
-const COLOR_CHANGE_TIME = 75;
-const MAX_INDEX_TRANSITION = 13;
-const TRANSITION_NORMAL_TIME = 50;
-const TRANSITION_FLIPPING_TIME = TRANSITION_NORMAL_TIME * 2;
+const COLOR_CHANGE_TIME = 40;
+const MAX_INDEX_TRANSITION = 11;
+const TRANSITION_NORMAL_TIME = 40;
+const TRANSITION_FLIPPING_TIME = TRANSITION_NORMAL_TIME + 5;
 const TRANSITION_HEIGHT_DIVISION_MULTIPLE = 2;
 
 export {

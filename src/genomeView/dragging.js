@@ -89,6 +89,7 @@ export function updateAdditionalTracksWhileDragging({
       .raise()
       .transition()
       .duration(transitionDuration)
+      .ease(d3.easeLinear)
       .attr("transform", `rotate(${rotatingAngle})`);
   }
 };
@@ -134,6 +135,7 @@ export function updateChordsWhileDragging({
       .raise()
       .transition()
       .duration(transitionDuration)
+      .ease(d3.easeLinear)
       .attr("opacity", 0.9)
       .attr("d", function(d) {
 
@@ -269,9 +271,10 @@ export function updateChordsWhileDragging({
  * Generates the angle from (x, y) coordinates. Using the main container as
  * reference
  *
+ * @param  {number} lastAngle Last angle that was captured in the drag event
  * @return {number} Angle in degrees from current coordinates
  */
-function getAngleFromCoordinates() {
+function getAngleFromCoordinates(lastAngle) {
   const containerNode = d3.select("svg#main-container").node();
 
   // Points are equal to current mouse coordinate minus 550
@@ -279,7 +282,14 @@ function getAngleFromCoordinates() {
   // but svg object inside is 850,850
   // which means that center is in coordinate 425,425
   const x = d3.mouse(containerNode)[0] - (WIDTH / 2);
-  const y = d3.mouse(containerNode)[1] - (HEIGHT / 2);
+  let y = d3.mouse(containerNode)[1] - (HEIGHT / 2);
+
+  const currentScroll = window.scrollY;
+  if (currentScroll > 0 && lastAngle === 0) {
+    // Decreasing scroll from y if this is the first angle calculated in the
+    // onDragging function
+    y -= currentScroll;
+  }
 
   // 1 rad = 180 / Math.PI = 57.2957795;
   return Math.atan2(y, x) * RADIANS_TO_DEGREES;
@@ -360,7 +370,7 @@ function onDragging(dataChromosomes) {
 
   // Selecting current mouse down chromosome
   const current = d3.select(`g.${currentChromosomeMouseDown}`);
-  const currentAngle = (getAngleFromCoordinates() - offsetAngle);
+  const currentAngle = (getAngleFromCoordinates(lastAngle) - offsetAngle);
 
   current
     .raise()
@@ -541,6 +551,7 @@ function onEndDragging(dataChromosomes) {
   d3.selectAll(`g.${currentChromosomeMouseDown}-clone`)
     .transition()
     .duration(TRANSITION_DRAG_TIME)
+    .ease(d3.easeLinear)
     .attr("opacity", 0)
     .remove();
 
@@ -560,6 +571,7 @@ function onEndDragging(dataChromosomes) {
           selection
             .transition()
             .duration(TRANSITION_DRAG_TIME)
+            .ease(d3.easeLinear)
             .attr("transform", `rotate(${rotatingAngle})`);
         } else if (selectDrag[index] === currentChromosomeMouseDown) {
           rotatingAngle = (angleValue + lastAngle);
@@ -567,12 +579,14 @@ function onEndDragging(dataChromosomes) {
           selection
             .transition()
             .duration(TRANSITION_DRAG_TIME)
+            .ease(d3.easeLinear)
             .attr("transform", `rotate(${rotatingAngle})`);
         } else {
           selection
             .raise()
             .transition()
             .duration(TRANSITION_DRAG_TIME)
+            .ease(d3.easeLinear)
             .attr("transform", `rotate(${rotatingAngle})`);
         }
 

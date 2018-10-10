@@ -22,11 +22,12 @@ import isEqual from 'lodash/isEqual';
 import isEmpty from 'lodash/isEmpty';
 import findIndex from 'lodash/findIndex';
 
-import generateBlockView from './../generateBlockView';
+import generateBlockView, { resetZoomBlockView } from './../generateBlockView';
 
 import {
   assignFlippedChromosomeColors,
   calculateMiddleValue,
+  flipGenesPosition,
   getChordsRadius,
   getInnerAndOuterRadiusAdditionalTracks,
   getFlippedGenesPosition,
@@ -46,18 +47,16 @@ import {
 
 import {
   callSwapPositionsAnimation,
-  loopUpPositionCollisionsDictionary,
+  lookUpPositionCollisionsDictionary,
   saveToCollisionsDictionary,
   simulatedAnnealing,
+  transitionFlipChromosomeStroke,
+  transitionFlipping,
   updateBlockCollisionHeadline
 } from './blockCollisions';
 
 // Variable getters and setters
 import { getBlockDictionary } from './../variables/blockDictionary';
-import {
-  getBlockViewZoomStateDictionary,
-  setBlockViewZoomStateDictionary
-} from './../variables/blockViewZoomStateDictionary';
 import {
   getCollisionCount,
   getCollisionCalculationTime,
@@ -138,7 +137,6 @@ function transitionRemoveBlockView(condition, callback) {
  * @return {Array<Object>} dataChromosomes
  */
 function getDataChromosomes() {
-  const gffPositionDictionary = getGffDictionary();
   const { selectedCheckboxes } = getSelectedCheckboxes();
 
   // To keep track of the Show All input state
@@ -146,6 +144,17 @@ function getDataChromosomes() {
 
   const dataChromosomes = []; // Local data chromosomes array
 
+  if (d3.select("div.chromosomes-palette select").property("value") === 'Flipped') {
+    // Coloring flipped chromosomes
+    setGffDictionary(assignFlippedChromosomeColors({
+      colorScale: d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES['Flipped']).domain([0, 1]),
+      currentFlippedChromosomes: getCurrentFlippedChromosomes(),
+      gffKeys: getDefaultChromosomeOrder(),
+      gffPositionDictionary: getGffDictionary()
+    }));
+  }
+
+  const gffPositionDictionary = getGffDictionary();
   let currentChromosomeOrder = getCurrentChromosomeOrder();
 
   // Using currentChromosomeOrder array to add selected chromosomes to the genome view
@@ -302,48 +311,24 @@ function generateCircosLayout() {
         // Disabling inputs and selects before calling the animation
         resetInputsAndSelectsOnAnimation(true);
 
+        // Disable checkbox because flipping might lead to a worse solution
+        d3.select('p.show-best-layout input').property("checked", false);
+
         // Before flipping, set all chords with the same opacity
         d3.selectAll("path.chord").attr("opacity", 0.7);
 
         let currentFlippedChromosomes = getCurrentFlippedChromosomes();
 
         const currentID = d.id; // Current chromosome ID
-        const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
 
         // Resetting zoom state object for all affected chords
         for (let i = 0; i < dataChords.length; i++) {
           if (dataChords[i].source.id !== currentID && dataChords[i].target.id !== currentID) continue;
           const blockID = dataChords[i].source.value.id;
-          console.log('AFFECTED BLOCK ID: ', blockID);
-
-          if (isEqual(blockZoomStateDictionary[blockID], DEFAULT_BLOCK_VIEW_ZOOM_STATE)) continue;
-
-          // Resetting zoom state object
-          blockZoomStateDictionary[blockID] = defaultsDeep({
-            // Not modifying flipped state when resetting zoom
-            flipped: !!(blockZoomStateDictionary[blockID] || {}).flipped
-          }, cloneDeep(DEFAULT_BLOCK_VIEW_ZOOM_STATE));
+          resetZoomBlockView(blockID);
         }
 
-        setBlockViewZoomStateDictionary(blockZoomStateDictionary);
-
         const currentPosition = currentFlippedChromosomes.indexOf(currentID);
-
-        d3.selectAll(`path.chord.${currentID}`)
-          .raise()
-          .transition()
-          .duration(FLIPPING_CHROMOSOME_TIME)
-          .ease(d3.easeLinear)
-          .style("fill", "lightblue");
-
-        // Setting flipping transition object
-        // NOTE: When flipping chromosomes to emphasize the flipped blocks only
-        const transition = {
-          shouldDo: true,
-          from: "lightblue",
-          time: FLIPPING_CHROMOSOME_TIME,
-          chr: currentID
-        };
 
         // If chromosome id is present, then remove it
         if (currentPosition !== (-1)) {
@@ -352,19 +337,21 @@ function generateCircosLayout() {
           currentFlippedChromosomes.push(currentID);
         }
 
-        const selected = d3.select("div.chromosomes-palette select").property("value");
-        if (selected === 'Flipped') {
-          setGffDictionary(assignFlippedChromosomeColors({
-            colorScale: d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES['Flipped']).domain([0, 1]),
-            currentFlippedChromosomes: currentFlippedChromosomes,
-            gffKeys: getDefaultChromosomeOrder(),
-            gffPositionDictionary: getGffDictionary()
-          }));
-        }
-
         console.log('CURRENT FLIPPED CHR: ', currentFlippedChromosomes);
 
         setCurrentFlippedChromosomes(currentFlippedChromosomes);
+
+        // Call flipping function to emphasize the flipped blocks only
+        transitionFlipping({
+          currentChr: currentID,
+          currentFlippedChromosomes: currentFlippedChromosomes,
+          dataChromosomes: dataChromosomes
+        });
+
+        let shouldUpdateLayout = false;
+        if (d3.select("div.chromosomes-palette select").property("value") === 'Flipped') {
+          shouldUpdateLayout = true; // To update the chromosome colors
+        }
 
         // Resetting chr mouse down because of flipping (contextmenu is not mousedown)
         setCurrentChromosomeMouseDown("");
@@ -374,11 +361,11 @@ function generateCircosLayout() {
           resetInputsAndSelectsOnAnimation();
 
           generateGenomeView({
-            transition: transition,
+            transition: { shouldDo: false },
             shouldUpdateBlockCollisions: true,
-            shouldUpdateLayout: true
+            shouldUpdateLayout: shouldUpdateLayout
           });
-        }, FLIPPING_CHROMOSOME_TIME + (FLIPPING_CHROMOSOME_TIME / 2));
+        }, FLIPPING_CHROMOSOME_TIME);
       },
       'mousedown.chr': function(d) {
         // Activate if SA is not running
@@ -410,12 +397,6 @@ function generateCircosLayout() {
   // Generating layout configuration for the Circos plot
   myCircos.layout(dataChromosomes, defaultsDeep(extraLayoutConfiguration, cloneDeep(CIRCOS_CONF)));
 
-  // Updating block view using current selected block if not empty
-  if (!isEmpty(currentSelectedBlock)) {
-    const currentPosition = findIndex(dataChords, ['source.value.id', currentSelectedBlock]);
-    if (currentPosition !== (-1)) generateBlockView(dataChords[currentPosition]);
-  }
-
   // Adding additional tracks
   if (isAdditionalTrackAdded()) {
     generateAdditionalTrack('heatmap');
@@ -439,12 +420,14 @@ function unhighlightCurrentSelectedBlock() {
   d3.select('.circos-tooltip')
     .transition()
     .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
+    .ease(d3.easeLinear)
     .style("opacity", 0);
 
   // Setting opacity 0.7 to all chords
   d3.selectAll('path.chord')
     .transition()
     .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
+    .ease(d3.easeLinear)
     .attr("opacity", 0.7);
 
   // Removing block view
@@ -485,12 +468,14 @@ function generatePathGenomeView({
 
   const myCircos = getCircosObject();
 
+  const darkMode = d3.select("p.dark-mode input").property("checked");
+
   // Setting transition to default object if not defined at this point
   // NOTE: Default object is used each time that the genome view is rendered
   if (transition == null) {
     transition = {
       shouldDo: true,
-      from: "white",
+      from: darkMode ? '222222' : '#ffffff',
       time: DEFAULT_GENOME_TRANSITION_TIME
     };
   }
@@ -590,6 +575,7 @@ function generatePathGenomeView({
           .raise()
           .transition()
           .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
+          .ease(d3.easeLinear)
           .style("opacity", 0)
           .remove();
 
@@ -614,6 +600,12 @@ function generatePathGenomeView({
     }
   });
 
+  // Updating block view using current selected block if not empty
+  if (!isEmpty(currentSelectedBlock)) {
+    const currentPosition = findIndex(dataChords, ['source.value.id', currentSelectedBlock]);
+    if (currentPosition !== (-1)) generateBlockView(dataChords[currentPosition]);
+  }
+
   // Rendering Circos plot with current configuration
   if (transition && transition.shouldDo) {
     myCircos.render(undefined, undefined, transition, transitionRemove);
@@ -637,16 +629,10 @@ function generatePathGenomeView({
       .style("stroke-width", "2px");
   }
 
-  // Highlighting flipped chromosomes if checkbox is selected
-  if (highlightFlippedChromosomes) {
-    const currentFlippedChromosomes = getCurrentFlippedChromosomes();
-    for (let i = 0; i < currentFlippedChromosomes.length; i++) {
-      // d3.select(`g.${currentFlippedChromosomes[i]}`).attr("opacity", 0.6);
-      d3.select(`g.${currentFlippedChromosomes[i]} path#arc-label${currentFlippedChromosomes[i]}`)
-        .style("stroke", "#ea4848")
-        .style("stroke-width", "2px");
-      // d3.select(`g.${currentFlippedChromosomes[i]}`).style("stroke", "#ea4848");
-    }
+  // Changing flipped chromosomes highlighting based on checkbox
+  const currentFlippedChromosomes = getCurrentFlippedChromosomes();
+  for (let i = 0; i < currentFlippedChromosomes.length; i++) {
+    transitionFlipChromosomeStroke(currentFlippedChromosomes[i], highlightFlippedChromosomes);
   }
 
   // Show best / saved layout checkbox
@@ -654,20 +640,25 @@ function generatePathGenomeView({
     d3.select("p.show-best-layout input").property("checked");
 
   if (shouldUpdateLayout && showBestPossibleLayout) {
-    const { currentPosition, key } = loopUpPositionCollisionsDictionary(dataChromosomes, dataChords);
+    const { currentPosition, key } = lookUpPositionCollisionsDictionary(dataChromosomes, dataChords);
     const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
 
     showBestPossibleLayout = showBestPossibleLayout && currentPosition !== (-1);
 
     if (showBestPossibleLayout) {
-      const { bestSolution } = savedCollisionSolutionsDictionary[key][currentPosition];
+      const { bestFlippedChromosomes, bestSolution } = savedCollisionSolutionsDictionary[key][currentPosition];
 
-      console.log('FOUND LAYOUT: ', bestSolution);
+      console.log('FOUND LAYOUT: ', bestFlippedChromosomes, bestSolution);
 
       // Here I do not need to re-render if dataChromosomes and bestSolution are the same,
       // because I didn't modify the layout
-      setTimeout(() => callSwapPositionsAnimation(dataChromosomes, bestSolution, false),
-        DEFAULT_GENOME_TRANSITION_TIME * 2);
+
+      callSwapPositionsAnimation({
+        dataChromosomes: dataChromosomes,
+        bestSolution: bestSolution,
+        bestFlippedChromosomes: bestFlippedChromosomes,
+        updateWhenSame: false
+      });
     }
   }
 
@@ -675,7 +666,14 @@ function generatePathGenomeView({
   d3.select(".save-layout > input")
     .on("click", function() {
       const collisionCount = getCollisionCount();
-      saveToCollisionsDictionary(dataChromosomes, collisionCount, dataChords);
+      const currentFlippedChromosomes = getCurrentFlippedChromosomes();
+
+      saveToCollisionsDictionary({
+        bestFlippedChromosomes: currentFlippedChromosomes,
+        bestSolution: dataChromosomes,
+        collisionCount: collisionCount,
+        dataChords: dataChords
+      });
 
       // Showing alert using react
       renderReactAlert("The layout was successfully saved.", "success");
@@ -710,8 +708,11 @@ function generatePathGenomeView({
       console.log('OLD AND CURRENT: ', localDataChromosomes, orderedDataChromosomes);
       console.log('ORDERED DATA CHR: ', orderedDataChromosomes);
 
-      setTimeout(() => callSwapPositionsAnimation(localDataChromosomes, orderedDataChromosomes),
-        DEFAULT_GENOME_TRANSITION_TIME * 2);
+      callSwapPositionsAnimation({
+        dataChromosomes: localDataChromosomes,
+        bestSolution: orderedDataChromosomes,
+        bestFlippedChromosomes: [] // No flipped chromosomes in the default view
+      });
     });
 }
 
@@ -736,14 +737,21 @@ export default function generateGenomeView({
     d3.select('.filter-connections-div select').property("value")) || 'At Least';
 
   // Default filtering value for block size
-  const filterValue = (!d3.select('.filter-connections-div #filter-block-size').empty() &&
+  const filterValue = Number(!d3.select('.filter-connections-div #filter-block-size').empty() &&
     d3.select('.filter-connections-div #filter-block-size').property("value")) || 1;
 
   // To keep track of the Show all input state
   const showAllChromosomes = d3.select("p.show-all input").property("checked");
 
-  // To keep track of the Show self connections input state
-  const showSelfConnections = d3.select("p.show-self-connections input").property("checked");
+  // To keep track of the Show self connections input state for chromosomes
+  const showSelfConnectionsChr = d3.select("p.show-self-connections-chr input").property("checked");
+
+  // To keep track of the Show self connections input state for genomes
+  const showingMultipleChromosomes = !d3.select("p.show-self-connections-genome input").empty();
+  const showSelfConnectionsGenome =  showingMultipleChromosomes &&
+    d3.select("p.show-self-connections-genome input").property("checked");
+
+  console.log('SHOW SELF CONECTIONS: ', showSelfConnectionsChr, showSelfConnectionsGenome);
 
   const blockDictionary = getBlockDictionary();
   // Array that includes the keys from the blockDictionary
@@ -793,10 +801,20 @@ export default function generateGenomeView({
       shouldAddDataChord = lookID.indexOf(sourceID) > -1 && lookID.indexOf(targetID) > -1;
     }
 
-    if (!showSelfConnections) {
-      // If no self connections are allowed, only add current connection if source
-      // and target are different
+    if (!showSelfConnectionsChr) {
+      // If no self connections for chromosomes are allowed, only add current connection if source
+      // and target are different chromosomes
       shouldAddDataChord = shouldAddDataChord && (sourceID !== targetID);
+    }
+
+    if (showingMultipleChromosomes && !showSelfConnectionsGenome) {
+      // If no self connections for chromosomes are allowed, only add current connection if source
+      // and target are chromosomes from different genomes
+      const sourceIdentifier = sourceID.slice(0).replace(/[^a-zA-Z]+/g, '');
+      const targetIdentifier = targetID.slice(0).replace(/[^a-zA-Z]+/g, '');
+
+      shouldAddDataChord = shouldAddDataChord && ((sourceIdentifier !== targetIdentifier) ||
+        (sourceIdentifier === targetIdentifier && sourceID === targetID));
     }
 
     // Only add data chord if the filter condition is satisfied
@@ -808,26 +826,12 @@ export default function generateGenomeView({
     if (shouldAddDataChord) {
       const blockPositions = blockDictionary[currentBlock].blockPositions;
 
-      const sourcePositions = {
-        start: blockPositions.minSource,
-        end: blockPositions.maxSource
-      };
-      const targetPositions = {
-        start: blockPositions.minTarget,
-        end: blockPositions.maxTarget
-      };
-
-      if (currentFlippedChromosomes.indexOf(sourceID) !== (-1)) {
-        const { start, end } = getFlippedGenesPosition(gffPositionDictionary[sourceID], sourcePositions);
-        sourcePositions.start = start;
-        sourcePositions.end = end;
-      }
-
-      if (currentFlippedChromosomes.indexOf(targetID) !== (-1)) {
-        const { start, end } = getFlippedGenesPosition(gffPositionDictionary[targetID], targetPositions);
-        targetPositions.start = start;
-        targetPositions.end = end;
-      }
+      const { sourcePositions, targetPositions } = flipGenesPosition({
+        blockPositions: blockPositions,
+        currentFlippedChromosomes: currentFlippedChromosomes,
+        sourceID: sourceID,
+        targetID: targetID
+      });
 
       dataChords.push({
         source: {
@@ -857,6 +861,8 @@ export default function generateGenomeView({
     }
   }
 
+  console.log('DATA CHORDS: ', dataChords);
+
   // Sorting the chords according to the drawing order
   const filterDrawOrder = (!d3.select('div.draw-blocks-order select').empty() &&
     d3.select('div.draw-blocks-order select').property("value")) || 'Block ID (↑)';
@@ -864,11 +870,11 @@ export default function generateGenomeView({
   dataChords.sort(function compare(a, b) {
     let countA, countB;
     if (filterDrawOrder === 'Block ID (↑)' || filterDrawOrder === 'Block ID (↓)') {
-      countA = parseInt(a.source.value.id);
-      countB = parseInt(b.source.value.id);
+      countA = Number(a.source.value.id);
+      countB = Number(b.source.value.id);
     } else if (filterDrawOrder === 'Block length (↑)' || filterDrawOrder === 'Block length (↓)') {
-      countA = a.source.value.length;
-      countB = b.source.value.length;
+      countA = Number(a.source.value.length);
+      countB = Number(b.source.value.length);
     }
 
     if (filterDrawOrder === 'Block ID (↑)' || filterDrawOrder === 'Block length (↑)') {
@@ -913,7 +919,7 @@ export default function generateGenomeView({
           .property("value", "Minimizing ...")
           .attr("disabled", true);
 
-        // TODO: Workaround for this?
+        // TODO: Workaround for this 50 timeout?
         setTimeout(() => simulatedAnnealing(dataChromosomes, dataChords), 50);
       }
     });

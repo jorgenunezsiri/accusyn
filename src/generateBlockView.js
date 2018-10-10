@@ -43,10 +43,34 @@ import {
   // Block view transition constants
   COLOR_CHANGE_TIME,
   MAX_INDEX_TRANSITION,
+  REMOVE_BLOCK_VIEW_TRANSITION_TIME,
   TRANSITION_NORMAL_TIME,
   TRANSITION_FLIPPING_TIME,
   TRANSITION_HEIGHT_DIVISION_MULTIPLE
 } from './variables/constants';
+
+/**
+ * Resets zoom state for block view
+ *
+ * @param  {number}    blockID Current block view to reset its state
+ * @return {undefined} undefined
+ */
+export function resetZoomBlockView(blockID) {
+  console.log('AFFECTED BLOCK ID: ', blockID);
+  const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
+
+  if (isEqual(blockZoomStateDictionary[blockID], DEFAULT_BLOCK_VIEW_ZOOM_STATE)) return;
+
+  // Resetting zoom state object
+  blockZoomStateDictionary[blockID] = defaultsDeep({
+    // Not modifying default axes domain and flipped state when resetting zoom
+    defaultY0Domain: (blockZoomStateDictionary[blockID] || {}).defaultY0Domain,
+    defaultY1Domain: (blockZoomStateDictionary[blockID] || {}).defaultY1Domain,
+    flipped: !!(blockZoomStateDictionary[blockID] || {}).flipped
+  }, cloneDeep(DEFAULT_BLOCK_VIEW_ZOOM_STATE));
+
+  setBlockViewZoomStateDictionary(blockZoomStateDictionary);
+};
 
 /**
  * Generates block view for the current highlighted block in the genome view
@@ -103,91 +127,140 @@ export default function generateBlockView(data) {
    *
    * @param  {Array<number>}   dataArray Current dataArray with [y0, y1] coordinates
    * @param  {Array<Function>} y         Current array of y scales
+   * @param  {boolean}         flipped   Whether or not the block is flipped
    * @return {Array<string>}             Current polygon points defined by the
    *                                     connection of all the start and end points
    */
-  function path(dataArray, y) {
+  function path(dataArray, y, flipped = false) {
     const currentData = dataArray.data;
-    return [
-      [x(0), y[0](currentData.source.start)].join(","),
-      [x(0), y[0](currentData.source.end)].join(","),
-      [x(1), y[1](currentData.target.end)].join(","),
-      [x(1), y[1](currentData.target.start)].join(",")
-    ].join(" ");
-  }
+    const firstPair = [x(0), y[0](currentData.source.start)].join(','),
+      secondPair = [x(0), y[0](currentData.source.end)].join(','),
+      thirdPair = [x(1), y[1](currentData.target.end)].join(','),
+      fourthPair = [x(1), y[1](currentData.target.start)].join(',');
+
+    // console.log('PATH: ', [firstPair, secondPair, fourthPair, thirdPair].join(' '));
+
+    if (flipped) return [firstPair, secondPair, fourthPair, thirdPair].join(' ');
+
+    return [firstPair, secondPair, thirdPair, fourthPair].join(' ');
+  };
 
   // Remove block view if it is present
   if (!d3.select("#block-view-container").empty()) {
     removeBlockView();
   }
 
-  let gY0, gY1, y0axis, y1axis, onInputChange = false;
+  let gY0, gY1, y0axis, y1axis, onInputChange = false,
+    isZooming = false;
   let dataBlock = [];
+
+  /**
+   * Determines if block view state is the default state
+   *
+   * @param  {Object}  dictionary   Dictionary object in current block position
+   * @param  {Object}  defaultState Default state object
+   * @return {boolean}              True if same as default, false otherwise
+   */
+  function isBlockStateDefault(dictionary, defaultState) {
+    let isDefault = isEqual(dictionary.zoom, defaultState.zoom) &&
+      isEqual(dictionary.flipped, defaultState.flipped);
+
+    // If the axes domain is not defined, then do not take it into account
+    if (isEmpty(dictionary.y0Domain) || isEmpty(dictionary.y1Domain)) {
+      console.log('RETURNING EARLIER !!!\n');
+      console.log('Y[0]: ', y[0].domain(), dictionary.defaultY0Domain);
+      console.log('Y[1]: ', y[1].domain(), dictionary.defaultY1Domain);
+      // if (isEmpty(dictionary.defaultY0Domain) || isEmpty(dictionary.defaultY1Domain)) {
+      //   return isDefault;
+      // }
+
+      return isDefault && isEqual(y[0].domain(), dictionary.defaultY0Domain) &&
+        isEqual(y[1].domain(), dictionary.defaultY1Domain);;
+    }
+
+    console.log('Y0 IS DEFAULT: ', dictionary.y0Domain, dictionary.defaultY0Domain);
+    console.log('Y1 IS DEFAULT: ', dictionary.y1Domain, dictionary.defaultY1Domain);
+
+    return isDefault && isEqual(dictionary.y0Domain, dictionary.defaultY0Domain) &&
+      isEqual(dictionary.y1Domain, dictionary.defaultY1Domain);
+  };
+
+  /**
+   * Shows zoom state hint to let the user know that the scales have been changed
+   *
+   * @return {undefined} undefined
+   */
+  function showZoomStateHint() {
+    const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
+
+    if (!isBlockStateDefault(blockZoomStateDictionary[blockID], DEFAULT_BLOCK_VIEW_ZOOM_STATE)) {
+      console.log('ENTERING 1!!!');
+      // If the zoom state is not default, then show hint (opacity 1)
+      d3.select("#block-view-container .zoom-state-hint")
+        .style("opacity", function() {
+          if (d3.select(this).style("opacity") == 0) return 0;
+          return 1; // If hint is already set, don't show transition
+        })
+        .transition()
+        .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
+        .ease(d3.easeLinear)
+        .style("opacity", 1);
+    } else {
+      const valueToPrint = d3.select("#block-view-container .zoom-state-hint").style("opacity");
+      console.log('ENTERING 2!!!', valueToPrint);
+
+      // If the zoom state is default and the hint is showing, then hide it (opacity 0)
+      d3.select("#block-view-container .zoom-state-hint")
+        .style("opacity", function() {
+          if (d3.select(this).style("opacity") == 1) return 1;
+          return 0; // If hint is already not set, don't show transition
+        })
+        .transition()
+        .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
+        .ease(d3.easeLinear)
+        .style("opacity", 0);
+    }
+  };
 
   // Zoom behavior
   const zoom = d3.zoom()
     .scaleExtent([0.01, 10000])
+    .on("start", function() {
+      // Activate if SA is not running
+      if (d3.select(".best-guess > input").attr("disabled")) return;
+
+      console.log('ZOOMING');
+      isZooming = true;
+    })
     .on("zoom", function() {
-      if (gY0 && gY1) {
-        const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
+      // Activate if SA is not running and both group axis are defined
+      if (d3.select(".best-guess > input").attr("disabled") || !gY0 || !gY1) return;
 
-        blockZoomStateDictionary[blockID].zoom = d3.event.transform;
+      const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
 
-        // Rescaling axes using current zoom transform
-        gY0.call(y0axis.scale(blockZoomStateDictionary[blockID].zoom.rescaleY(y[0])));
-        gY1.call(y1axis.scale(blockZoomStateDictionary[blockID].zoom.rescaleY(y[1])));
+      blockZoomStateDictionary[blockID].zoom = d3.event.transform;
 
-        // Plotting the lines path using the new scales
-        d3.select("svg.block-view g.clip-block-group g")
-          .style("transform", `translate(0px,${blockZoomStateDictionary[blockID].zoom.y}px)
-            scale(1,${blockZoomStateDictionary[blockID].zoom.k})`);
+      // Rescaling axes using current zoom transform
+      gY0.call(y0axis.scale(blockZoomStateDictionary[blockID].zoom.rescaleY(y[0])));
+      gY1.call(y1axis.scale(blockZoomStateDictionary[blockID].zoom.rescaleY(y[1])));
 
-        console.log('GLOBAL ZOOM: ', blockZoomStateDictionary[blockID].zoom.k);
+      // Plotting the lines path using the new scales
+      d3.select("svg.block-view g.clip-block-group g")
+        .style("transform", `translate(0px,${blockZoomStateDictionary[blockID].zoom.y}px)
+          scale(1,${blockZoomStateDictionary[blockID].zoom.k})`);
 
-        setBlockViewZoomStateDictionary(blockZoomStateDictionary);
-      }
+      console.log('GLOBAL ZOOM: ', blockZoomStateDictionary[blockID].zoom.k);
+
+      setBlockViewZoomStateDictionary(blockZoomStateDictionary);
+    })
+    .on("end", function() {
+      // Activate if SA is not running
+      if (d3.select(".best-guess > input").attr("disabled")) return;
+
+      console.log('NOT ZOOMING');
+      isZooming = false;
+      showZoomStateHint();
     });
-
-  /**
-   * Resets zoom state and svg for block view
-   *
-   * @param  {number}    blockID Current block view to reset its state
-   * @return {undefined} undefined
-   */
-  function resetZoomBlockView(blockID) {
-    const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
-    blockZoomStateDictionary[blockID] = defaultsDeep({
-      // Not modifying flipped state when resetting zoom
-      flipped: !!(blockZoomStateDictionary[blockID] || {}).flipped
-    }, cloneDeep(DEFAULT_BLOCK_VIEW_ZOOM_STATE));
-
-    setBlockViewZoomStateDictionary(blockZoomStateDictionary);
-
-    // Changing zoom scale to default
-    d3.select("svg.block-view g.clip-block-group")
-      .call(zoom.transform, d3.zoomIdentity.scale(1).translate(0, 0));
-  };
-
-  /**
-   * Flips the data for the current block view
-   *
-   * @param  {Array<Object>} dataBlock Current block data array
-   * @return {Array<Object>}           Flipped array
-   */
-  function flipTargetDataBlock(dataBlock) {
-    const index = 'target'; // Flipping target by default
-    let temp = 0;
-    const tempArray = cloneDeep(dataBlock);
-
-    // Only need to swap until size / 2 to flip entirely.
-    for (let i = 0; i < tempArray.length / 2; i++) {
-      temp = tempArray[i].data[index];
-      tempArray[i].data[index] = tempArray[tempArray.length - i - 1].data[index];
-      tempArray[tempArray.length - i - 1].data[index] = temp;
-    }
-
-    return tempArray;
-  }
 
   // Append block view container to the body of the page
   d3.select("#page-container .row")
@@ -221,8 +294,10 @@ export default function generateBlockView(data) {
     .attr("value", "Reset")
     .attr("title", "Resets the block view to its original scale.")
     .on("click", function() {
-      // Changing zoom scale to default
+      // Changing zoom state and svg scale to default
       resetZoomBlockView(blockID);
+      d3.select("svg.block-view g.clip-block-group")
+        .call(zoom.transform, d3.zoomIdentity.scale(1).translate(0, 0));
 
       // Resetting by calling path block view
       generatePathBlockView();
@@ -258,22 +333,14 @@ export default function generateBlockView(data) {
     .on("change", function() {
       onInputChange = true;
 
-      // Changing zoom scale to default
+      // Changing zoom state and svg scale to default
       resetZoomBlockView(blockID);
+      d3.select("svg.block-view g.clip-block-group")
+        .call(zoom.transform, d3.zoomIdentity.scale(1).translate(0, 0));
 
       // Calling path block view for updates
       generatePathBlockView();
     });
-
-  if (!isEqual(blockZoomStateDictionary[blockID], DEFAULT_BLOCK_VIEW_ZOOM_STATE)) {
-    // If the zoom state is not default, then show hint (opacity 1)
-    d3.select("#block-view-container .zoom-state-hint")
-      .style("opacity", 0)
-      .transition()
-      .duration(500)
-      .ease(d3.easeLinear)
-      .style("opacity", 1);
-  }
 
   // Defining a clip-path so that lines always stay inside the block view,
   // thus paths will be clipped when zooming
@@ -294,6 +361,12 @@ export default function generateBlockView(data) {
   const isFlippedSource = currentFlippedChromosomes.indexOf(sourceChromosome) !== (-1);
   const isFlippedTarget = currentFlippedChromosomes.indexOf(targetChromosome) !== (-1);
 
+  const defaultDomainSourceValues = { min: Number.MAX_SAFE_INTEGER, max: 0 };
+  const defaultDomainTargetValues = { min: Number.MAX_SAFE_INTEGER, max: 0 };
+
+  const domainSourceValues = { min: Number.MAX_SAFE_INTEGER, max: 0 };
+  const domainTargetValues = { min: Number.MAX_SAFE_INTEGER, max: 0 };
+
   for (let i = 0; i < blockArray.length; i++) {
     const blockSource = blockArray[i].connectionSource;
     const blockTarget = blockArray[i].connectionTarget;
@@ -302,9 +375,15 @@ export default function generateBlockView(data) {
     let { start: targetStart, end: targetEnd } = geneDictionary[blockTarget];
     const eValueConnection = blockArray[i].eValueConnection;
 
+    defaultDomainSourceValues.min = Math.min(defaultDomainSourceValues.min, sourceStart, sourceEnd);
+    defaultDomainSourceValues.max = Math.max(defaultDomainSourceValues.max, sourceStart, sourceEnd);
+
+    defaultDomainTargetValues.min = Math.min(defaultDomainTargetValues.min, targetStart, targetEnd);
+    defaultDomainTargetValues.max = Math.max(defaultDomainTargetValues.max, targetStart, targetEnd);
+
     if (isFlippedSource) {
       // Flipping the connections and changing the scales of the source axis
-      const { start, end } = getFlippedGenesPosition(gffPositionDictionary[sourceChromosome], {
+      const { start, end } = getFlippedGenesPosition(gffPositionDictionary[sourceChromosome].end, {
         start: sourceStart,
         end: sourceEnd
       });
@@ -314,13 +393,19 @@ export default function generateBlockView(data) {
 
     if (isFlippedTarget) {
       // Flipping the connections and changing the scales of the target axis
-      const { start, end } = getFlippedGenesPosition(gffPositionDictionary[targetChromosome], {
+      const { start, end } = getFlippedGenesPosition(gffPositionDictionary[targetChromosome].end, {
         start: targetStart,
         end: targetEnd
       });
       targetStart = start;
       targetEnd = end;
     }
+
+    domainSourceValues.min = Math.min(domainSourceValues.min, sourceStart, sourceEnd);
+    domainSourceValues.max = Math.max(domainSourceValues.max, sourceStart, sourceEnd);
+
+    domainTargetValues.min = Math.min(domainTargetValues.min, targetStart, targetEnd);
+    domainTargetValues.max = Math.max(domainTargetValues.max, targetStart, targetEnd);
 
     // Points are the determined using a polygon from the start to the end
     // Dividing into matrix for source and target, so flipping can work by only flipping target
@@ -352,6 +437,16 @@ export default function generateBlockView(data) {
     });
   }
 
+  defaultDomainSourceValues.min -= OFFSET_DOMAIN;
+  defaultDomainSourceValues.max += OFFSET_DOMAIN;
+  defaultDomainTargetValues.min -= OFFSET_DOMAIN;
+  defaultDomainTargetValues.max += OFFSET_DOMAIN;
+
+  domainSourceValues.min -= OFFSET_DOMAIN;
+  domainSourceValues.max += OFFSET_DOMAIN;
+  domainTargetValues.min -= OFFSET_DOMAIN;
+  domainTargetValues.max += OFFSET_DOMAIN;
+
   /**
    * Generates all paths in the blockView using the current selected
    * block in the genomeView
@@ -359,48 +454,38 @@ export default function generateBlockView(data) {
    * @return {undefined} undefined
    */
   function generatePathBlockView() {
-    /**
-     * Determines the minimum value in the current block scale
-     *
-     * @param  {number} d The number of the scale: y0 or y1
-     * @return {number}   Minimum value
-     */
-    function minData(d) {
-      const reference = d === 0 ? 'source' : 'target';
-      let minValue = Number.MAX_SAFE_INTEGER;
-      for (let i = 0; i < dataBlock.length; i++) {
-        minValue = Math.min(minValue, dataBlock[i].data[reference].start,
-          dataBlock[i].data[reference].end);
-      }
+    const domainY0 = {
+      min: domainSourceValues.min,
+      max: domainSourceValues.max
+    };
 
-      return minValue;
-    }
-
-    /**
-     * Determines the maximum value in the current block scale
-     *
-     * @param  {number} d The number of the scale: y0 or y1
-     * @return {number}   Maximum value
-     */
-    function maxData(d) {
-      const reference = d === 0 ? 'source' : 'target';
-      let maxValue = 0;
-      for (let i = 0; i < dataBlock.length; i++) {
-        maxValue = Math.max(maxValue, dataBlock[i].data[reference].start,
-          dataBlock[i].data[reference].end);
-      }
-
-      return maxValue;
-    }
+    const domainY1 = {
+      min: domainTargetValues.min,
+      max: domainTargetValues.max
+    };
 
     if (onInputChange) {
       // Disabling inputs and selects before calling the animation
       resetInputsAndSelectsOnAnimation(true);
 
-      // Assigning flipped state to true if checkbox is selected, otherwise false
       const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
-      blockZoomStateDictionary[blockID].flipped = d3.select("p.flip-orientation input").property("checked");
-      setBlockViewZoomStateDictionary(blockZoomStateDictionary);
+
+      // Reset both domains to default state
+      // NOTE: This is before changing flipped state
+      y[0].domain([domainY0.min, domainY0.max]);
+      if (blockZoomStateDictionary[blockID].flipped) {
+        y[1].domain([domainY1.max, domainY1.min]);
+      } else {
+        y[1].domain([domainY1.min, domainY1.max]);
+      }
+
+      // Reset only y0 ticks to default state, because the animation happens on y1
+      y0axis = d3.axisLeft(y[0]).tickSize(20).ticks(10);
+      gY0.call(y0axis.scale(blockZoomStateDictionary[blockID].zoom.rescaleY(y[0])));
+
+      // Saving the axis state in the dictionary
+      blockZoomStateDictionary[blockID].y0Domain = cloneDeep(y[0].domain());
+      blockZoomStateDictionary[blockID].y1Domain = cloneDeep(y[1].domain());
 
       // Change paths color to lightblue
       svgBlock.selectAll("polygon.line")
@@ -414,17 +499,17 @@ export default function generateBlockView(data) {
       let transitionHeightDivision = 1;
       let summing = true;
 
-      // 2 - 4 - 8 - 16 - 32 - 64
+      // 2 - 4 - 8 - 16 - 32
       // Flip here and sum flipping time
-      // 64 - 32 - 16 - 8 - 4 - 2
+      // 32 - 16 - 8 - 4 - 2
 
       // Only break loop when summing is false && transitionHeightDivision == 1
       // summing || transitionHeightDivision != 1
-      // Or when indexTransition == 14
+      // Or when indexTransition == 12
       for (let indexTransition = 1; indexTransition <= MAX_INDEX_TRANSITION; indexTransition++) {
-        if (indexTransition == 7) {
+        if (indexTransition == 6) {
           summing = false;
-          transitionHeightDivision = 128;
+          transitionHeightDivision = 64;
           transitionTime += TRANSITION_FLIPPING_TIME;
         } else {
           transitionTime += TRANSITION_NORMAL_TIME;
@@ -436,12 +521,6 @@ export default function generateBlockView(data) {
           transitionHeightDivision /= TRANSITION_HEIGHT_DIVISION_MULTIPLE;
         }
 
-        console.log('TRANSITION TIME: ', transitionTime);
-        console.log('TRANSITION HEIGHT DIVISION: ', transitionHeightDivision);
-        console.log('INDEX TRANSITION: ', indexTransition);
-        console.log('SUMMING: ', summing);
-        console.log('\n');
-
         // More info: https://stackoverflow.com/a/37728255
         (function(indexTransition, transitionTime, transitionHeightDivision) {
           setTimeout(function() {
@@ -452,40 +531,55 @@ export default function generateBlockView(data) {
              * 3 -> 8
              * 4 -> 16
              * 5 -> 32
-             * 6 -> 64
-             * 7 -> 128 -> 64
-             * 8 -> 32
-             * 9 -> 16
-             * 10 -> 8
-             * 11 -> 4
-             * 12 -> 2
-             * 13 -> 1
+             * 6 -> 64 -> 32
+             * 7 -> 16
+             * 8 -> 8
+             * 9 -> 4
+             * 10 -> 2
+             * 11 -> 1
              */
 
             if (transitionHeightDivision >= 2) {
               offsetTransition = (heightBlock - (heightBlock / transitionHeightDivision)) / 2;
             }
 
-            console.log('HEIGHT BLOCK: ', heightBlock, offsetTransition, transitionHeightDivision);
+            // console.log('HEIGHT BLOCK: ', heightBlock, offsetTransition, transitionHeightDivision);
 
             // Creating new scales for y1 to improve the flipping transition
             const minimumRange = offsetTransition + ((heightBlock - offsetTransition) / transitionHeightDivision);
             const maximumRange = offsetTransition;
             const newY = [y[0], d3.scaleLinear().range([minimumRange, maximumRange])];
-            newY[0].domain([minData(0) - OFFSET_DOMAIN, maxData(0) + OFFSET_DOMAIN]);
-            newY[1].domain([minData(1) - OFFSET_DOMAIN, maxData(1) + OFFSET_DOMAIN]);
+            newY[0].domain(blockZoomStateDictionary[blockID].y0Domain);
+            newY[1].domain(blockZoomStateDictionary[blockID].y1Domain);
 
-            gY1 = gY1.call(d3.axisRight(newY[1]).tickSize(20).ticks(10));
+            y1axis = d3.axisRight(newY[1]).tickSize(20).ticks(10);
+            gY1.call(y1axis.scale(blockZoomStateDictionary[blockID].zoom.rescaleY(newY[1])));
 
             // Plotting the lines path using the new scales
             svgBlock.selectAll("polygon.line")
               .data(dataBlock)
               .attr("points", function(data) {
-                return path(data, newY);
+                return path(data, newY, blockZoomStateDictionary[blockID].flipped);
               });
 
-            if (indexTransition == 7) {
-              dataBlock = flipTargetDataBlock(dataBlock);
+            if (indexTransition === 6) {
+              //dataBlock = flipTargetDataBlock(dataBlock);
+
+              // Assigning flipped state to true if checkbox is selected, otherwise false
+              // Updating flipped state to draw updated paths from now on
+              blockZoomStateDictionary[blockID].flipped = d3.select("p.flip-orientation input").property("checked");
+
+              if (blockZoomStateDictionary[blockID].flipped) {
+                newY[1].domain([domainY1.max, domainY1.min]);
+              } else {
+                newY[1].domain([domainY1.min, domainY1.max]);
+              }
+
+              // Saving the axis state in the dictionary
+              blockZoomStateDictionary[blockID].y0Domain = cloneDeep(newY[0].domain());
+              blockZoomStateDictionary[blockID].y1Domain = cloneDeep(newY[1].domain());
+
+              setBlockViewZoomStateDictionary(blockZoomStateDictionary);
             }
           }, transitionTime);
         })(indexTransition, transitionTime, transitionHeightDivision);
@@ -505,34 +599,47 @@ export default function generateBlockView(data) {
       }
 
       const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
+      console.log('\n\nCURRENT ZOOM STATE: \n\n', blockZoomStateDictionary[blockID]);
 
-      if (isEqual(blockZoomStateDictionary[blockID], DEFAULT_BLOCK_VIEW_ZOOM_STATE)) {
-        // If the zoom state is default and the hint is showing, then hide it (opacity 0)
-        if (d3.select("#block-view-container .zoom-state-hint").style("opacity") == 1) {
-          d3.select("#block-view-container .zoom-state-hint")
-            .style("opacity", 1)
-            .transition()
-            .duration(500)
-            .ease(d3.easeLinear)
-            .style("opacity", 0);
+      // Y scale domains using minimum, maximum and offsetDomain values
+      if (!isEmpty(blockZoomStateDictionary[blockID].y0Domain) &&
+        !isEmpty(blockZoomStateDictionary[blockID].y1Domain)) {
+        y[0].domain(blockZoomStateDictionary[blockID].y0Domain);
+        y[1].domain(blockZoomStateDictionary[blockID].y1Domain);
+      } else {
+        y[0].domain([domainY0.min, domainY0.max]);
+        y[1].domain([domainY1.min, domainY1.max]);
+
+        // Assigning default scales
+        if (isEmpty(blockZoomStateDictionary[blockID].defaultY0Domain) &&
+          isEmpty(blockZoomStateDictionary[blockID].defaultY1Domain)) {
+          console.log('ASSIGNING !!!!');
+          // It does not matter if chromosomes are flipped, default domain will always be
+          // correct here
+          blockZoomStateDictionary[blockID].defaultY0Domain =
+            cloneDeep([defaultDomainSourceValues.min, defaultDomainSourceValues.max]);
+          blockZoomStateDictionary[blockID].defaultY1Domain =
+            cloneDeep([defaultDomainTargetValues.min, defaultDomainTargetValues.max]);
+          setBlockViewZoomStateDictionary(blockZoomStateDictionary);
         }
       }
 
-      // Y scale domains using minimum, maximum and offsetDomain values
-      if (!isEmpty(blockZoomStateDictionary) && !isEmpty(blockZoomStateDictionary[blockID]) &&
-        !isEmpty(blockZoomStateDictionary[blockID].y0) && !isEmpty(blockZoomStateDictionary[blockID].y1)) {
-        y[0].domain(blockZoomStateDictionary[blockID].y0.domain());
-        y[1].domain(blockZoomStateDictionary[blockID].y1.domain());
-      } else {
-        y[0].domain([minData(0) - OFFSET_DOMAIN, maxData(0) + OFFSET_DOMAIN]);
-        y[1].domain([minData(1) - OFFSET_DOMAIN, maxData(1) + OFFSET_DOMAIN]);
-      }
+      showZoomStateHint();
 
       // If block is flipped and checkbox is not checked, then flip it
-      if (blockZoomStateDictionary[blockID].flipped &&
-          !d3.select("p.flip-orientation input").property("checked")) {
-        dataBlock = flipTargetDataBlock(dataBlock);
+      if (blockZoomStateDictionary[blockID].flipped) {
+
+        // Need to enter if state is flipped, because if the user resets the view
+        // The domains won't be saved anymore
         d3.select("p.flip-orientation input").property("checked", true);
+
+        // Getting domain
+        const currentY1Domain = y[1].domain();
+        if (currentY1Domain[0] < currentY1Domain[1]) {
+          // If minimum domain is less than maximum domain, indicates it is not flipped yet
+          // Change the axis domain, so polygons are drawn flipped below
+          y[1].domain([domainY1.max, domainY1.min]);
+        }
       }
 
       // Rectangle that has the block view size to catch any zoom event
@@ -545,6 +652,10 @@ export default function generateBlockView(data) {
         .attr("width", widthBlock)
         .attr("height", heightBlock);
 
+      // For the Circos tooltip
+      const tooltipDiv = d3.select("div.circos-tooltip")
+        .style("opacity", 0);
+
       // Add new paths inside the block
       svgBlock.select("g.clip-block-group")
         .append("g")
@@ -553,9 +664,48 @@ export default function generateBlockView(data) {
         .append("polygon")
         .attr("class", "line")
         .attr("points", function(data) {
-          return path(data, y);
+          return path(data, y, blockZoomStateDictionary[blockID].flipped);
         })
-        .attr("opacity", "0.7");
+        .attr("opacity", 0.7)
+        .on("mouseover", function(d, i, nodes) {
+          // Only activate if the user is not zooming, axis mouse down is not set,
+          // and SA is not running
+          if (isZooming || currentAxisMouseDown !== "" ||
+            d3.select(".best-guess > input").attr("disabled")) return;
+
+          tooltipDiv.transition().style("opacity", 0.9);
+
+          tooltipDiv.html(function() {
+              return `<h6 style="margin-bottom: 0;">${d.source.id}</h6>
+                    ➤
+                    <h6 style="margin-top: 0;">${d.target.id}</h6>
+                    <h6><u>Connection information</u></h6>
+                    <h6>ID: ${d.connection}</h6>
+                    <h6>E-value: ${d.eValue}</h6>`;
+            })
+            .style("left", `${(d3.event.pageX)}px`)
+            .style("top", `${(d3.event.pageY - 28)}px`);
+
+          if (d3.selectAll(nodes).attr("opacity") !== 0.3) {
+            d3.selectAll(nodes).attr("opacity", 0.3);
+            d3.select(nodes[i]).attr("opacity", 0.9);
+          }
+        })
+        .on("mouseout", function(d, i, nodes) {
+          // Only activate if the user is not zooming, axis mouse down is not set,
+          // and SA is not running
+          if (isZooming || currentAxisMouseDown !== "" ||
+            d3.select(".best-guess > input").attr("disabled")) return;
+
+          tooltipDiv.transition()
+            .duration(500)
+            .ease(d3.easeLinear)
+            .style("opacity", 0);
+
+          if (d3.selectAll(nodes).attr("opacity") !== 0.7) {
+            d3.selectAll(nodes).attr("opacity", 0.7);
+          }
+        });
 
       // To keep track of the value of the color blocks checkbox
       const coloredBlocks = d3.select("p.color-blocks input").property("checked");
@@ -580,46 +730,6 @@ export default function generateBlockView(data) {
         // Enabling inputs and selects after calling the animation
         resetInputsAndSelectsOnAnimation();
       }
-
-      // Add the Circos tooltip
-      const tooltipDiv = d3.select("div.circos-tooltip")
-        .style("opacity", 0);
-
-      svgBlock.selectAll("polygon.line")
-        .on("mouseover", function(d, i, nodes) {
-          // Only activate if axis mouse down is not set
-          if (currentAxisMouseDown !== "") return;
-
-          tooltipDiv.transition().style("opacity", 0.9);
-
-          tooltipDiv.html(function() {
-              return `<h6 style="margin-bottom: 0;">${d.source.id}</h6>
-                      ➤
-                      <h6 style="margin-top: 0;">${d.target.id}</h6>
-                      <h6><u>Connection information</u></h6>
-                      <h6>ID: ${d.connection}</h6>
-                      <h6>E-value: ${d.eValue}</h6>`;
-            })
-            .style("left", `${(d3.event.pageX)}px`)
-            .style("top", `${(d3.event.pageY - 28)}px`);
-
-          if (d3.selectAll(nodes).attr("opacity") !== 0.3) {
-            d3.selectAll(nodes).attr("opacity", 0.3);
-            d3.select(nodes[i]).attr("opacity", 0.9);
-          }
-        })
-        .on("mouseout", function(d, i, nodes) {
-          // Only activate if axis mouse down is not set
-          if (currentAxisMouseDown !== "") return;
-
-          tooltipDiv.transition()
-            .duration(500)
-            .style("opacity", 0);
-
-          if (d3.selectAll(nodes).attr("opacity") !== 0.7) {
-            d3.selectAll(nodes).attr("opacity", 0.7);
-          }
-        });
 
       // Add the Y0 Axis
       y0axis = d3.axisLeft(y[0]).tickSize(20);
@@ -677,7 +787,9 @@ export default function generateBlockView(data) {
       const dragHandler = d3.drag()
         .on("start", function() {
           // If axis mouse down is not set, then return because I'm not selecting any axis
-          if (currentAxisMouseDown === "") return;
+          // Activate only if SA is not running
+          if (currentAxisMouseDown === "" || d3.select(".best-guess > input").attr("disabled")) return;
+
           // Getting mouse position
           const positionY = d3.mouse(d3.select("div#block-view-container svg.block-view").node())[1];
           offsetYPosition = positionY;
@@ -689,7 +801,8 @@ export default function generateBlockView(data) {
         })
         .on("drag", function() {
           // If axis mouse down is not set, then return because I'm not selecting any axis
-          if (currentAxisMouseDown === "") return;
+          // Activate only if SA is not running
+          if (currentAxisMouseDown === "" || d3.select(".best-guess > input").attr("disabled")) return;
 
           // Getting mouse position
           const positionY = d3.mouse(d3.select("div#block-view-container svg.block-view").node())[1];
@@ -700,8 +813,8 @@ export default function generateBlockView(data) {
           // Assign new starting position if I'm currently dragging and I decide to change direction
           if (draggingDistance > 0 && draggingDistance < lastDraggingDistance ||
             draggingDistance < 0 && draggingDistance > lastDraggingDistance) {
-              offsetYPosition = positionY;
-              draggingDistance = 0;
+            offsetYPosition = positionY;
+            draggingDistance = 0;
           }
 
           console.log('POSITION: ', positionY, offsetYPosition);
@@ -743,45 +856,45 @@ export default function generateBlockView(data) {
           }
 
           // Saving the axis state in the dictionary
-          blockZoomStateDictionary[blockID].y0 = cloneDeep(y[0]);
-          blockZoomStateDictionary[blockID].y1 = cloneDeep(y[1]);
+          blockZoomStateDictionary[blockID].y0Domain = cloneDeep(y[0].domain());
+          blockZoomStateDictionary[blockID].y1Domain = cloneDeep(y[1].domain());
 
           setBlockViewZoomStateDictionary(blockZoomStateDictionary);
 
           d3.selectAll("polygon.line")
-            .attr('points', function (d) {
-              let currentPoints = d3.select(this).attr('points').split(" "),
-              first_pair = currentPoints[0].split(","),
-              second_pair = currentPoints[1].split(","),
-              third_pair = currentPoints[2].split(","),
-              fourth_pair = currentPoints[3].split(",");
+            .attr('points', function(d) {
+              const currentPoints = d3.select(this).attr('points').split(' ');
+              let firstPair = currentPoints[0].split(','),
+                secondPair = currentPoints[1].split(','),
+                thirdPair = currentPoints[2].split(','),
+                fourthPair = currentPoints[3].split(',');
 
               actualDistance = draggingDistance / dividingFactor;
 
               // Adding dragging distance to the polygon points
               if (currentAxisMouseDown === 'axisY0') {
-                first_pair[1] = Number(first_pair[1]) + actualDistance;
-                second_pair[1] = Number(second_pair[1]) + actualDistance;
+                firstPair[1] = Number(firstPair[1]) + actualDistance;
+                secondPair[1] = Number(secondPair[1]) + actualDistance;
               } else if (currentAxisMouseDown === 'axisY1') {
-                third_pair[1] = Number(third_pair[1]) + actualDistance;
-                fourth_pair[1] = Number(fourth_pair[1]) + actualDistance;
+                thirdPair[1] = Number(thirdPair[1]) + actualDistance;
+                fourthPair[1] = Number(fourthPair[1]) + actualDistance;
               }
 
               return [
-                first_pair.join(","),
-                second_pair.join(","),
-                third_pair.join(","),
-                fourth_pair.join(",")
-              ].join(" ");
+                firstPair.join(','),
+                secondPair.join(','),
+                thirdPair.join(','),
+                fourthPair.join(',')
+              ].join(' ');
             });
 
-            // Saving dragging distance to know dragging direction (up or down)
-            lastDraggingDistance = draggingDistance;
+          // Saving dragging distance to know dragging direction (up or down)
+          lastDraggingDistance = draggingDistance;
         })
         .on("end", function() {
           // If axis mouse down is not set, then return because I'm not selecting any axis
-          if (currentAxisMouseDown === "") return;
-          console.log('END', currentAxisMouseDown);
+          // Activate only if SA is not running
+          if (currentAxisMouseDown === "" || d3.select(".best-guess > input").attr("disabled")) return;
 
           // Remove stroke highlight from axis
           d3.select(`g.${currentAxisMouseDown}`)
@@ -789,6 +902,8 @@ export default function generateBlockView(data) {
 
           // Resetting current axis mouse down
           currentAxisMouseDown = "";
+
+          showZoomStateHint();
         });
 
       // Attaching drag handler to block view
@@ -802,7 +917,7 @@ export default function generateBlockView(data) {
       d3.select("svg.block-view g.clip-block-group")
         .call(zoom)
         .call(zoom.transform, getBlockViewZoomStateDictionary()[blockID].zoom);
-    }
+    };
 
     console.log('TOTAL TIME: ', COLOR_CHANGE_TIME + (TRANSITION_NORMAL_TIME * MAX_INDEX_TRANSITION) + TRANSITION_FLIPPING_TIME);
     if (onInputChange) {
@@ -811,7 +926,7 @@ export default function generateBlockView(data) {
     } else {
       drawPathBlockView();
     }
-  }
+  };
 
   generatePathBlockView();
 

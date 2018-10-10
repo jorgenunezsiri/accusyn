@@ -25013,17 +25013,10 @@ var Chords = function (_Track) {
         });
       });
 
-      if (transition && transition.shouldDo) {
-        link.each(function (d) {
-          var current = (0, _d3Selection.select)(this);
-          if (transition.chr && (transition.chr === d.source.id || transition.chr === d.target.id)) {
-            current.raise().style('fill', transition.from).transition().duration(transition.time).ease(_d3Ease.easeLinear).style('fill', conf.colorValue);
-          } else if (transition.from != null && transition.time != null && transition.chr == null) {
-            // Default transition case
-            current.style('fill', transition.from).transition().duration(transition.time).ease(_d3Ease.easeLinear).style('fill', conf.colorValue);
-          } else if (transition.chr && transition.chr !== d.source.id && transition.chr !== d.target.id) {
-            current.style('fill', conf.colorValue);
-          }
+      if (transition && transition.shouldDo && transition.from != null && transition.time != null) {
+        link.each(function () {
+          // Default transition case
+          (0, _d3Selection.select)(this).style('fill', transition.from).transition().duration(transition.time).ease(_d3Ease.easeLinear).style('fill', conf.colorValue);
         });
       } else {
         link.style('fill', conf.colorValue);

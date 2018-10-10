@@ -24,7 +24,10 @@ import Modal from './reactComponents/Modal';
 
 import generateGenomeView from './genomeView/generateGenomeView';
 
-import { updateWaitingBlockCollisionHeadline } from './genomeView/blockCollisions';
+import {
+  calculateDeclutteringETA,
+  updateWaitingBlockCollisionHeadline
+} from './genomeView/blockCollisions';
 
 import {
   assignFlippedChromosomeColors,
@@ -38,6 +41,7 @@ import {
   sortGffKeys,
   updateAngle,
   updateFilter,
+  updateFlippingFrequency,
   updateRatio,
   updateTemperature
 } from './helpers';
@@ -378,7 +382,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .attr("type", "checkbox")
     .attr("name", "color-blocks")
     .attr("value", "Color blocks")
-    .property("checked", false); // Color blocks is not checked by default
+    .property("checked", true); // Color blocks is checked by default
 
   d3.select("#form-config p.color-blocks > label")
     .append("span")
@@ -727,6 +731,51 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     .attr("class", "panel-subtitle")
     .html("<strong>Algorithm parameters</strong>");
 
+  // Keep chromosomes from same genome together checkbox
+  if (partitionedGffKeys.length > 1) {
+    d3.select("#form-config .decluttering-panel")
+      .append("p")
+      .attr("class", "keep-chr-together")
+      .attr("title", "If selected, chromosomes from the same genome will be kept together when running the decluttering algorithm.")
+      .append("label")
+      .append("input")
+      .attr("type", "checkbox")
+      .attr("name", "keep-chr-together")
+      .attr("value", "Keep chromosomes from same genome together")
+      .property("checked", true); // This checkbox is checked by default
+
+    d3.select("#form-config .keep-chr-together > label")
+      .append("span")
+      .text("Keep chromosomes from same genome together");
+  }
+
+  d3.select("#form-config .decluttering-panel")
+    .append("p")
+    .attr("class", "calculate-temperature-ratio")
+    .attr("title", "If selected, temperature and ratio will be calculated based on the number of block collisions.")
+    .append("label")
+    .append("input")
+    .attr("type", "checkbox")
+    .attr("name", "calculate-temperature-ratio")
+    .attr("value", "Calculate temperature and ratio based on block collisions")
+    .property("checked", true); // This checkbox is checked by default
+
+  d3.select("#form-config .calculate-temperature-ratio > label")
+    .append("span")
+    .text("Calculate temperature and ratio based on block collisions");
+
+  d3.select("p.calculate-temperature-ratio input")
+    .on("change", function() {
+      const currentValue = d3.select(this).property("checked");
+
+      d3.select("#filter-sa-temperature").attr("disabled", currentValue ? true : null);
+      d3.select("#filter-sa-ratio").attr("disabled", currentValue ? true : null);
+
+      if (currentValue) {
+        calculateDeclutteringETA();
+      }
+    });
+
   // Filter Simulated Annealing temperature
   d3.select("#form-config .decluttering-panel")
     .append("div")
@@ -738,7 +787,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
           <span id="filter-sa-temperature-value">…</span>
         </label>
         <p>
-          <input type="range" min="100" max="100000" step="100" id="filter-sa-temperature">
+          <input type="range" min="100" max="200000" step="100" id="filter-sa-temperature" disabled>
         </p>
       `;
     });
@@ -754,7 +803,23 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
           <span id="filter-sa-ratio-value">…</span>
         </label>
         <p>
-          <input type="range" min="0.001" max="0.2" step="0.001" id="filter-sa-ratio">
+          <input type="range" min="0.001" max="0.2" step="0.001" id="filter-sa-ratio" disabled>
+        </p>
+      `;
+    });
+
+  // Filter Simulated Annealing Flipping frequency
+  d3.select("#form-config .decluttering-panel")
+    .append("div")
+    .attr("class", "filter-sa-flipping-frequency-div")
+    .html(function() {
+      return `
+        <label for="filter-sa-flipping-frequency">
+          <span>Flipping frequency = </span>
+          <span id="filter-sa-flipping-frequency-value">…</span>
+        </label>
+        <p>
+          <input type="range" min="0" max="100" step="1" id="filter-sa-flipping-frequency">
         </p>
       `;
     });
@@ -936,22 +1001,47 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     });
 
   // Show self connections checkbox
+  if (partitionedGffKeys.length > 1) {
+    d3.select("#form-config div.chr-options")
+      .append("p")
+      .attr("class", "panel-subtitle")
+      .html("Show self connections within:");
+  }
+
   d3.select("#form-config div.chr-options")
     .append("p")
-    .attr("class", "show-self-connections")
+    .attr("class", "show-self-connections show-self-connections-chr")
     .attr("title", "If selected, chromosomes will show connections with themselves.")
     .append("label")
     .append("input")
     .attr("type", "checkbox")
-    .attr("name", "show-self-connections")
+    .attr("name", "show-self-connections-chr")
     .attr("value", "Show self connections")
     .property("checked", true); // Show self connections is checked by default
 
-  d3.select("#form-config p.show-self-connections > label")
+  d3.select("#form-config p.show-self-connections-chr > label")
     .append("span")
-    .text("Show self connections");
+    .text(partitionedGffKeys.length > 1 ? "Chromosomes" :
+      "Show self connections");
 
-  d3.select("p.show-self-connections input")
+  if (partitionedGffKeys.length > 1) {
+    d3.select("#form-config div.chr-options")
+      .append("p")
+      .attr("class", "show-self-connections show-self-connections-genome")
+      .attr("title", "If selected, genomes will show connections with themselves.")
+      .append("label")
+      .append("input")
+      .attr("type", "checkbox")
+      .attr("name", "show-self-connections-genome")
+      .attr("value", "Show self connections")
+      .property("checked", true); // Show self connections is checked by default
+
+    d3.select("#form-config p.show-self-connections-genome > label")
+      .append("span")
+      .text("Genomes");
+  }
+
+  d3.selectAll("p.show-self-connections input")
     .on("change", function() {
       // Calling genome view for updates
       generateGenomeView({});
@@ -960,8 +1050,8 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   // Chromosomes title inside connections panel
   d3.select("#form-config div.chr-options")
     .append("p")
-    .attr("class","panel-subtitle")
-    .html("<strong>Chromosomes</strong>");
+    .attr("class","panel-subtitle disabled")
+    .html("────────────────────");
 
   // Adding the checkbox by using the partitionedGffKeys
   for (let i = 0; i < partitionedGffKeys.length; i++) {
@@ -1197,6 +1287,14 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   d3.select("#filter-sa-ratio")
     .on("input", function() {
       updateRatio(+this.value);
+    });
+
+  // Initial flipping frequency and input event
+  updateFlippingFrequency(0);
+
+  d3.select("#filter-sa-flipping-frequency")
+    .on("input", function() {
+      updateFlippingFrequency(+this.value);
     });
 
   /**

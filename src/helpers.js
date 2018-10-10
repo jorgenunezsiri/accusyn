@@ -14,6 +14,7 @@ import generateGenomeView from './genomeView/generateGenomeView';
 import { calculateDeclutteringETA } from './genomeView/blockCollisions';
 
 import { getDefaultChromosomeOrder } from './variables/currentChromosomeOrder';
+import { getGffDictionary } from './variables/gffDictionary';
 import { isAdditionalTrackAdded } from './variables/additionalTrack';
 import {
   getCircosRotateValue,
@@ -161,6 +162,11 @@ export function resetInputsAndSelectsOnAnimation(value = null) {
 
   d3.selectAll("select")
     .attr("disabled", value);
+
+  if (d3.select("p.calculate-temperature-ratio input").property("checked")) {
+    d3.select("#filter-sa-temperature").attr("disabled", true);
+    d3.select("#filter-sa-ratio").attr("disabled", true);
+  }
 };
 
 /**
@@ -169,7 +175,7 @@ export function resetInputsAndSelectsOnAnimation(value = null) {
  * @param  {string} alertMessage Alert message
  * @param  {string} color        Alert color
  * @param  {number} timeout      Alert timeout
- * @return {undefined}      undefined
+ * @return {undefined}           undefined
  */
 export function renderReactAlert(alertMessage = "", color = "danger", timeout = 5000) {
   const alertContainerElement = document.getElementById('alert-container');
@@ -187,11 +193,11 @@ export function renderReactAlert(alertMessage = "", color = "danger", timeout = 
 /**
  * Get flipped genes position
  *
- * @param  {Object} chromosome Chromosome start and end object
- * @param  {Object} gene       Original gene positions
- * @return {Object}            Flipped gene positions
+ * @param  {number} chromosomeEnd Chromosome end position
+ * @param  {Object} gene       Original gene start and end positions
+ * @return {Object}            Flipped gene start and end positions
  */
-export function getFlippedGenesPosition(chromosome, gene) {
+export function getFlippedGenesPosition(chromosomeEnd, gene) {
   // Example for flipped chromosomes:
   // Positions -> 20-28, 1-13
   // newStart = lastChrPosition - (endBlock)
@@ -202,13 +208,57 @@ export function getFlippedGenesPosition(chromosome, gene) {
   // newStart = lastChrPosition - (endBlock)
   // newEnd = lastChrPosition - (startBlock)
 
-  const start = chromosome.end - gene.end;
-  const end = chromosome.end - gene.start;
+  const start = chromosomeEnd - gene.end;
+  const end = chromosomeEnd - gene.start;
 
   return {
     start,
     end
   };
+};
+
+/**
+ * Flips the positions of the genes based on list of flipped chromosomes
+ *
+ * @param  {Object} blockPositions            Source and target positions for current block
+ * @param  {Array<string>} currentFlippedChromosomes List of flipped chromosomes
+ * @param  {string} sourceID                  Source ID
+ * @param  {string} targetID                  Target ID
+ * @return {Object}                           Source and Target final positions
+ */
+export function flipGenesPosition({
+  blockPositions,
+  currentFlippedChromosomes,
+  sourceID,
+  targetID
+}) {
+  const sourcePositions = {
+    start: blockPositions.minSource,
+    end: blockPositions.maxSource
+  };
+  const targetPositions = {
+    start: blockPositions.minTarget,
+    end: blockPositions.maxTarget
+  };
+
+  const gffPositionDictionary = getGffDictionary();
+
+  if (currentFlippedChromosomes.indexOf(sourceID) !== (-1)) {
+    const { start, end } = getFlippedGenesPosition(gffPositionDictionary[sourceID].end, sourcePositions);
+    sourcePositions.start = start;
+    sourcePositions.end = end;
+  }
+
+  if (currentFlippedChromosomes.indexOf(targetID) !== (-1)) {
+    const { start, end } = getFlippedGenesPosition(gffPositionDictionary[targetID].end, targetPositions);
+    targetPositions.start = start;
+    targetPositions.end = end;
+  }
+
+  return {
+    sourcePositions,
+    targetPositions
+  }
 };
 
 /**
@@ -524,6 +574,7 @@ export function removeBlockView(transitionTime = 0) {
       .style("opacity", 1)
       .transition()
       .duration(transitionTime)
+      .ease(d3.easeLinear)
       .style("opacity", 0)
       .remove();
   } else {
@@ -660,28 +711,42 @@ export function updateAngle(nAngle = 0, nDragging = 0) {
  * Updates the temperature for the Simulated Annealing algorithm in the genome view
  *
  * @param  {number} temperature Current temperature between 100 and 30,000
+ * @param  {boolean} updateETA Whether or not the decluttering ETA should be updated
  * @return {undefined}          undefined
  */
-export function updateTemperature(temperature) {
+export function updateTemperature(temperature, updateETA = true) {
   // Adjust the text on the temperature range slider
   d3.select("#filter-sa-temperature-value").text(d3.format(",")(temperature));
   d3.select("#filter-sa-temperature").property("value", temperature);
 
-  calculateDeclutteringETA();
+  if (updateETA) calculateDeclutteringETA();
 };
 
 /**
  * Updates the ratio for the Simulated Annealing algorithm in the genome view
  *
- * @param  {number} ratio Current ratio between 0.001 and 0.1
+ * @param  {number}  ratio     Current ratio between 0.001 and 0.1
+ * @param  {boolean} updateETA Whether or not the decluttering ETA should be updated
  * @return {undefined}    undefined
  */
-export function updateRatio(ratio) {
+export function updateRatio(ratio, updateETA = true) {
   // Adjust the text on the ratio range slider
   d3.select("#filter-sa-ratio-value").text(ratio);
   d3.select("#filter-sa-ratio").property("value", ratio);
 
-  calculateDeclutteringETA();
+  if (updateETA) calculateDeclutteringETA();
+};
+
+/**
+ * Updates the flipping frequency for the Simulated Annealing algorithm in the genome view
+ *
+ * @param  {number} frequency Current frequency between 0 and 100
+ * @return {undefined}        undefined
+ */
+export function updateFlippingFrequency(frequency) {
+  // Adjust the text on the flipping frequency range slider
+  d3.select("#filter-sa-flipping-frequency-value").text(frequency + '%');
+  d3.select("#filter-sa-flipping-frequency").property("value", frequency);
 };
 
 /**
