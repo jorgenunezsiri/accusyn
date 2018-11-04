@@ -26,6 +26,7 @@ import generateGenomeView from './genomeView/generateGenomeView';
 
 import {
   calculateDeclutteringETA,
+  showSavedLayout,
   updateWaitingBlockCollisionHeadline
 } from './genomeView/blockCollisions';
 
@@ -53,6 +54,8 @@ import {
   setDefaultChromosomeOrder
 } from './variables/currentChromosomeOrder';
 import { getCurrentFlippedChromosomes } from './variables/currentFlippedChromosomes';
+import { getDataChords } from './variables/dataChords';
+import { getDataChromosomes } from './variables/dataChromosomes';
 import { setGeneDictionary } from './variables/geneDictionary';
 import { setGffDictionary } from './variables/gffDictionary';
 import {
@@ -175,7 +178,6 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
     for (let i = 0; i < additionalTrack.length; i++) {
       const additionalTrackArray = []; // Array that includes the data from the additional tracks BedGraph file
       const { data: currentData, name } = additionalTrack[i];
-      let maxValue = 0, minValue = Number.MAX_SAFE_INTEGER;
 
       for (let j = 0; j < currentData.length; j++) {
         let value = roundFloatNumber(parseFloat(currentData[j].value), 6);
@@ -193,16 +195,11 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
           continue;
         }
 
-        minValue = Math.min(minValue, value);
-        maxValue = Math.max(maxValue, value);
-
         additionalTrackArray.push(additionalTrackObject);
       }
 
       pushAdditionalTrack({
         data: additionalTrackArray,
-        minValue: minValue,
-        maxValue: maxValue,
         name: name
       });
     }
@@ -315,7 +312,11 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   d3.select("#form-config")
     .append("div")
     .attr("class", "panel information-panel")
+    .append("h6")
+    .attr("class", "chromosome-number-headline");
+
     // Block number headline
+  d3.select("#form-config .information-panel")
     .append("h6")
     .attr("class", "block-number-headline");
 
@@ -476,7 +477,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   d3.select("#form-config .layout-panel")
     .append("p")
     .attr("class", "show-best-layout")
-    .attr("title", "If selected, the last saved layout will be shown by default.")
+    .attr("title", "If selected, the last saved layout for the current configuration will be shown by default.")
     .append("label")
     .append("input")
     .attr("type", "checkbox")
@@ -491,15 +492,14 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   d3.select("p.show-best-layout input")
     .on("change", function() {
       if (d3.select(this).property("checked")) {
-        // Calling genome view for updates without modifying block collision count
+        // Updating without modifying block collision count
         // * If the layout is going to change, generateGenomeView is being called again,
         // and the count will be updated anyways after the animation
         // * If the layout is going to stay the same, there is no need to update the count
-        generateGenomeView({
-          transition: { shouldDo: false },
-          shouldUpdateBlockCollisions: false,
-          shouldUpdateLayout: true
-        });
+        const currentDataChromosomes = getDataChromosomes();
+        const currentDataChords = getDataChords();
+
+        showSavedLayout(currentDataChromosomes, currentDataChords, true);
       }
     });
 

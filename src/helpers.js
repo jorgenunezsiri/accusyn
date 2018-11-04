@@ -191,6 +191,32 @@ export function renderReactAlert(alertMessage = "", color = "danger", timeout = 
 };
 
 /**
+ * Flips the additional track data for the current view
+ *
+ * @param  {Array<Object>} additionalTrack Current additional track array
+ * @return {Array<Object>}                 Flipped additional track array
+ */
+export function flipValueAdditionalTrack(additionalTrack) {
+  let temp = 0;
+  const tempArray = cloneDeep(additionalTrack);
+
+  // Only need to swap until size / 2 to flip entirely.
+  for (let i = 0; i < tempArray.length / 2; i++) {
+    temp = tempArray[i].value;
+    tempArray[i].value = tempArray[tempArray.length - i - 1].value;
+    tempArray[tempArray.length - i - 1].value = temp;
+  }
+
+  // Keeping old start and end positions (to show them correctly in tooltip)
+  for (let i = 0; i < tempArray.length; i++) {
+    tempArray[i].showStart = tempArray[tempArray.length - i - 1].start;
+    tempArray[i].showEnd = tempArray[tempArray.length - i - 1].end;
+  }
+
+  return tempArray;
+};
+
+/**
  * Get flipped genes position
  *
  * @param  {number} chromosomeEnd Chromosome end position
@@ -752,10 +778,22 @@ export function updateFlippingFrequency(frequency) {
 /**
  * Updating the label showing the number of blocks and flipped blocks
  *
+ * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
  * @param  {Array<Object>} dataChords Plotting information for each block chord
  * @return {undefined}                undefined
  */
-export function updateBlockNumberHeadline(dataChords) {
+export function updateBlockNumberHeadline(dataChromosomes, dataChords) {
+  // Update chromosome-number-headline with current chromosome length amount
+  d3.select(".chromosome-number-headline")
+    .text(function() {
+      const chromosomeSize = (dataChromosomes.length || 0).toString();
+      const chromosomeSizeString = d3.format(",")(chromosomeSize);
+      let textToShow = "";
+      textToShow += chromosomeSize === "1" ? `${chromosomeSizeString} chromosome` :
+        `${chromosomeSizeString} chromosomes`;
+      return textToShow;
+    });
+
   // Update block-number-headline with current block size
   d3.select(".block-number-headline")
     .text(function() {
@@ -812,6 +850,7 @@ export function updateFilter({
     generateGenomeView({
       transition: { shouldDo: false },
       shouldUpdateBlockCollisions: shouldUpdateBlockCollisions,
+      // This is needed to be able to change layout if another one is saved
       shouldUpdateLayout: shouldUpdateLayout
     });
   }

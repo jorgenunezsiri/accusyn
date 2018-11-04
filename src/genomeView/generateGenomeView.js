@@ -27,6 +27,7 @@ import generateBlockView, { resetZoomBlockView } from './../generateBlockView';
 import {
   assignFlippedChromosomeColors,
   calculateMiddleValue,
+  flipValueAdditionalTrack,
   flipGenesPosition,
   getChordsRadius,
   getInnerAndOuterRadiusAdditionalTracks,
@@ -47,7 +48,7 @@ import {
 
 import {
   callSwapPositionsAnimation,
-  lookUpPositionCollisionsDictionary,
+  disableShowSavedLayout,
   saveToCollisionsDictionary,
   simulatedAnnealing,
   transitionFlipChromosomeStroke,
@@ -83,7 +84,6 @@ import {
   isAdditionalTrackAdded
 } from './../variables/additionalTrack';
 import { getCircosObject } from './../variables/myCircos';
-import { getSavedCollisionSolutionsDictionary } from './../variables/savedCollisionSolutionsDictionary';
 
 // Contants
 import {
@@ -200,17 +200,51 @@ function getCurrentTrack(selectedTrack) {
   if (selectedTrackPosition === (-1)) selectedTrackPosition = 0;
 
   // Adding current track by only selecting chromosomes from dataChromosomes
-  const currentTrack = cloneDeep(additionalTrackArray[selectedTrackPosition].data).reduce(
+  const currentTrackDictionary = cloneDeep(additionalTrackArray[selectedTrackPosition].data).reduce(
     function(dataInside, currentChr) {
-      const position = findIndex(dataChromosomes, ['id', currentChr['block_id']]);
-      if (position !== (-1)) dataInside.push(currentChr);
-      return dataInside;
-    }, []);
+      const currentId = currentChr['block_id'];
+      const position = findIndex(dataChromosomes, ['id', currentId]);
+      if (position !== (-1)) {
+        if (!(currentId in dataInside)) dataInside[currentId] = [];
+        dataInside[currentId].push(currentChr);
+      }
 
-  console.log('CURRENT TRACK: ', currentTrack);
+      return dataInside;
+    }, {});
+
+  const currentFlippedChromosomes = getCurrentFlippedChromosomes();
+  let maxValue = 0, minValue = Number.MAX_SAFE_INTEGER;
+
+  console.log('CURRENT TRACK Dictionary: ', currentTrackDictionary);
+  const allKeysInDictionary = Object.keys(currentTrackDictionary);
+  console.log('OBJECT KEYS DICT: ', allKeysInDictionary);
+  const currentTrack = []; // To insert all the tracks for all the chromosomes
+  for (let i = 0; i < allKeysInDictionary.length; i++) {
+    const currentKey = allKeysInDictionary[i];
+    let currentKeyArray = cloneDeep(currentTrackDictionary[currentKey]);
+    // Flipping the content of the track if necessary
+    if (currentFlippedChromosomes.indexOf(currentKey) > (-1)) {
+      currentKeyArray = flipValueAdditionalTrack(currentKeyArray);
+
+      console.log('REVERSED: ', currentKey, currentKeyArray);
+    }
+
+    // Getting min and max values for current view only
+    for (let j = 0; j < currentKeyArray.length; j++) {
+      currentTrack.push(currentKeyArray[j]);
+      const value = currentKeyArray[j].value;
+
+      minValue = Math.min(minValue, value);
+      maxValue = Math.max(maxValue, value);
+    }
+  }
+
+  console.log('CURRENT TRACK TOTAL: ', currentTrack);
 
   return {
     currentTrack,
+    minValue,
+    maxValue,
     selectedTrackPosition
   };
 }
@@ -237,21 +271,7 @@ function generateAdditionalTrack(trackName) {
     // Inner and outer radius
     const { innerRadius, outerRadius } = getInnerAndOuterRadiusAdditionalTracks()[trackName];
     // Current track array and position
-    const { currentTrack, selectedTrackPosition } = getCurrentTrack(selectedTrack);
-    // Axes
-    const { minValue, maxValue } = getAdditionalTrackArray()[selectedTrackPosition];
-
-    // Middle value
-    const middleValue = calculateMiddleValue(minValue, maxValue);
-
-    const axes = []; // Always pushing 5 axes
-    axes.push({ position: roundFloatNumber(minValue, 2), thickness: 2 });
-    axes.push({ position: roundFloatNumber(calculateMiddleValue(minValue, middleValue), 2), thickness: 2 });
-    axes.push({ position: roundFloatNumber(middleValue, 2), thickness: 2 });
-    axes.push({ position: roundFloatNumber(calculateMiddleValue(middleValue, maxValue), 2), thickness: 2 });
-    axes.push({ position: roundFloatNumber(maxValue, 2), thickness: 2 });
-
-    console.log('AXES: ', axes);
+    const { currentTrack, minValue, maxValue, selectedTrackPosition } = getCurrentTrack(selectedTrack);
 
     const configuration = {
       innerRadius: innerRadius,
@@ -267,11 +287,14 @@ function generateAdditionalTrack(trackName) {
         const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
         if (!isEmpty(currentChromosomeMouseDown)) return;
 
-        const { block_id, start, end, value } = d;
+        const { block_id, showStart, showEnd, start, end, value } = d;
+        const startPosition = showStart || start;
+        const endPosition = showEnd || end;
+
         return `<h6><u>Bin information</u></h6>
           <h6>Chromosome: ${block_id}</h6>
-          <h6>Start: ${d3.format(",")(start)}</h6>
-          <h6>End: ${d3.format(",")(end)}</h6>
+          <h6>Start: ${d3.format(",")(startPosition)}</h6>
+          <h6>End: ${d3.format(",")(endPosition)}</h6>
           <h6>Value: ${d3.format(",")(value)}</h6>`;
       }
     };
@@ -280,6 +303,18 @@ function generateAdditionalTrack(trackName) {
       // Loading heatmap
       myCircos.heatmap('heatmap', currentTrack, configuration);
     } else if (trackName === 'histogram') {
+      // Middle value
+      const middleValue = calculateMiddleValue(minValue, maxValue);
+
+      const axes = []; // Always pushing 5 axes
+      axes.push({ position: roundFloatNumber(minValue, 2), thickness: 2 });
+      axes.push({ position: roundFloatNumber(calculateMiddleValue(minValue, middleValue), 2), thickness: 2 });
+      axes.push({ position: roundFloatNumber(middleValue, 2), thickness: 2 });
+      axes.push({ position: roundFloatNumber(calculateMiddleValue(middleValue, maxValue), 2), thickness: 2 });
+      axes.push({ position: roundFloatNumber(maxValue, 2), thickness: 2 });
+
+      console.log('AXES: ', axes);
+
       configuration.axes = axes;
       configuration.showAxesTooltip = true; // Showing axes tooltip by default
 
@@ -311,8 +346,8 @@ function generateCircosLayout() {
         // Disabling inputs and selects before calling the animation
         resetInputsAndSelectsOnAnimation(true);
 
-        // Disable checkbox because flipping might lead to a worse solution
-        d3.select('p.show-best-layout input').property("checked", false);
+        // Disable checkbox if there is a saved layout for the current configuration
+        disableShowSavedLayout(dataChromosomes, dataChords);
 
         // Before flipping, set all chords with the same opacity
         d3.selectAll("path.chord").attr("opacity", 0.7);
@@ -349,8 +384,10 @@ function generateCircosLayout() {
         });
 
         let shouldUpdateLayout = false;
-        if (d3.select("div.chromosomes-palette select").property("value") === 'Flipped') {
-          shouldUpdateLayout = true; // To update the chromosome colors
+        if (isAdditionalTrackAdded() ||
+          d3.select("div.chromosomes-palette select").property("value") === 'Flipped') {
+          // To update the chromosome colors or flip the additional tracks
+          shouldUpdateLayout = true;
         }
 
         // Resetting chr mouse down because of flipping (contextmenu is not mousedown)
@@ -404,10 +441,10 @@ function generateCircosLayout() {
   }
 
   // Adding the dragHandler to the svg after populating the dataChromosomes object
-  addSvgDragHandler(dataChromosomes);
+  addSvgDragHandler(cloneDeep(dataChromosomes), cloneDeep(dataChords));
 
   // Generating dragging angles dictionary for each chromosome
-  generateDraggingAnglesDictionary(dataChromosomes);
+  generateDraggingAnglesDictionary(cloneDeep(dataChromosomes));
 }
 
 /**
@@ -480,13 +517,16 @@ function generatePathGenomeView({
     };
   }
 
+  // Updating the label showing the number of blocks and flipped blocks
+  updateBlockNumberHeadline(dataChromosomes, dataChords);
+
   // TODO: Think more about this condition
   // Updating block collisions should happen if flag is true
   // (when filtering transitions are not happening and flag is true at the end of filtering)
   // It should also happen when transitions are true and flag is not defined
   if (shouldUpdateBlockCollisions ||
     shouldUpdateBlockCollisions == null && (transition && transition.shouldDo)) {
-    updateBlockCollisionHeadline(dataChromosomes, dataChords);
+    updateBlockCollisionHeadline(dataChromosomes, dataChords, shouldUpdateLayout);
   }
 
   // Adding the configuration for the Circos chords using the generated array
@@ -592,7 +632,7 @@ function generatePathGenomeView({
         currentRemovedBlocks.push(currentID);
 
         // Updating block number
-        updateBlockNumberHeadline(dataChords);
+        updateBlockNumberHeadline(dataChromosomes, dataChords);
 
         // Updating collision headline
         updateBlockCollisionHeadline(dataChromosomes, dataChords);
@@ -635,33 +675,6 @@ function generatePathGenomeView({
     transitionFlipChromosomeStroke(currentFlippedChromosomes[i], highlightFlippedChromosomes);
   }
 
-  // Show best / saved layout checkbox
-  let showBestPossibleLayout =
-    d3.select("p.show-best-layout input").property("checked");
-
-  if (shouldUpdateLayout && showBestPossibleLayout) {
-    const { currentPosition, key } = lookUpPositionCollisionsDictionary(dataChromosomes, dataChords);
-    const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
-
-    showBestPossibleLayout = showBestPossibleLayout && currentPosition !== (-1);
-
-    if (showBestPossibleLayout) {
-      const { bestFlippedChromosomes, bestSolution } = savedCollisionSolutionsDictionary[key][currentPosition];
-
-      console.log('FOUND LAYOUT: ', bestFlippedChromosomes, bestSolution);
-
-      // Here I do not need to re-render if dataChromosomes and bestSolution are the same,
-      // because I didn't modify the layout
-
-      callSwapPositionsAnimation({
-        dataChromosomes: dataChromosomes,
-        bestSolution: bestSolution,
-        bestFlippedChromosomes: bestFlippedChromosomes,
-        updateWhenSame: false
-      });
-    }
-  }
-
   // Save layout button
   d3.select(".save-layout > input")
     .on("click", function() {
@@ -682,8 +695,8 @@ function generatePathGenomeView({
   // Reset layout button
   d3.select(".reset-layout > input")
     .on("click", function() {
-      // Disable checkbox because resetting might lead to a worse solution
-      d3.select('p.show-best-layout input').property("checked", false);
+      // Disable checkbox if there is a saved layout for the current configuration
+      disableShowSavedLayout(dataChromosomes, dataChords);
 
       const localDataChromosomes = cloneDeep(dataChromosomes);
       // Only choose the current ones from localDataChromosomes
@@ -897,9 +910,6 @@ export default function generateGenomeView({
     console.log('HERE RESETTING!!!!');
     currentSelectedBlock = null;
   }
-
-  // Updating the label showing the number of blocks and flipped blocks
-  updateBlockNumberHeadline(dataChords);
 
   d3.select(".best-guess > input")
     .on("click", function() {

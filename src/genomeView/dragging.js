@@ -8,6 +8,7 @@ import {
   updateAngle
 } from './../helpers';
 import {
+  disableShowSavedLayout,
   getChordAngles,
   updateWaitingBlockCollisionHeadline
 } from './blockCollisions';
@@ -385,29 +386,30 @@ function onDragging(dataChromosomes) {
     transitionDuration: 0
   });
 
-  // Updating lastAngle with currentAngle to be used in the end drag event
-  lastAngle = currentAngle;
-  trueLastAngle = currentAngle;
-
-  console.log('LAST ANGLE: ', lastAngle);
-
   // Updating chords while dragging
   updateChordsWhileDragging({
     chromosome: currentChromosomeMouseDown,
     currentChromosomeMouseDown: currentChromosomeMouseDown,
     dataChromosomes: dataChromosomes,
-    extraAngle: lastAngle,
+    extraAngle: currentAngle,
     transitionDuration: 0
   });
+
+  // Updating lastAngle with currentAngle to be used in the end drag event
+  lastAngle = currentAngle;
+  trueLastAngle = currentAngle;
+
+  console.log('LAST ANGLE: ', lastAngle);
 }
 
 /**
  * End dragging function
  *
  * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
+ * @param  {Array<Object>} dataChords      Plotting information for each block chord
  * @return {undefined}                     undefined
  */
-function onEndDragging(dataChromosomes) {
+function onEndDragging(dataChromosomes, dataChords) {
   const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
   console.log('CURRENT MOUSE DOWN: ', currentChromosomeMouseDown);
 
@@ -468,9 +470,6 @@ function onEndDragging(dataChromosomes) {
   // Disabling inputs and selects before calling the animation
   resetInputsAndSelectsOnAnimation(true);
 
-  // Disable checkbox because dragging might lead to a worse solution
-  d3.select('p.show-best-layout input').property("checked", false);
-
   const oldChrOrder = currentChromosomeOrder.slice();
 
   console.log('OLD ORDER: ', oldChrOrder);
@@ -481,11 +480,14 @@ function onEndDragging(dataChromosomes) {
   selectDrag = [];
   hasMovedDragging = [];
 
-  if (currentIndexToDelete >= 0) {
+  if (currentIndexToDelete > (-1)) {
     currentChromosomeOrder.splice(currentIndexToDelete, 1);
     currentChromosomeOrder.splice(currentIndexToInsert, 0, currentChromosomeMouseDown);
 
     setCurrentChromosomeOrder(currentChromosomeOrder);
+
+    // Disable checkbox if there is a saved layout for the current configuration
+    disableShowSavedLayout(currentChromosomeOrder, dataChords);
 
     for (let i = currentIndexToDelete; currentChromosomeOrder[i] !== currentChromosomeMouseDown; i--) {
       if (i === currentIndexToDelete && oldChrOrder[i + 1] === currentChromosomeOrder[i]) {
@@ -647,9 +649,10 @@ function onEndDragging(dataChromosomes) {
  * Adding drag handler to SVG main container
  *
  * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
+ * @param  {Array<Object>} dataChords      Plotting information for each block chord
  * @return {undefined}                     undefined
  */
-export function addSvgDragHandler(dataChromosomes) {
+export function addSvgDragHandler(dataChromosomes, dataChords) {
   // Updating genome view rotating angle on input
   d3.select("#nAngle-genome-view")
     .on("input", function() {
@@ -659,7 +662,7 @@ export function addSvgDragHandler(dataChromosomes) {
   const dragHandler = d3.drag()
     .on("start", () => onStartDragging(dataChromosomes))
     .on("drag", () => onDragging(dataChromosomes))
-    .on("end", () => onEndDragging(dataChromosomes));
+    .on("end", () => onEndDragging(dataChromosomes, dataChords));
 
   d3.select("svg#main-container").call(dragHandler);
 };

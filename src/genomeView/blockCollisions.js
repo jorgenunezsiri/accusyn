@@ -397,7 +397,6 @@ export function calculateDeclutteringETA() {
 
     // TODO: Create a hash table for this?
 
-
     // Update temperature/ratio to 10,000/0.003 if less than 100 collisions available
     // Entering loop around 3000 times
     if (collisionCount <= 100) {
@@ -522,14 +521,90 @@ export function calculateDeclutteringETA() {
 };
 
 /**
+ * Shows saved layout if conditions are met and a layout is saved
+ * NOTE: This is called after block collisions are calculated or checkbox is clicked
+ *
+ * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
+ * @param  {Array<Object>} dataChords      Plotting information for each block chord
+ * @param  {boolean} shouldUpdateLayout    True if Circos layout should be updated, otherwise false
+ * @return {undefined}                     undefined
+ */
+export function showSavedLayout(dataChromosomes, dataChords, shouldUpdateLayout) {
+  // Show best / saved layout checkbox
+  let showBestPossibleLayout =
+    d3Select("p.show-best-layout input").property("checked");
+
+  if (shouldUpdateLayout && showBestPossibleLayout) {
+    const { currentPosition, key } = lookUpPositionCollisionsDictionary(dataChromosomes, dataChords);
+    const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
+
+    showBestPossibleLayout = showBestPossibleLayout && currentPosition !== (-1);
+
+    if (showBestPossibleLayout) {
+      const { bestFlippedChromosomes, bestSolution } = savedCollisionSolutionsDictionary[key][currentPosition];
+
+      console.log('FOUND LAYOUT: ', bestFlippedChromosomes, bestSolution);
+
+      // Here I do not need to re-render if dataChromosomes and bestSolution are the same,
+      // because I didn't modify the layout
+      callSwapPositionsAnimation({
+        dataChromosomes: dataChromosomes,
+        bestSolution: bestSolution,
+        bestFlippedChromosomes: bestFlippedChromosomes,
+        updateWhenSame: false
+      });
+    }
+  }
+};
+
+/**
+ * Disables show saved layout when operations lead to a worse solution
+ * NOTE: This is called when resetting layout, flipping or dragging a chr,
+ * and after running SA
+ *
+ * @param  {Array<Object>|Array<string>} dataChromosomes  Current chromosomes in the Circos plot
+ * @param  {Array<Object>} dataChordsSA     Plotting information for each block chord
+ * @param  {number} currentCollisionCount   Current collision count for the view
+ * @return {undefined}                      undefined
+ */
+export function disableShowSavedLayout(dataChromosomes, dataChords, currentCollisionCount) {
+  // Do not enter function if input is empty (not defined) or is already false
+  if (d3Select("p.show-best-layout input").empty() ||
+    !d3Select("p.show-best-layout input").property("checked")) return;
+
+  const { currentPosition, key } = lookUpPositionCollisionsDictionary(dataChromosomes, dataChords);
+  const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
+  if (currentPosition !== (-1)) {
+    if (currentCollisionCount == null) {
+      // Disable checkbox because operations might lead to a worse or better solution
+      d3Select("p.show-best-layout input").property("checked", false);
+      return;
+    }
+
+    const { collisionCount } = savedCollisionSolutionsDictionary[key][currentPosition];
+
+    // This extra check is only done after running SA
+    if (collisionCount > currentCollisionCount) {
+      console.log('COLLISION COUNT: ', collisionCount, currentCollisionCount);
+
+      // Disable checkbox because saved solution is worse than actual one
+      d3Select("p.show-best-layout input").property("checked", false);
+    }
+  }
+
+  return;
+};
+
+/**
  * Updating the label showing the number of block collisions
  * NOTE: Using paralleljs to do the calculation asynchronously
  *
  * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
  * @param  {Array<Object>} dataChords      Plotting information for each block chord
+ * @param  {boolean} shouldUpdateLayout    True if Circos layout should be updated, otherwise false
  * @return {undefined}                     undefined
  */
-export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
+export function updateBlockCollisionHeadline(dataChromosomes, dataChords, shouldUpdateLayout) {
   console.log('Updating block collision headline !!!');
   updateWaitingBlockCollisionHeadline();
 
@@ -539,6 +614,10 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
     .attr("disabled", true);
 
   d3Select(".save-layout > input")
+    .attr("disabled", true);
+
+  // Disabling show saved layout because I need the chromosomes and chords data
+  d3Select("p.show-best-layout input")
     .attr("disabled", true);
 
   // I want to get the results from the last set of chromosomes that was called
@@ -579,11 +658,15 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
 
       console.log("COLLISION COUNT: " + collisionCount);
 
-      // Enabling minimize collisions and save layout buttons after calculations are done
+      // Enabling minimize collisions, save layout, and show saved layout
+      // after calculations are done
       d3Select(".best-guess > input")
         .attr("disabled", null);
 
       d3Select(".save-layout > input")
+        .attr("disabled", null);
+
+      d3Select("p.show-best-layout input")
         .attr("disabled", null);
 
       // Update block-collisions-headline with current collision count
@@ -607,7 +690,11 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
           return textToShow;
         });
 
+      // ETA info
       calculateDeclutteringETA();
+
+      // Show updated layout if it is saved
+      showSavedLayout(currentDataChromosomes, currentDataChords, shouldUpdateLayout);
     }
   });
 };
@@ -850,12 +937,17 @@ function transitionSwapOldToNew({
  * Looks up position in collisions dictionary
  * TODO: Move this to variable folder
  *
- * @param  {Array<Object>} bestSolution Data for best solution chromosomes
+ * @param  {Array<Object>|Array<string>} bestSolution Data for best solution chromosomes
  * @param  {Array<Object>} dataChords   Plotting information for each block chord
  * @return {Object}                     Position and key in collisions dictionary
  */
 export function lookUpPositionCollisionsDictionary(bestSolution, dataChords) {
-  const bestSolutionChromosomeOrder = toChromosomeOrder(bestSolution);
+  let bestSolutionChromosomeOrder = bestSolution;
+  // If object inside has id, then generate chromosome order
+  // If not, it means that it's already in chromosome order format (array of strings)
+  if (bestSolution[0] && bestSolution[0].id) {
+    bestSolutionChromosomeOrder = toChromosomeOrder(bestSolution);
+  }
 
   // Look for current savedCollisionSolutionsDictionary
   const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
@@ -1557,7 +1649,6 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
             // If chromosome id is present, then remove it
             if (currentPosition !== (-1)) {
               flippedChromosomesSimulatedAnnealing.splice(currentPosition, 1);
-              //console.log('HERE REMOVING 1!!!');
             } else {
               flippedChromosomesSimulatedAnnealing.push(currentID);
             }
@@ -1682,18 +1773,19 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
 
                   const afterCheckFlippedChromosomes = bestFlippedChromosomes.slice();
                   const currentPosition = afterCheckFlippedChromosomes.indexOf(bestFlippedChromosomes[i]);
+                  // Removing chromosome from list of flipped ones
                   afterCheckFlippedChromosomes.splice(currentPosition, 1);
 
+                  // Applying flipping again with the excluded flipped chromosome
                   dataChords = cloneDeep(applyFlippingDataChords(dataChords, afterCheckFlippedChromosomes));
-
                   const { collisionCount: neighborEnergy } = await getBlockCollisions(bestSolution, dataChords);
 
-                  if (neighborEnergy < bestEnergy) {
+                  if (neighborEnergy <= bestEnergy) {
+                    // Only keeping the flipped chromosomes that make my layout better
                     console.log('EXCLUDING CHR: ', bestFlippedChromosomes[i]);
                     bestEnergy = neighborEnergy;
                     excludeFlippedChromosomes.push(bestFlippedChromosomes[i]);
                   }
-
               }, afterCheckTime);
             })(afterCheckTime, i + 1);
 
@@ -1712,17 +1804,11 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
           bestFlippedChromosomes = difference(bestFlippedChromosomes, excludeFlippedChromosomes);
         }
 
-        // TODO: Revisit this dataChords, create function and centralize
-        const { currentPosition, key } = lookUpPositionCollisionsDictionary(bestSolution, dataChords);
-        const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
-        if (currentPosition !== (-1)) {
-          const { collisionCount } = savedCollisionSolutionsDictionary[key][currentPosition];
-
-          if (collisionCount > bestEnergy) {
-            // Disable checkbox because saved solution is worse than actual one
-            d3Select('p.show-best-layout input').property("checked", false);
-          }
-        }
+        // Checking if saved solution is worse than actual one, to disable saved input
+        // NOTE: After running SA, the saved solution will never be better than the actual one,
+        // because when running SA, the result can never be worse,
+        // it will be better or the same
+        disableShowSavedLayout(bestSolution, dataChords, bestEnergy);
 
         // Getting rid of the blurred view
         d3SelectAll("svg#genome-view,#block-view-container")
