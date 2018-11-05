@@ -423,6 +423,12 @@ export function calculateDeclutteringETA() {
       updatedRatio = 0.02;
     }
 
+    // Entering loop around 100 times
+    if (collisionCount >= 75000) {
+      updatedTemperature = 10000;
+      updatedRatio = 0.08;
+    }
+
     updateTemperature(updatedTemperature, false);
     updateRatio(updatedRatio, false);
   }
@@ -1153,17 +1159,6 @@ export function swapPositionsAnimation({
     if (!isEqual(allFlippedChromosomes, bestFlippedChromosomes)) {
       const unionFlippedChromosomes = union(allFlippedChromosomes, bestFlippedChromosomes);
 
-      // Resetting zoom state object for all affected chords
-      d3SelectAll("path.chord")
-        .each(function(d) {
-          // Only resetting the chords that WILL BE present in the flipping animation
-          if (unionFlippedChromosomes.indexOf(d.source.id) === (-1) &&
-            unionFlippedChromosomes.indexOf(d.target.id) === (-1)) return;
-
-          const blockID = d.source.value.id;
-          resetZoomBlockView(blockID);
-        });
-
       const chrBlockDictionary = {};
       const blockChrDictionary = {};
       const visitedChrForFlipping = [];
@@ -1208,6 +1203,8 @@ export function swapPositionsAnimation({
         if (allTrue) {
           visitedChrForFlipping[affectedChromosomes[1]] = true;
         }
+
+        return;
       };
 
       const blockDictionary = getBlockDictionary();
@@ -1318,6 +1315,7 @@ export function swapPositionsAnimation({
                 visitedBlockForFlipping[blockID] = true;
               }
 
+              // Checking and marking chromosomes as visited
               checkChrForFlipping(affectedChromosomes);
             });
         }
@@ -1351,13 +1349,19 @@ export function swapPositionsAnimation({
               console.log('affectedBlocks: ', affectedBlocks);
 
               for (let j = 0; j < affectedBlocks.length; j++) {
-                visitedBlockForFlipping[affectedBlocks[j]] = true;
+                // Resetting zoom state object for all affected chords
+                // Only resetting the chords that WERE present in the flipping animation
+                const blockID = affectedBlocks[j];
+                resetZoomBlockView(blockID);
+                // Marking block as visited
+                visitedBlockForFlipping[blockID] = true;
               }
 
               for (let j = 0; j < affectedBlocks.length; j++) {
                 const blockID = affectedBlocks[j];
                 const affectedChromosomes = blockChrDictionary[blockID];
 
+                // Checking and marking chromosomes as visited
                 checkChrForFlipping(affectedChromosomes);
               }
 

@@ -356,13 +356,6 @@ function generateCircosLayout() {
 
         const currentID = d.id; // Current chromosome ID
 
-        // Resetting zoom state object for all affected chords
-        for (let i = 0; i < dataChords.length; i++) {
-          if (dataChords[i].source.id !== currentID && dataChords[i].target.id !== currentID) continue;
-          const blockID = dataChords[i].source.value.id;
-          resetZoomBlockView(blockID);
-        }
-
         const currentPosition = currentFlippedChromosomes.indexOf(currentID);
 
         // If chromosome id is present, then remove it
@@ -376,12 +369,17 @@ function generateCircosLayout() {
 
         setCurrentFlippedChromosomes(currentFlippedChromosomes);
 
-        // Call flipping function to emphasize the flipped blocks only
-        transitionFlipping({
+        // Call flipping function emphasizing the flipped blocks only
+        const affectedBlocks = transitionFlipping({
           currentChr: currentID,
           currentFlippedChromosomes: currentFlippedChromosomes,
           dataChromosomes: dataChromosomes
         });
+
+        // Resetting zoom state object for all affected chords
+        for (let j = 0; j < affectedBlocks.length; j++) {
+          resetZoomBlockView(affectedBlocks[j]);
+        }
 
         let shouldUpdateLayout = false;
         if (isAdditionalTrackAdded() ||
@@ -537,6 +535,7 @@ function generatePathGenomeView({
     opacity: function(d) {
       if (foundCurrentSelectedBlock) {
         if (isEqual(d.source.value.id, currentSelectedBlock)) {
+          d3.select(this).raise();
           return 0.9;
         } else {
           return 0.3;

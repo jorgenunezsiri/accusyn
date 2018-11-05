@@ -249,7 +249,7 @@ export default function generateBlockView(data) {
         .style("transform", `translate(0px,${blockZoomStateDictionary[blockID].zoom.y}px)
           scale(1,${blockZoomStateDictionary[blockID].zoom.k})`);
 
-      console.log('GLOBAL ZOOM: ', blockZoomStateDictionary[blockID].zoom.k);
+      console.log('GLOBAL ZOOM: ', blockZoomStateDictionary[blockID].zoom);
 
       setBlockViewZoomStateDictionary(blockZoomStateDictionary);
     })
@@ -626,7 +626,7 @@ export default function generateBlockView(data) {
 
       showZoomStateHint();
 
-      // If block is flipped and checkbox is not checked, then flip it
+      // If block state is flipped then change the y[1] axis to be flipped
       if (blockZoomStateDictionary[blockID].flipped) {
 
         // Need to enter if state is flipped, because if the user resets the view
@@ -692,10 +692,9 @@ export default function generateBlockView(data) {
           }
         })
         .on("mouseout", function(d, i, nodes) {
-          // Only activate if the user is not zooming, axis mouse down is not set,
-          // and SA is not running
-          if (isZooming || currentAxisMouseDown !== "" ||
-            d3.select(".best-guess > input").attr("disabled")) return;
+          // Always activate since this will remove the tooltip,
+          // preventing it from blocking (obstructing) the view from the user when
+          // doing other operations such as dragging or zooming
 
           tooltipDiv.transition()
             .duration(500)

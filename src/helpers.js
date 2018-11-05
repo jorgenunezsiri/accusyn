@@ -736,7 +736,7 @@ export function updateAngle(nAngle = 0, nDragging = 0) {
 /**
  * Updates the temperature for the Simulated Annealing algorithm in the genome view
  *
- * @param  {number} temperature Current temperature between 100 and 30,000
+ * @param  {number} temperature Current temperature between 100 and 200,000
  * @param  {boolean} updateETA Whether or not the decluttering ETA should be updated
  * @return {undefined}          undefined
  */
@@ -751,7 +751,7 @@ export function updateTemperature(temperature, updateETA = true) {
 /**
  * Updates the ratio for the Simulated Annealing algorithm in the genome view
  *
- * @param  {number}  ratio     Current ratio between 0.001 and 0.1
+ * @param  {number}  ratio     Current ratio between 0.001 and 0.2
  * @param  {boolean} updateETA Whether or not the decluttering ETA should be updated
  * @return {undefined}    undefined
  */
