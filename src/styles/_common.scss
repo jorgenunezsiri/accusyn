@@ -8,8 +8,9 @@ select {
   cursor: pointer;
 }
 
-p, span, h6 {
-  font-size: 14px;
+p, label, span, h6 {
+  font-size: 10px;
+  margin-bottom: 5px;
 }
 
 h6 {
@@ -62,16 +63,23 @@ label {
 
 // Container for bootstrap alert
 .alert {
+  font-size: 11px;
   left: 50%;
   position: fixed;
-  top: 20px;
+  top: 10px;
   transform: translate(-50%, 0);
+  white-space: nowrap;
   z-index: 10;
-}
 
-// Button for bootstrap alert
-button.close > span {
-  font-size: 24px;
+  // Button for bootstrap alert
+  &.alert-dismissible button.close {
+    padding: 9px 22px;
+
+    > span {
+      display: block;
+      font-size: 18px;
+    }
+  }
 }
 
 // Styles for Reactstrap Modal
@@ -89,16 +97,16 @@ button.close > span {
 #loader {
   -webkit-animation: spin 2s linear infinite;
   animation: spin 2s linear infinite;
-  border: 16px solid #f3f3f3;
+  border: 12px solid #f3f3f3;
   border-radius: 50%;
-  border-top: 16px solid #3498db;
-  border-bottom: 16px solid #3498db;
-  height: 150px;
+  border-top: 12px solid #3498db;
+  border-bottom: 12px solid #3498db;
+  height: 100px;
   left: 50%;
   margin: -75px 0 0 -75px;
   position: absolute;
   top: 50%;
-  width: 150px;
+  width: 100px;
   z-index: 1;
 }
 
@@ -128,4 +136,59 @@ button.close > span {
 @keyframes animatebottom {
   from { bottom: -200px; opacity: 0; }
   to { bottom: 0; opacity: 1; }
+}
+
+// Input range styles
+// More info: https://css-tricks.com/styling-cross-browser-compatible-range-inputs-css/
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    background: #ffffff;
+    border: 1px solid #000000;
+    border-radius: 3px;
+    box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+    cursor: pointer;
+    height: 16px;
+    margin-top: -5px;
+    width: 10px;
+  }
+
+  &::-webkit-slider-runnable-track {
+    background: #3b88fd;
+    border: 0.2px solid #010101;
+    border-radius: 1.3px;
+    box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+    cursor: pointer;
+    height: 6px;
+    width: 100%;
+  }
+
+  &:focus {
+    opacity: 0.9;
+    outline: none;
+
+    &::-webkit-slider-runnable-track {
+      background: #3498db;
+    }
+
+    &::-webkit-slider-thumb {
+      background: #eeeeee;
+    }
+  }
+
+  &:disabled {
+    &::-webkit-slider-runnable-track {
+      background-color: #eeeeee;
+      color: #666666;
+      cursor: default;
+      opacity: 0.5;
+    }
+
+    &::-webkit-slider-thumb {
+      cursor: default;
+    }
+  }
 }

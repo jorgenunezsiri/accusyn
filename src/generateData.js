@@ -35,6 +35,7 @@ import {
   getSelectedCheckboxes,
   isInViewport,
   lookForBlocksPositions,
+  movePageContainerScroll,
   partitionGffKeys,
   resetChromosomeCheckboxes,
   roundFloatNumber,
@@ -1050,7 +1051,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   // Chromosomes title inside connections panel
   d3.select("#form-config div.chr-options")
     .append("p")
-    .attr("class","panel-subtitle disabled")
+    .attr("class","separator disabled")
     .html("────────────────────");
 
   // Adding the checkbox by using the partitionedGffKeys
@@ -1257,12 +1258,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
       // Move scroll to the end of the page, if element is not in viewport
       setTimeout(() => {
         if (!isInViewport(panel)) {
-          // More info: https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView
-          d3.select("#config").node().scrollIntoView({
-            behavior: "smooth",
-            block: "end",
-            inline: "nearest"
-          });
+          movePageContainerScroll("end");
         }
       }, 200);
     });
@@ -1352,7 +1348,11 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   d3.select("#config")
     .style("display", "block");
 
-  // Clicking informational and connections panel by default
-  d3.select(".information-panel-title").node().click();
-  d3.select(".connections-panel-title").node().click();
+  setTimeout(() => {
+    // Clicking informational and connections panel by default
+    // after the loader spinner animation is done
+    d3.select(".information-panel-title").node().click();
+    d3.select(".connections-panel-title").node().click();
+  }, 300);
+
 };

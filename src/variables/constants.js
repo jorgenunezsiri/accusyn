@@ -7,13 +7,13 @@ import {
 } from 'd3-scale-chromatic';
 
 const CONNECTION_COLOR = "sandybrown"; // Default connection color
-const GAP_AMOUNT = 0.04; // Circos plot gap - Value in radians
-const GENOME_INNER_RADIUS = 375; // Circos plot inner radius
-const GENOME_OUTER_RADIUS = GENOME_INNER_RADIUS + 50; // Circos plot outer radius
+const GAP_AMOUNT = 0.03; // Circos plot gap - Value in radians
+const GENOME_INNER_RADIUS = 245; // Circos plot inner radius
+const GENOME_OUTER_RADIUS = GENOME_INNER_RADIUS + 30; // Circos plot outer radius
 const RADIANS_TO_DEGREES = (180.0 / Math.PI); // Convert radians to degrees
 const DEGREES_TO_RADIANS = (Math.PI / 180.0); // Concert degrees to radians
-const WIDTH = 1100; // Circos plot width
-const HEIGHT = 1100; // Circos plot height
+const WIDTH = 700; // Circos plot width
+const HEIGHT = 700; // Circos plot height
 
 // Genome view
 const CIRCOS_CONF = {
@@ -24,9 +24,9 @@ const CIRCOS_CONF = {
   labels: {
     display: true,
     position: 'center',
-    size: '16', // 'px' is added in Circos library
+    size: '11', // 'px' is added in Circos library
     color: '#000000',
-    radialOffset: 20
+    radialOffset: 12
   },
   ticks: {
     display: false
@@ -42,26 +42,26 @@ const CIRCOS_CONF = {
 //  -> heatmap outside, histogram outside
 //  -> heatmap inside, histogram inside
 
-// Using 12% separation between inner and outer radius in tracks
-// and 3% separation from genome inner radius
+// Using 10% separation between inner and outer radius in tracks
+// and 2% separation from genome inner radius
 
 // Track inside top
-const TRACK_INNER_RADIUS_INSIDE_TOP = 0.85;
-const TRACK_OUTER_RADIUS_INSIDE_TOP = 0.97;
+const TRACK_INNER_RADIUS_INSIDE_TOP = 0.88;
+const TRACK_OUTER_RADIUS_INSIDE_TOP = 0.98;
 // Track inside bottom
-const TRACK_INNER_RADIUS_INSIDE_BOTTOM = 0.70;
-const TRACK_OUTER_RADIUS_INSIDE_BOTTOM = 0.82;
+const TRACK_INNER_RADIUS_INSIDE_BOTTOM = 0.76;
+const TRACK_OUTER_RADIUS_INSIDE_BOTTOM = 0.86;
 
 // Track outside top
-const TRACK_INNER_RADIUS_OUTSIDE_TOP = 1.18;
-const TRACK_OUTER_RADIUS_OUTSIDE_TOP = 1.30;
+const TRACK_INNER_RADIUS_OUTSIDE_TOP = 1.14;
+const TRACK_OUTER_RADIUS_OUTSIDE_TOP = 1.24;
 // Track outside bottom
-const TRACK_INNER_RADIUS_OUTSIDE_BOTTOM = 1.03;
-const TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM = 1.15;
+const TRACK_INNER_RADIUS_OUTSIDE_BOTTOM = 1.02;
+const TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM = 1.12;
 
 // Transform changes when adding tracks
 const SCALE_DECREASE = 6; // 6% scaling decrese
-const TRANSLATE_INSCREASE = 40; // 40px increase in both x and y coordinates
+const TRANSLATE_INSCREASE = 24; // 24px increase in both x and y coordinates
 
 // Categorical color scales - palettes
 // Each scale is using 8 colors

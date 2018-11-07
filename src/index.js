@@ -2,6 +2,7 @@ import * as d3 from 'd3';
 
 import generateData from './generateData';
 import {
+  detectDeviceType,
   getQueryString,
   isUrlFound,
   renderReactAlert
@@ -210,19 +211,37 @@ const processCollinearity = function processCollinearity(fileName, callback) {
     renderReactAlert(
       "Please, use the latest version of Google Chrome for the best app experience.",
       "danger",
-      10000
+      15000
+    );
+
+    return;
+  }
+
+  console.log('SCREN WIDTH: ', window.screen.width, detectDeviceType(window.navigator.userAgent).type);
+
+  // Alerting the user and returning early if not Desktop browser
+  const deviceType = detectDeviceType(window.navigator.userAgent).type;
+  if (deviceType !== 'desktop') {
+    // Showing alert using react
+    renderReactAlert(
+      `Please, use a desktop browser for the best app experience.
+      Your current device is ${deviceType}.`,
+      "danger",
+      15000
     );
 
     return;
   }
 
   // Alerting the user and returning early if not Desktop resolution
-  if (window.screen.width < 1024) {
+  const screenWidth = window.screen.width;
+  if (screenWidth < 1440) {
     // Showing alert using react
     renderReactAlert(
-      "Please, use a Desktop resolution of at least 1024x768 pixels for the best app experience.",
+      `Please, use a desktop screen width of at least 1440 pixels for the best app experience.
+      Your current screen width is ${screenWidth} pixels.`,
       "danger",
-      10000
+      15000
     );
 
     return;
@@ -273,7 +292,7 @@ const processCollinearity = function processCollinearity(fileName, callback) {
     renderReactAlert(
       "The current url parameters are not valid. Please, try again!",
       "danger",
-      10000
+      15000
     );
   }
 

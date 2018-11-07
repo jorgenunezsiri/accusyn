@@ -2,11 +2,10 @@
 
 svg#genome-view {
   margin-left: 25px;
-  margin-top: 75px;
+  margin-top: 65px;
 
   &.dark-mode {
     background-color: #222222;
-    margin-top: 85px; // +10px in dark-mode
   }
 
   &.blur-view {
@@ -20,10 +19,10 @@ div.genome-view-container {
 
   .progress {
     display: none;
-    height: 32px;
+    height: 23px;
     left: 50%;
     position: absolute;
-    top: 625px; // (height of circos plot / 2) + genome-view margin-top
+    top: 415px; // (height of circos plot / 2) + genome-view margin-top
     transform: translate(-50%, 0);
     width: 40%;
 
@@ -31,13 +30,13 @@ div.genome-view-container {
       background-color: #3498db;
       color: black;
       display: none;
+      font-size: 10px;
       transition: none;
     }
   }
 
   svg#genome-view {
     &.dark-mode + .progress {
-      top: 635px; // +10px in dark-mode
       .progress-bar {
         color: #ffffff;
       }
@@ -71,9 +70,9 @@ div.circos-tooltip {
 
   &.outside {
     border: 2px solid #ea4848;
-    left: 65% !important;
+    left: 64% !important;
     position: fixed;
-    top: 1000px !important; // genome-view height
-    transform: translate(-35%, 0) !important;
+    top: 665px !important; // genome-view height
+    transform: translate(-36%, 0) !important;
   }
 }

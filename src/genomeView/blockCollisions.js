@@ -24,6 +24,7 @@ import {
   flipGenesPosition,
   getChordsRadius,
   getFlippedGenesPosition,
+  movePageContainerScroll,
   renderReactAlert,
   resetInputsAndSelectsOnAnimation,
   roundFloatNumber,
@@ -369,14 +370,14 @@ export function getBlockCollisions(dataChromosomes, dataChords, shouldReturnProm
  */
 export function updateWaitingBlockCollisionHeadline() {
   d3Select(".block-collisions-headline")
-    .text("Updating block collisions ...");
+    .html("<em>Updating block collisions ...</em>");
 
   d3Select(".filter-sa-hint")
     .style("color", "#000")
-    .text("Updating decluttering ETA ...");
+    .html("<em>Updating decluttering ETA ...</em>");
 
   d3Select(".superimposed-block-collisions-headline")
-    .text("Updating superimposed collisions ...");
+    .html("<em>Updating superimposed collisions ...</em>");
 };
 
 /**
@@ -1038,6 +1039,9 @@ export function swapPositionsAnimation({
     // Showing alert using react
     renderReactAlert("The layout was successfully updated.", "success");
 
+    // Move scroll to start when successfully running SA, resetting the layout, or
+    // showing a saved layout
+    movePageContainerScroll("start");
 
     const chromosomeOrder = toChromosomeOrder(dataChromosomes);
 
@@ -1278,7 +1282,7 @@ export function swapPositionsAnimation({
 
       // bestFlippedChromosomes is assuming that the previous flipped chromosomes are going to be included
       // meaning that it is never going to be empty if we are at this point
-      // With the exception of resetting the layout and restoring the default view.
+      // With the exception of resetting the layout and restoring the default view (if it was saved)
       // For those cases, I can't take the initial and final positions and visited decisions into account
 
       if (bestFlippedChromosomes.length > 0) {

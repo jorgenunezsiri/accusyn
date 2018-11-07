@@ -5,6 +5,8 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import AlertWithTimeout from './reactComponents/Alert';
 
+import UAParser from 'ua-parser-js';
+
 import cloneDeep from 'lodash/cloneDeep';
 import find from 'lodash/find';
 import findIndex from 'lodash/findIndex';
@@ -324,7 +326,7 @@ export function getTransformValuesAdditionalTracks() {
     if (selectedHistogramTrack !== 'None' && trackPlacementHistogramTrack === 'Outside') howManyOutside++;
 
     if (howManyOutside >= 1) {
-      // Decreasing 6% of scale -> (100 - (6 * #ofTracksOutside) / 100
+      // Decreasing 6% of scale -> (100 - (6 * #ofTracksOutside) / 100)
       scale = (100 - (SCALE_DECREASE * howManyOutside)) / 100;
       translate.width = translate.width + (TRANSLATE_INSCREASE * howManyOutside);
       translate.height = translate.height + (TRANSLATE_INSCREASE * howManyOutside);
@@ -515,7 +517,7 @@ export function roundFloatNumber(value, decimalPlaces = 0) {
  * More info: https://gomakethings.com/how-to-test-if-an-element-is-in-the-viewport-with-vanilla-javascript/
  *
  * @param  {Object}  elem Current node element
- * @return {oolean}       True if element is in viewport, false otherwise
+ * @return {boolean}      True if element is in viewport, false otherwise
  */
 export function isInViewport(elem) {
   const bounding = elem.getBoundingClientRect();
@@ -526,6 +528,40 @@ export function isInViewport(elem) {
       bounding.bottom <= (window.innerHeight || html.clientHeight) &&
       bounding.right <= (window.innerWidth || html.clientWidth)
   );
+};
+
+/**
+ * Moves the scroll of the page
+ *
+ * @param  {string} position Start or end position
+ * @return {undefined}       undefined
+ */
+export function movePageContainerScroll(position) {
+  // Returning early if going to top but already in top
+  if (position === "start" && window.scrollY === 0) return;
+
+  // More info: https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView
+  d3.select("#page-container").node().scrollIntoView({
+    behavior: "smooth",
+    block: position,
+    inline: "nearest"
+  });
+};
+
+/**
+ * Detects device type based on user agent
+ *
+ * @param  {string} userAgent Current user agent
+ * @return {Object}           Device type configurations
+ */
+export function detectDeviceType(userAgent) {
+  var parser = new UAParser(userAgent);
+  var device = parser.getDevice() || {};
+  device.isMobile = device.type === 'mobile';
+  device.isTablet = device.type === 'tablet';
+  device.isDesktop = !device.isMobile && !device.isTablet;
+  device.type = device.type || 'desktop';
+  return device;
 };
 
 /**

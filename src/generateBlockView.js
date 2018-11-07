@@ -21,6 +21,7 @@ import isEqual from 'lodash/isEqual';
 
 import {
   getFlippedGenesPosition,
+  movePageContainerScroll,
   removeBlockView,
   resetInputsAndSelectsOnAnimation
 } from './helpers';
@@ -104,14 +105,14 @@ export default function generateBlockView(data) {
   let lastDraggingDistance = 0;
 
   const margin = {
-    top: 50,
-    right: 100,
-    bottom: 15,
-    left: 100
+    top: 35,
+    right: 80,
+    bottom: 10,
+    left: 80
   };
 
-  const widthBlock = 570 - margin.left - margin.right;
-  const heightBlock = 900 - margin.top - margin.bottom;
+  const widthBlock = 400 - margin.left - margin.right;
+  const heightBlock = 600 - margin.top - margin.bottom;
 
   // Set the ranges for x and y
   const y = [d3.scaleLinear().range([heightBlock, 0]), d3.scaleLinear().range([heightBlock, 0])];
@@ -151,7 +152,7 @@ export default function generateBlockView(data) {
   }
 
   let gY0, gY1, y0axis, y1axis, onInputChange = false,
-    isZooming = false;
+    isZooming = false, mouseOverBlockGroup = false;
   let dataBlock = [];
 
   /**
@@ -228,6 +229,12 @@ export default function generateBlockView(data) {
     .on("start", function() {
       // Activate if SA is not running
       if (d3.select(".best-guess > input").attr("disabled")) return;
+
+      // Move scroll to start before zooming, if currently
+      // doing mouseover on top of block group
+      if (mouseOverBlockGroup) {
+        movePageContainerScroll("start");
+      }
 
       console.log('ZOOMING');
       isZooming = true;
@@ -480,7 +487,7 @@ export default function generateBlockView(data) {
       }
 
       // Reset only y0 ticks to default state, because the animation happens on y1
-      y0axis = d3.axisLeft(y[0]).tickSize(20).ticks(10);
+      y0axis = d3.axisLeft(y[0]).tickSize(12).ticks(10);
       gY0.call(y0axis.scale(blockZoomStateDictionary[blockID].zoom.rescaleY(y[0])));
 
       // Saving the axis state in the dictionary
@@ -552,7 +559,7 @@ export default function generateBlockView(data) {
             newY[0].domain(blockZoomStateDictionary[blockID].y0Domain);
             newY[1].domain(blockZoomStateDictionary[blockID].y1Domain);
 
-            y1axis = d3.axisRight(newY[1]).tickSize(20).ticks(10);
+            y1axis = d3.axisRight(newY[1]).tickSize(12).ticks(10);
             gY1.call(y1axis.scale(blockZoomStateDictionary[blockID].zoom.rescaleY(newY[1])));
 
             // Plotting the lines path using the new scales
@@ -731,7 +738,7 @@ export default function generateBlockView(data) {
       }
 
       // Add the Y0 Axis
-      y0axis = d3.axisLeft(y[0]).tickSize(20);
+      y0axis = d3.axisLeft(y[0]).tickSize(12);
 
       // Remove axisY0 if it is present
       if (!svgBlock.selectAll("g.axisY0").empty()) {
@@ -746,7 +753,7 @@ export default function generateBlockView(data) {
         });
 
       // Add the Y1 Axis
-      y1axis = d3.axisRight(y[1]).tickSize(20);
+      y1axis = d3.axisRight(y[1]).tickSize(12);
 
       // Remove axisY1 if it is present
       if (!svgBlock.selectAll("g.axisY1").empty()) {
@@ -842,7 +849,7 @@ export default function generateBlockView(data) {
             // Adding the difference to current domain minimum and maximum values
             y[0] = y[0].domain([currentDomain[0] + draggingDistanceInverted, currentDomain[1] + draggingDistanceInverted]);
             // Re-defining axis with new domain
-            y0axis = d3.axisLeft(y[0]).tickSize(20);
+            y0axis = d3.axisLeft(y[0]).tickSize(12);
             // Scaling the axis in the block view
             gY0.call(y0axis.scale(blockZoomStateDictionary[blockID].zoom.rescaleY(y[0])));
           } else if (currentAxisMouseDown === 'axisY1') {
@@ -850,7 +857,7 @@ export default function generateBlockView(data) {
 
             const currentDomain = y[1].domain();
             y[1] = y[1].domain([currentDomain[0] + draggingDistanceInverted, currentDomain[1] + draggingDistanceInverted]);
-            y1axis = d3.axisRight(y[1]).tickSize(20);
+            y1axis = d3.axisRight(y[1]).tickSize(12);
             gY1.call(y1axis.scale(blockZoomStateDictionary[blockID].zoom.rescaleY(y[1])));
           }
 
@@ -916,6 +923,11 @@ export default function generateBlockView(data) {
       d3.select("svg.block-view g.clip-block-group")
         .call(zoom)
         .call(zoom.transform, getBlockViewZoomStateDictionary()[blockID].zoom);
+
+      // Adding mouseover/mouseout event listener to know when they happen
+      d3.select("svg.block-view g.clip-block-group")
+        .on("mouseover", function() { mouseOverBlockGroup = true; })
+        .on("mouseout", function() { mouseOverBlockGroup = false; });
     };
 
     console.log('TOTAL TIME: ', COLOR_CHANGE_TIME + (TRANSITION_NORMAL_TIME * MAX_INDEX_TRANSITION) + TRANSITION_FLIPPING_TIME);

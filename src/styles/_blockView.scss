@@ -4,7 +4,7 @@
   padding-right: 0;
 
   svg.block-view {
-    margin-top: 150px;
+    margin-top: 110px;
   }
 
   div.block-view-content {
@@ -20,7 +20,6 @@
     svg.block-view {
       background-color: #222222;
       border-radius: 20px;
-      margin-top: 160px; // +10px in dark-mode
     }
 
     text.axis-label,
@@ -47,24 +46,28 @@
   }
 
   .axis-label {
-    font-size: 16px;
+    font-size: 11px;
     text-anchor: middle;
+  }
+
+  g.tick text {
+    font-size: 9px;
   }
 
   .outer-content {
     margin: 0 auto;
-    max-width: 570px; // block-view width
+    max-width: 400px; // block-view width
   }
 
   .outer-clickable-content {
     display: flex;
     justify-content: space-between;
-    margin-top: 10px;
+    margin-top: 5px;
   }
 
   p {
     &.reset-button {
-      font-size: 14px;
+      font-size: 11px;
       margin-left: 20px;
 
       > input {

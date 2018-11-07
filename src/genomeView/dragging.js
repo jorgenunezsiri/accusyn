@@ -4,6 +4,7 @@ import find from 'lodash/find';
 import generateGenomeView  from './generateGenomeView';
 import {
   getChordsRadius,
+  movePageContainerScroll,
   resetInputsAndSelectsOnAnimation,
   updateAngle
 } from './../helpers';
@@ -308,6 +309,9 @@ function onStartDragging(dataChromosomes) {
 
   if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "" ||
     d3.select(".best-guess > input").attr("disabled")) return;
+
+  // Moving page to top if it is scrolled, to be able to calculate the correct angle
+  movePageContainerScroll("start");
 
   // Removing clones if they exists
   d3.selectAll(`g.${currentChromosomeMouseDown}-clone`).remove();

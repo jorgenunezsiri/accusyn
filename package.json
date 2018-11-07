@@ -30,6 +30,7 @@
     "prop-types": "15.6.2",
     "sass-loader": "7.0.3",
     "strip-loader": "0.1.2",
+    "ua-parser-js": "0.7.19",
     "webpack": "3.11.0",
     "webpack-dev-server": "2.11.1"
   },
