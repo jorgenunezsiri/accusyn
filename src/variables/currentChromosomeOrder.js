@@ -50,7 +50,7 @@ export function setDefaultChromosomeOrder(order) {
  */
 export function toChromosomeOrder(dataChr, setAll = false) {
   let newChrOrder = dataChr.map(x => x.id);
-  const allChromosomes = _DEFAULT.slice();
+  const allChromosomes = getCurrentChromosomeOrder().slice();
 
   if (setAll && newChrOrder.length !== allChromosomes.length) {
     const notAddedChromosomes = [];

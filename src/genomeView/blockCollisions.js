@@ -25,6 +25,7 @@ import {
   getChordsRadius,
   getFlippedGenesPosition,
   movePageContainerScroll,
+  removeNonLettersFromString,
   renderReactAlert,
   resetInputsAndSelectsOnAnimation,
   roundFloatNumber,
@@ -1033,9 +1034,6 @@ export function swapPositionsAnimation({
     // NOTE: Current chromosome order variable always includes all the chromosomes
     setCurrentChromosomeOrder(toChromosomeOrder(bestSolution, true));
 
-    // NOTE: Flipped chromosomes already includes the other flipped chromosomes from the global array
-    setCurrentFlippedChromosomes(bestFlippedChromosomes);
-
     // Showing alert using react
     renderReactAlert("The layout was successfully updated.", "success");
 
@@ -1161,6 +1159,9 @@ export function swapPositionsAnimation({
     console.log('FLIPPED TRANSITION TIME: ', flippedTransitionTime);
 
     if (!isEqual(allFlippedChromosomes, bestFlippedChromosomes)) {
+      // NOTE: In SA, best flipped chromosomes starts with the other flipped chromosomes from the global array
+      setCurrentFlippedChromosomes(bestFlippedChromosomes);
+
       const unionFlippedChromosomes = union(allFlippedChromosomes, bestFlippedChromosomes);
 
       const chrBlockDictionary = {};
@@ -1447,7 +1448,7 @@ export function callSwapPositionsAnimation({
     resetInputsAndSelectsOnAnimation();
 
     // If they are the same and I can update (the flag is true),
-    // it means they have the same number of collisions.
+    // it means they have the same number of collisions (if coming from SA).
     // Re-render to keep everything untouched, specially the layout
     // NOTE: This is necessary when I'm using the myCircos.layout function
     // to modify the layout
@@ -1672,7 +1673,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
               currentID = newSolution[pos1].id.slice(0);
             } while(d3SelectAll(`path.chord.${currentID}`).empty());
 
-            const firstIdentifier = newSolution[pos1].id.slice(0).replace(/[^a-zA-Z]+/g, '');
+            const firstIdentifier = removeNonLettersFromString(newSolution[pos1].id.slice(0));
             // positionChecking - The chr should be selected from different positions
             // identifierChecking - The chr should be from same identifier when having
             // multiple genomes and when possible to do so
@@ -1683,7 +1684,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
             if (shouldKeepChromosomesTogether) {
               // Checking if there are multiple chr with same first identifier
               for (let i = 0; i < newSolution.length; i++) {
-                const currentIdentifier = newSolution[i].id.slice(0).replace(/[^a-zA-Z]+/g, '');
+                const currentIdentifier = removeNonLettersFromString(newSolution[i].id.slice(0));
                 if (currentIdentifier === firstIdentifier) {
                   countFirstIdentifier++;
                   if (countFirstIdentifier === 2) {
@@ -1706,7 +1707,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
               currentID = newSolution[pos2].id.slice(0);
 
               if (shouldKeepChromosomesTogether && multipleChrFirstIdentifier) {
-                const secondIdentifier = currentID.replace(/[^a-zA-Z]+/g, '');
+                const secondIdentifier = removeNonLettersFromString(currentID);
                 console.log('ENTERING IDENTIFIER HERE\n\n', currentID, secondIdentifier);
 
                 identifierChecking = firstIdentifier !== secondIdentifier;

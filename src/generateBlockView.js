@@ -233,7 +233,7 @@ export default function generateBlockView(data) {
       // Move scroll to start before zooming, if currently
       // doing mouseover on top of block group
       if (mouseOverBlockGroup) {
-        movePageContainerScroll("start");
+        movePageContainerScroll("start", "instant");
       }
 
       console.log('ZOOMING');

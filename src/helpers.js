@@ -533,16 +533,17 @@ export function isInViewport(elem) {
 /**
  * Moves the scroll of the page
  *
- * @param  {string} position Start or end position
- * @return {undefined}       undefined
+ * @param  {string} position  Start or end position
+ * @param  {string} animation Animation type: smooth or instant
+ * @return {undefined}        undefined
  */
-export function movePageContainerScroll(position) {
+export function movePageContainerScroll(position, animation = "smooth") {
   // Returning early if going to top but already in top
   if (position === "start" && window.scrollY === 0) return;
 
   // More info: https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView
   d3.select("#page-container").node().scrollIntoView({
-    behavior: "smooth",
+    behavior: animation,
     block: position,
     inline: "nearest"
   });
@@ -670,6 +671,16 @@ export function assignFlippedChromosomeColors({
 };
 
 /**
+ * Removes all non-letters from string using regular expression
+ *
+ * @param  {string} str Current string
+ * @return {string}     Modified string
+ */
+export function removeNonLettersFromString(str) {
+  return str.replace(/[^a-zA-Z]+/g, '');
+};
+
+/**
  * Partition Gff keys for the ordering inside the checkboxes
  *
  * @param  {Array<string>} gffKeys Array that includes the keys from the gff dictionary
@@ -683,7 +694,7 @@ export function partitionGffKeys(gffKeys) {
   // e.g. from gffCopy = ["at1, at2, at3"]
   // to gffCopy = ["at", "at", "at"]
   gffCopy = gffCopy.map(function(current) {
-    return current.replace(/[^a-zA-Z]+/g, '');
+    return removeNonLettersFromString(current);
   });
 
   // Creating a duplicate-free version of gffCopy array
@@ -742,6 +753,86 @@ export function sortGffKeys(gffKeys) {
   const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 
   return gffCopy.sort(collator.compare);
+};
+
+/**
+ * Flips or resets the chromosome order of the selected genome.
+ *
+ * @param {string} action          Action type: flip or reset
+ * @param {string} genome          Current genome
+ * @param {Array<string>} chromosomeOrder Current chromosome order with all the chromosomes
+ * @return {Array<string>}         Updated chromosome order
+ */
+export function flipOrResetChromosomeOrder({
+  action,
+  genome,
+  chromosomeOrder
+}) {
+  // Need to save each chromosome positions in case the chromosome are
+  // not one after the other
+  const chromosomePositions = []; // Saved positions for each chromosome
+  console.log('ACTION AND GENOME: ', action, genome);
+  console.log('CHR ORDER INSIDE F OR R: ', chromosomeOrder);
+
+  for (let i = 0; i < chromosomeOrder.length; i++) {
+    // Getting all the positions of the chromosomes from `genome`
+    const key = chromosomeOrder[i].slice(0);
+    if (removeNonLettersFromString(key) === genome) {
+      console.log('FOUND KEY: ', key, i);
+      chromosomePositions.push({
+        chr: chromosomeOrder[i],
+        pos: i
+      });
+    }
+  }
+
+  if (action === "Flip") {
+    // Return chromosomeOrder with the chromosomePositions inverted
+    let temp = 0;
+    for (let i = 0; i < chromosomePositions.length / 2; i++) {
+      temp = chromosomePositions[i].pos;
+      chromosomePositions[i].pos = chromosomePositions[chromosomePositions.length - i - 1].pos;
+      chromosomePositions[chromosomePositions.length - i - 1].pos = temp;
+    }
+  } else if (action === "Reset") {
+    // Return chromosomeOrder with the chromosomePositions in default order
+    // by sorting chromosomePositions in ascending order
+
+    // Using localCompare collator to sort alphanumeric strings.
+    // Same as sortGffKeys function
+    const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+    chromosomePositions.sort(function compare(a, b) {
+      return collator.compare(a.chr, b.chr);
+    });
+
+    let allNumericPositions = [];
+    for (let i = 0; i < chromosomePositions.length; i++) {
+      allNumericPositions.push(Number(chromosomePositions[i].pos));
+    }
+
+    // Sorting positions in ascending order
+    allNumericPositions.sort(function compare(a, b) {
+      if (a < b) return -1;
+      if (a > b) return 1;
+      return 0;
+    });
+
+    console.log('ALL NUMERIC POS: ', allNumericPositions);
+
+    // Assigning sorted positions properties to sorted strings
+    for (let i = 0; i < chromosomePositions.length; i++) {
+      chromosomePositions[i].pos = allNumericPositions[i];
+    }
+  }
+
+  // Assigning new chromosome positions in chromosomeOrder
+  for (let i = 0; i < chromosomePositions.length; i++) {
+    chromosomeOrder[chromosomePositions[i].pos] = chromosomePositions[i].chr.slice(0);
+  }
+
+  console.log('CHR ORDER: ', chromosomeOrder);
+
+  return chromosomeOrder;
 };
 
 /**

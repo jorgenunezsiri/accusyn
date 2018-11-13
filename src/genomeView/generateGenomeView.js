@@ -27,14 +27,16 @@ import generateBlockView, { resetZoomBlockView } from './../generateBlockView';
 import {
   assignFlippedChromosomeColors,
   calculateMiddleValue,
-  flipValueAdditionalTrack,
   flipGenesPosition,
+  flipOrResetChromosomeOrder,
+  flipValueAdditionalTrack,
   getChordsRadius,
   getInnerAndOuterRadiusAdditionalTracks,
   getFlippedGenesPosition,
   getSelectedCheckboxes,
   getTransformValuesAdditionalTracks,
   removeBlockView,
+  removeNonLettersFromString,
   resetInputsAndSelectsOnAnimation,
   renderReactAlert,
   roundFloatNumber,
@@ -69,12 +71,14 @@ import {
 } from './../variables/currentChromosomeMouseDown';
 import {
   getCurrentChromosomeOrder,
-  getDefaultChromosomeOrder
+  getDefaultChromosomeOrder,
+  toChromosomeOrder
 } from './../variables/currentChromosomeOrder';
 import {
   getCurrentFlippedChromosomes,
   setCurrentFlippedChromosomes
 } from './../variables/currentFlippedChromosomes';
+import { generateUpdatedDataChromosomesFromOrder } from './../variables/dataChromosomes';
 import {
   getGffDictionary,
   setGffDictionary
@@ -148,9 +152,9 @@ function getDataChromosomes() {
     // Coloring flipped chromosomes
     setGffDictionary(assignFlippedChromosomeColors({
       colorScale: d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES['Flipped']).domain([0, 1]),
-      currentFlippedChromosomes: getCurrentFlippedChromosomes(),
-      gffKeys: getDefaultChromosomeOrder(),
-      gffPositionDictionary: getGffDictionary()
+      currentFlippedChromosomes: getCurrentFlippedChromosomes().slice(),
+      gffKeys: getDefaultChromosomeOrder().slice(),
+      gffPositionDictionary: cloneDeep(getGffDictionary())
     }));
   }
 
@@ -159,7 +163,7 @@ function getDataChromosomes() {
 
   // Using currentChromosomeOrder array to add selected chromosomes to the genome view
   for (let i = 0; i < currentChromosomeOrder.length; i++) {
-    const key = currentChromosomeOrder[i];
+    const key = currentChromosomeOrder[i].slice(0);
 
     const currentObj = {
       color: gffPositionDictionary[key].color,
@@ -698,22 +702,10 @@ function generatePathGenomeView({
       disableShowSavedLayout(dataChromosomes, dataChords);
 
       const localDataChromosomes = cloneDeep(dataChromosomes);
-      // Only choose the current ones from localDataChromosomes
-      const currentChromosomeOrder = getDefaultChromosomeOrder().reduce(
-        function(dataInside, currentChr) {
-          const position = findIndex(localDataChromosomes, ['id', currentChr]);
-          if (position !== (-1)) dataInside.push(currentChr);
-          return dataInside;
-        }, []);
+      const orderedDataChromosomes =
+        generateUpdatedDataChromosomesFromOrder(getDefaultChromosomeOrder().slice(), localDataChromosomes);
 
-      console.log('CURRENT ORDER: ', currentChromosomeOrder);
-
-      const orderedDataChromosomes = currentChromosomeOrder.map(function(currentChr) {
-        const position = findIndex(localDataChromosomes, ['id', currentChr]);
-
-        return cloneDeep(localDataChromosomes[position]);
-      });
-
+      // To introduce start and end properties into dataChromosomes
       myCircos.layout(localDataChromosomes, CIRCOS_CONF);
       myCircos.layout(orderedDataChromosomes, CIRCOS_CONF);
 
@@ -724,6 +716,58 @@ function generatePathGenomeView({
         dataChromosomes: localDataChromosomes,
         bestSolution: orderedDataChromosomes,
         bestFlippedChromosomes: [] // No flipped chromosomes in the default view
+      });
+    });
+
+  // Change chromosome order
+  d3.select("div.change-chromosome-positions p.apply-button > input")
+    .on("click", function() {
+      const action = d3.select('.change-chromosome-positions select.flip-reset').property("value");
+      const genome = d3.select('.change-chromosome-positions select.all-genomes').property("value");
+
+      // Check if genome is available in current layout
+      let foundGenome = false;
+      for (let i = 0; i < dataChromosomes.length; i++) {
+        const key = dataChromosomes[i].id;
+        if (removeNonLettersFromString(key) === genome) {
+          foundGenome = true;
+          break;
+        }
+      }
+
+      // If not able to find genome, then show error
+      if (!foundGenome) {
+        // Showing alert using react
+        renderReactAlert(`There are no chromosomes from genome ${genome} in the current layout.`);
+        return;
+      }
+
+      const localDataChromosomes = cloneDeep(dataChromosomes);
+
+      // Flipping or resetting genome chromosomes in the current layout
+      const chromosomeOrder = flipOrResetChromosomeOrder({
+        action: action,
+        genome: genome,
+        chromosomeOrder: toChromosomeOrder(localDataChromosomes).slice()
+      });
+
+      // Disable checkbox if there is a saved layout for the current configuration
+      disableShowSavedLayout(dataChromosomes, dataChords);
+
+      const updatedDataChromosomes =
+        generateUpdatedDataChromosomesFromOrder(chromosomeOrder, localDataChromosomes);
+
+      // To introduce start and end properties into dataChromosomes
+      myCircos.layout(localDataChromosomes, CIRCOS_CONF);
+      myCircos.layout(updatedDataChromosomes, CIRCOS_CONF);
+
+      console.log('OLD AND CURRENT: ', localDataChromosomes, updatedDataChromosomes);
+      console.log('UPDATED DATA CHR: ', updatedDataChromosomes);
+
+      callSwapPositionsAnimation({
+        dataChromosomes: localDataChromosomes,
+        bestSolution: updatedDataChromosomes,
+        bestFlippedChromosomes: getCurrentFlippedChromosomes().slice()
       });
     });
 }
@@ -822,8 +866,8 @@ export default function generateGenomeView({
     if (showingMultipleChromosomes && !showSelfConnectionsGenome) {
       // If no self connections for chromosomes are allowed, only add current connection if source
       // and target are chromosomes from different genomes
-      const sourceIdentifier = sourceID.slice(0).replace(/[^a-zA-Z]+/g, '');
-      const targetIdentifier = targetID.slice(0).replace(/[^a-zA-Z]+/g, '');
+      const sourceIdentifier = removeNonLettersFromString(sourceID.slice(0));
+      const targetIdentifier = removeNonLettersFromString(targetID.slice(0));
 
       shouldAddDataChord = shouldAddDataChord && ((sourceIdentifier !== targetIdentifier) ||
         (sourceIdentifier === targetIdentifier && sourceID === targetID));

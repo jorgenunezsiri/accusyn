@@ -311,7 +311,7 @@ function onStartDragging(dataChromosomes) {
     d3.select(".best-guess > input").attr("disabled")) return;
 
   // Moving page to top if it is scrolled, to be able to calculate the correct angle
-  movePageContainerScroll("start");
+  movePageContainerScroll("start", "instant");
 
   // Removing clones if they exists
   d3.selectAll(`g.${currentChromosomeMouseDown}-clone`).remove();
@@ -420,7 +420,7 @@ function onEndDragging(dataChromosomes, dataChords) {
   if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "" ||
     d3.select(".best-guess > input").attr("disabled")) return;
 
-  let currentChromosomeOrder = getCurrentChromosomeOrder();
+  let currentChromosomeOrder = getCurrentChromosomeOrder().slice();
 
   const darkMode = d3.select("p.dark-mode input").property("checked");
 

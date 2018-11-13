@@ -84,12 +84,12 @@ label {
 
 // Styles for Reactstrap Modal
 .modal-reactstrap {
-  h5 {
-    margin-bottom: 15px;
-  }
-
   p {
     margin-bottom: 10px;
+  }
+
+  button.close > span {
+    font-size: 18px;
   }
 }
 

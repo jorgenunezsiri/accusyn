@@ -37,6 +37,7 @@ import {
   lookForBlocksPositions,
   movePageContainerScroll,
   partitionGffKeys,
+  removeNonLettersFromString,
   resetChromosomeCheckboxes,
   roundFloatNumber,
   showChromosomeConnectionInformation,
@@ -588,7 +589,7 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
 
         for (let i = 0; i < gffKeys.length; i++) {
           // Removing all non-letters from current chr id
-          const currentIdentifier = gffKeys[i].replace(/[^a-zA-Z]+/g, '');
+          const currentIdentifier = removeNonLettersFromString(gffKeys[i]);
           gffPositionDictionary[gffKeys[i]].color = colors(gffKeysHashDictionary[currentIdentifier]);
         }
       } else {
@@ -725,6 +726,47 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
         </p>
       `;
     });
+
+  // Flip/Reset chromosome order (positions)
+  d3.select("#form-config .decluttering-panel ")
+    .append("div")
+    .attr("class", "change-chromosome-positions")
+    .append("p")
+    .text("Order:");
+
+  d3.select("#form-config .decluttering-panel .change-chromosome-positions")
+    .append("p")
+    .append("select")
+    .attr("class", "flip-reset")
+    .html(function() {
+      return `
+        <option value="Flip">Flip</option>
+        <option value="Reset">Reset</option>
+      `;
+    });
+
+  d3.select("#form-config .decluttering-panel .change-chromosome-positions")
+    .append("p")
+    .append("select")
+    .attr("class", "all-genomes")
+    .html(function() {
+      let inputOptions = "";
+      for (let i = 0; i < partitionedGffKeys.length; i++) {
+        inputOptions += `
+          <option value="${partitionedGffKeys[i]}">${partitionedGffKeys[i]}</option>
+        `;
+      }
+
+      return inputOptions;
+    });
+
+  d3.select("#form-config .decluttering-panel .change-chromosome-positions")
+    .append("p")
+    .attr("class", "apply-button")
+    .append("input")
+    .attr("type", "button")
+    .attr("value", "Apply")
+    .attr("title", "Flips or resets the chromosome order of the selected genome.");
 
   // Parameters title inside decluttering panel
   d3.select("#form-config .decluttering-panel")
@@ -1255,12 +1297,15 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
         panel.style.maxHeight = panel.scrollHeight + "px";
       }
 
-      // Move scroll to the end of the page, if element is not in viewport
-      setTimeout(() => {
-        if (!isInViewport(panel)) {
-          movePageContainerScroll("end");
-        }
-      }, 200);
+      // Move scroll to the end of the page, if element is not in viewport and
+      // maxHeight is defined i.e. the panel is opening
+      if (panel.style.maxHeight) {
+        setTimeout(() => {
+          if (!isInViewport(panel)) {
+            movePageContainerScroll("end");
+          }
+        }, 200);
+      }
     });
 
   // Setting initial Circos object

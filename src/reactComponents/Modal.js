@@ -64,7 +64,7 @@ class Modal extends React.Component {
 Modal.defaultProps = {
   buttonColor: "link",
   centered: true,
-  classname: "modal-reactstrap",
+  className: "modal-reactstrap",
   size: 'lg'
 };
 
