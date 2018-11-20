@@ -16,5 +16,5 @@ export function getCurrentChromosomeMouseDown() {
  * @return {undefined} undefined
  */
 export function setCurrentChromosomeMouseDown(currentChr) {
-  _currentChromosomeMouseDown = currentChr;
+  _currentChromosomeMouseDown = currentChr.slice(0);
 };

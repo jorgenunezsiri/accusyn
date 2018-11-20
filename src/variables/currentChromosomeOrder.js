@@ -1,5 +1,5 @@
 let _currentChromosomeOrder = []; // Array that stores the current order of chromosomes
-let _DEFAULT = null; // Array that stores the default order of chromosomes (i.e. increasing order)
+let _DEFAULT = []; // Array that stores the default order of chromosomes (i.e. increasing order)
 
 /**
  * Getter function for current chromosome order
@@ -36,9 +36,8 @@ export function getDefaultChromosomeOrder() {
  * @return {undefined} undefined
  */
 export function setDefaultChromosomeOrder(order) {
-  if (_DEFAULT === null) {
-    _DEFAULT = order.slice();
-  }
+  // Should only be modified in generateData function
+  _DEFAULT = order.slice();
 }
 
 /**

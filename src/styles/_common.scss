@@ -27,6 +27,10 @@ p {
   }
 }
 
+.disabled {
+  color: gainsboro;
+}
+
 input:disabled,
 select:disabled {
   background-color: #eeeeee;
@@ -69,7 +73,7 @@ label {
   top: 10px;
   transform: translate(-50%, 0);
   white-space: nowrap;
-  z-index: 10;
+  z-index: 9999; // Always show alert on top, specially when getting an error inside modal
 
   // Button for bootstrap alert
   &.alert-dismissible button.close {
@@ -84,12 +88,40 @@ label {
 
 // Styles for Reactstrap Modal
 .modal-reactstrap {
+  .modal-title {
+    margin-bottom: -5px;
+  }
+
+  p, label, span {
+    font-size: 11px;
+  }
+
   p {
     margin-bottom: 10px;
   }
 
   button.close > span {
     font-size: 18px;
+  }
+
+  .submit-main-files-form-container {
+    div.gff-file-upload-container {
+      p {
+        display: inline-block;
+      }
+    }
+
+    // To add cursor pointer to any input file adjacent to an span inside a label
+    label {
+      input[type="file"],
+      input::-webkit-file-upload-button {
+        cursor: pointer;
+      }
+    }
+
+    span + select {
+      margin-left: 4px;
+    }
   }
 }
 
@@ -104,10 +136,10 @@ label {
   height: 100px;
   left: 50%;
   margin: -75px 0 0 -75px;
-  position: absolute;
+  position: fixed;
   top: 50%;
   width: 100px;
-  z-index: 1;
+  z-index: 9999; // Always show loader on top, specially when loading files inside modal
 }
 
 @-webkit-keyframes spin {

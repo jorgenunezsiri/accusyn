@@ -979,7 +979,7 @@ export default function generateGenomeView({
 
   // Remove block view if user is filtering
   // and selected block is not present anymore
-  // OR when the block is simply not present (because of view changes (e.g. flipping a chromosome))
+  // OR when the block is simply not present (because of view changes (e.g. going to multi-chromosome view))
   // NOTE: When filtering there is NO transition
   const condition = ((transition && !transition.shouldDo && !foundCurrentSelectedBlock) ||
       !foundCurrentSelectedBlock) &&

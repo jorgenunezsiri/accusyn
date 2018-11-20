@@ -1,4 +1,4 @@
-import * as d3 from 'd3';
+import isString from 'lodash/isString';
 
 import generateData from './generateData';
 import {
@@ -7,6 +7,13 @@ import {
   isUrlFound,
   renderReactAlert
 } from './helpers';
+
+import {
+  processBedGraph,
+  processCollinearity,
+  processGFF,
+  processGFF3
+} from './processFiles';
 
 // Variables
 import { getCurrentHost } from './variables/currentHost';
@@ -18,191 +25,6 @@ if (process.env.NODE_ENV === 'production') {
   console.log('PRODUCTION MODE HERE!!!!');
 }
 */
-
-/**
- * Process BedGraph file (e.g. feature_count, feature_density)
- *
- * @param  {Array<string>} fileNames File names to read
- * @param  {Function}      callback  Callback function to be called
- * @return {undefined}               undefined
- */
-const processBedGraph = function processBedGraph(fileNames, callback) {
-  const allData = [];
-  for (let i = 0; i < fileNames.length; i++) {
-    d3.text(`./files/${fileNames[i]}.bg`, function(data) {
-      const result = `chromosomeID\tstart\tend\tvalue\n${data}`;
-      const returnData = d3.tsvParse(result).reduce((dataInside, current) => {
-        // Not including Scaffold chromosomes
-        if (!current.chromosomeID.startsWith('Scaffold') &&
-          !current.chromosomeID.startsWith('scaffold')) {
-
-          // To check if last character is a number.
-          // If not is treated as scaffold, i.e. current is not included
-          if (isFinite(current.chromosomeID[current.chromosomeID.length - 1])) {
-            dataInside.push(current);
-          }
-        }
-
-        return dataInside;
-      }, []);
-
-      allData.push({
-        data: returnData,
-        name: fileNames[i]
-      });
-
-      // First callback parameter is null if complete task is successful
-      if (i === (fileNames.length - 1)) callback(null, allData);
-    });
-  }
-};
-
-/**
- * Process simplified gff file
- *
- * @param  {string}   fileName File name to read
- * @param  {string}   fileType File type to read
- * @param  {Function} callback Callback function to be called
- * @return {undefined}         undefined
- */
-const processGFF = function processGFF(fileName, fileType, callback) {
-  return d3.text(`./files/${fileName}.${fileType}`, function(data) {
-    const result = `chromosomeID\tgeneID\tstart\tend\n${data}`;
-    const returnData = d3.tsvParse(result).reduce((dataInside, current) => {
-      // Not including Scaffold chromosomes
-      if (!current.chromosomeID.startsWith('Scaffold') &&
-        !current.chromosomeID.startsWith('scaffold')) {
-
-        // To check if last character is a number.
-        // If not is treated as scaffold, i.e. current is not included
-        if (isFinite(current.chromosomeID[current.chromosomeID.length - 1])) {
-          dataInside.push(current);
-        }
-      }
-
-      return dataInside;
-    }, []);
-
-    // First callback parameter is null if task is successful
-    callback(null, returnData);
-  });
-};
-
-/**
- * Process gff3 file
- *
- * @param  {string}   fileName File name to read
- * @param  {string}   fileType File type to read
- * @param  {Function} callback Callback function to be called
- * @return {undefined}         undefined
- */
-const processGFF3 = function processGFF3(fileName, fileType, callback) {
-  return d3.text(`./files/${fileName}.${fileType}`, function(data) {
-    const result = `chromosomeID\torigin\ttype\tstart\tend\tscore\tstrand\tphase\tattributes\n${data}`;
-    const returnData = d3.tsvParse(result).reduce((dataInside, current) => {
-      // Only including features that are mRNA
-      // and not including Scaffold chromosomes
-      if (current.type === 'mRNA' && !current.chromosomeID.startsWith('Scaffold') &&
-        !current.chromosomeID.startsWith('scaffold')) {
-
-        // To check if last character is a number.
-        // If not is treated as scaffold, i.e. current is not included
-        if (isFinite(current.chromosomeID[current.chromosomeID.length - 1])) {
-          dataInside.push(current);
-        }
-      }
-
-      return dataInside;
-    }, []);
-
-    // First callback parameter is null if task is successful
-    callback(null, returnData);
-  });
-};
-
-/**
- * Process collinearity file
- *
- * @param  {string}   fileName File name to read
- * @param  {Function} callback Callback function to be called
- * @return {undefined}         undefined
- */
-const processCollinearity = function processCollinearity(fileName, callback) {
-  let score = 0;
-  let eValueBlock = 0;
-  let sourceChromosome = null;
-  let targetChromosome = null;
-  let isFlipped = 'no';
-  let isScaffold = false;
-
-  return d3.text(`./files/${fileName}.collinearity`, function(data) {
-    const result = data.split('\n').reduce((dataInside, current) => {
-      const trimmedCurrent = current.trim();
-
-      // If the string is not empty
-      if (trimmedCurrent.length > 1) {
-        if (trimmedCurrent.startsWith('## Alignment')) {
-          isScaffold = false;
-
-          if (trimmedCurrent.includes('Scaffold') || trimmedCurrent.includes('scaffold')) {
-            isScaffold = true;
-            return dataInside; // Return before because it is Scaffold data
-          }
-
-          const currentLineSplit = trimmedCurrent.split(' ');
-          score = currentLineSplit[3].split('=')[1];
-          eValueBlock = currentLineSplit[4].split('=')[1];
-          const sourceAndTarget = currentLineSplit[6].split('&');
-          sourceChromosome = sourceAndTarget[0];
-          targetChromosome = sourceAndTarget[1];
-
-          // If last character from source or target is not a number, then return early
-          if (!isFinite(sourceChromosome[sourceChromosome.length - 1]) ||
-            !isFinite(targetChromosome[targetChromosome.length - 1])) {
-            isScaffold = true;
-            return dataInside; // Return before because it is Scaffold data
-          }
-
-          // Plus means not flipped, and minus means flipped
-          if (currentLineSplit[currentLineSplit.length - 1].trim() === 'plus') {
-            isFlipped = 'no';
-          } else if (currentLineSplit[currentLineSplit.length - 1].trim() === 'minus') {
-            isFlipped = 'yes';
-          }
-        } else if (!trimmedCurrent.startsWith('#')) {
-          if (isScaffold) {
-            return dataInside; // Return before because it is Scaffold data
-          }
-
-          const currentLineSplit = trimmedCurrent.split(':');
-          const currentObject = {
-            block: currentLineSplit[0].split('-')[0].trim(),
-            connection: currentLineSplit[0].split('-')[1].trim()
-          };
-
-          // Splitting connection details by any amount of white space
-          const connectionDetails = currentLineSplit[1].trim().split(/\s+/);
-
-          currentObject.connectionSource = connectionDetails[0];
-          currentObject.connectionTarget = connectionDetails[1];
-          currentObject.sourceChromosome = sourceChromosome;
-          currentObject.targetChromosome = targetChromosome;
-          currentObject.eValueConnection = connectionDetails[2];
-          currentObject.score = score;
-          currentObject.eValueBlock = eValueBlock;
-          currentObject.isFlipped = isFlipped;
-
-          dataInside.push(currentObject);
-        }
-      }
-
-      return dataInside;
-    }, []);
-
-    // First callback parameter is null if task is successful
-    callback(null, result);
-  });
-};
 
 (async function main() {
   // Alerting the user and returning early if not Google Chrome
@@ -254,7 +76,7 @@ const processCollinearity = function processCollinearity(fileName, callback) {
   let additionalTrack = getQueryString('additionalTrack');
 
   gff = gff !== null ? gff[0] : 'bnapus';
-  gffType = gffType !== null ? gffType[0] : 'gff';
+  gffType = gffType !== null ? gffType[0].toLowerCase() : 'gff';
   collinearity = collinearity !== null ? collinearity[0] : 'bnapus_top_5_hits';
   additionalTrack = additionalTrack !== null ? additionalTrack : (gff === 'bnapus' ? [
     'bnapus_gene_count',
@@ -263,30 +85,55 @@ const processCollinearity = function processCollinearity(fileName, callback) {
     'bnapus_repeat_density'
   ] : null);
 
+  const gffFilePath = `files/${gff}.${gffType}`;
+  const collinearityFilePath = `files/${collinearity}.collinearity`;
+  const additionalTrackFilePaths = [];
+
   const isValidUrlGff =
-    await isUrlFound(`${getCurrentHost()}files/${gff}.${gffType}`);
+    await isUrlFound(`${getCurrentHost()}${gffFilePath}`);
   const isValidUrlCollinearity =
-    await isUrlFound(`${getCurrentHost()}files/${collinearity}.collinearity`);
+    await isUrlFound(`${getCurrentHost()}${collinearityFilePath}`);
 
   let isValidUrlAdditionalTrack = true;
   if (additionalTrack) {
     for (let i = 0; i < additionalTrack.length; i++) {
+      additionalTrackFilePaths.push(`files/${additionalTrack[i]}.bg`);
       isValidUrlAdditionalTrack = isValidUrlAdditionalTrack &&
-        await isUrlFound(`${getCurrentHost()}files/${additionalTrack[i]}.bg`);
+        await isUrlFound(`${getCurrentHost()}${additionalTrackFilePaths[i]}`);
     }
   }
 
   if (isValidUrlGff && isValidUrlCollinearity && isValidUrlAdditionalTrack) {
-    // Call generateData only after loading the data files
-    const q = d3.queue();
-    q.defer(gffType === 'gff3' ? processGFF3 : processGFF, gff, gffType);
-    q.defer(processCollinearity, collinearity);
+    // NOTE: Anything that is inside a Promise that fails,
+    // it's caught as an error inside the catch of the Promise.
+    // But it needs to be inside a Promise in order to be caught.
+    // i.e. if something fails when calling generateData below, it's going to be caught.
+    try {
+      // Call generateData only after loading the data files
+      const gffData = gffType === 'gff3' ?
+        await processGFF3(gffFilePath) : await processGFF(gffFilePath);
+      const collinearityData = await processCollinearity(collinearityFilePath);
+      let additionalTrackData;
+      if (additionalTrack) {
+        additionalTrackData = await processBedGraph(additionalTrackFilePaths, additionalTrack);
+      }
 
-    if (additionalTrack) {
-      q.defer(processBedGraph, additionalTrack);
+      generateData(gffData, collinearityData, additionalTrackData);
+    } catch (error) {
+      // If error is defined and it is a string
+      if (error && isString(error)) {
+        console.log('ERROR: ', error);
+        // Showing custom alert using react
+        renderReactAlert(error, "danger", 15000);
+      } else {
+        // Showing error alert using react
+        renderReactAlert(
+          "There was an error while reading the files. Please, try again!",
+          "danger",
+          15000
+        );
+      }
     }
-
-    q.await(generateData);
   } else {
     // Showing alert using react
     renderReactAlert(

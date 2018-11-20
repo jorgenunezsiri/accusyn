@@ -1,3 +1,5 @@
+import cloneDeep from 'lodash/cloneDeep';
+
 let _additionalTrackArray = []; // Array that stores the data for the additional tracks
 
 /**
@@ -7,6 +9,16 @@ let _additionalTrackArray = []; // Array that stores the data for the additional
  */
 export function getAdditionalTrackArray() {
   return _additionalTrackArray;
+};
+
+/**
+ * Setter function for additional tracks
+ *
+ * @param {Array<Object>} track Data for additionalTrackArray
+ * @return {undefined} undefined
+ */
+export function setAdditionalTrackArray(track) {
+  _additionalTrackArray = cloneDeep(track);
 };
 
 /**

@@ -7,7 +7,7 @@
   padding: 0;
 }
 
-#page-container #documentation-container {
+#page-container #load-files-container {
   button {
     font-size: 12px;
     position: fixed;
@@ -141,10 +141,6 @@
 
   p.save-layout {
     margin-right: 10px;
-  }
-
-  .disabled {
-    color: gainsboro;
   }
 
   .separator {

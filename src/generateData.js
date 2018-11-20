@@ -66,9 +66,10 @@ import {
   pushAdditionalTrack
 } from './variables/additionalTrack';
 import { setCircosObject } from './variables/myCircos';
+import resetAllVariables from './variables/resetAllVariables';
 
 // Constants
-import { sampleFiles } from './variables/templates';
+import { loadFiles } from './variables/templates';
 import {
   CATEGORICAL_COLOR_SCALES,
   SEQUENTIAL_COLOR_SCALES,
@@ -77,16 +78,19 @@ import {
 } from './variables/constants';
 
 /**
- * Generates and preprocess data for the syteny browser
+ * Generates and preprocess data for the synteny browser
  *
- * @param  {Object} error                     Error handler
  * @param  {Array<Object>} gff                Data from gff file
  * @param  {Array<Object>} collinearity       Data from collinearity file
  * @param  {Array<Object>} additionalTrack    Data from additional track
  * @return {undefined}                        undefined
  */
-export default function generateData(error, gff, collinearity, additionalTrack) {
-  if (error) return console.error(error);
+export default function generateData(gff, collinearity, additionalTrack) {
+  // Return if one of the main files is not defined
+  if (gff == null || collinearity == null) return;
+
+  // Resetting all stored variables
+  resetAllVariables();
 
   console.log("DATA LOADED !!!");
 
@@ -1372,14 +1376,14 @@ export default function generateData(error, gff, collinearity, additionalTrack) 
   // First load of the genome view
   generateGenomeView({});
 
-  // Loading sampleFiles modal inside its container
+  // Loading loadFiles modal inside its container
   ReactDOM.render(
     <Modal
-      buttonLabel="Sample files"
-      modalHeader="Sample files">
-      {sampleFiles}
+      buttonLabel="Load files"
+      modalHeader="Load files">
+      {loadFiles}
     </Modal>,
-    document.getElementById('documentation-container')
+    document.getElementById('load-files-container')
   );
 
   // Displaying all the content after everything is loaded

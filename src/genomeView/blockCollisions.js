@@ -1781,17 +1781,27 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
                   .text(`${progressBarWidth}%`);
 
                   const afterCheckFlippedChromosomes = bestFlippedChromosomes.slice();
-                  const currentPosition = afterCheckFlippedChromosomes.indexOf(bestFlippedChromosomes[i]);
+                  const positionCurrentChr = afterCheckFlippedChromosomes.indexOf(bestFlippedChromosomes[i]);
                   // Removing chromosome from list of flipped ones
-                  afterCheckFlippedChromosomes.splice(currentPosition, 1);
+                  afterCheckFlippedChromosomes.splice(positionCurrentChr, 1);
+
+                  // Removing previously excluded chromosomes from list of flipped ones
+                  for (let j = 0; j < excludeFlippedChromosomes.length; j++) {
+                    const positionExcludeChr = afterCheckFlippedChromosomes.indexOf(excludeFlippedChromosomes[j]);
+                    if (positionExcludeChr !== (-1)) {
+                      afterCheckFlippedChromosomes.splice(positionExcludeChr, 1);
+                    }
+                  }
 
                   // Applying flipping again with the excluded flipped chromosome
                   dataChords = cloneDeep(applyFlippingDataChords(dataChords, afterCheckFlippedChromosomes));
                   const { collisionCount: neighborEnergy } = await getBlockCollisions(bestSolution, dataChords);
 
+                  console.log('CURRENT CHR AND ENERGY: ', bestFlippedChromosomes[i], neighborEnergy);
+
                   if (neighborEnergy <= bestEnergy) {
                     // Only keeping the flipped chromosomes that make my layout better
-                    console.log('EXCLUDING CHR: ', bestFlippedChromosomes[i]);
+                    console.log('EXCLUDING CHR: ', bestFlippedChromosomes[i], neighborEnergy);
                     bestEnergy = neighborEnergy;
                     excludeFlippedChromosomes.push(bestFlippedChromosomes[i]);
                   }

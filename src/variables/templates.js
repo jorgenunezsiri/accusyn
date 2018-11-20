@@ -1,14 +1,19 @@
 import React from 'react';
+import SubmitMainFilesForm from './../reactComponents/SubmitMainFilesForm';
 
 import { getCurrentHost } from './currentHost';
 
 /**
- * Sample files template - To be shown inside a modal
+ * Load files template - To be shown inside a modal
  * @type {ReactElement}
  */
-const sampleFiles = (
+const loadFiles = (
   <div>
-    <p>These are all the current files that can be loaded with <strong>GSB</strong>:</p>
+    <SubmitMainFilesForm />
+
+    <h5 className="disabled">──────────────────────────────────────────────────────</h5>
+
+    <p>These are other sample files that can be loaded with <strong>GSB</strong>:</p>
     <p>
       <a href={`${getCurrentHost()}?gff=at&collinearity=at`}>
       At</a> - <em>Arabidopsis thaliana</em> (Thale cress)
@@ -53,5 +58,5 @@ const sampleFiles = (
 );
 
 export {
-  sampleFiles
+  loadFiles
 };
