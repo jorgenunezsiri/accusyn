@@ -295,8 +295,9 @@ export function getBlockCollisions(dataChromosomes, dataChords, shouldReturnProm
   let collisionCount = 0;
   let superimposedCollisionCount = 0;
 
-  for (let i = 0; i < dataChords.length; i++) {
-    for (let j = i + 1; j < dataChords.length; j++) {
+  const dataChordsLength = dataChords.length;
+  for (let i = 0; i < dataChordsLength; i++) {
+    for (let j = i + 1; j < dataChordsLength; j++) {
       const R1 = getChordAngles(dataChromosomes, dataChords[i], 'source');
       const R2 = getChordAngles(dataChromosomes, dataChords[i], 'target');
       const R3 = getChordAngles(dataChromosomes, dataChords[j], 'source');
@@ -730,11 +731,7 @@ function minSwapsToSort(arr) {
     return 0;
   });
 
-  let visited = [];
-  for (let i = 0; i < n; i++) {
-    visited.push(false);
-  }
-
+  let visited = Array(n).fill(false);
   let ans = 0;
   let swapPositions = [];
 
@@ -1028,8 +1025,9 @@ export function swapPositionsAnimation({
 }) {
   const allFlippedChromosomes = getCurrentFlippedChromosomes();
   let transitionTime = 0, positionsNotSwappedTransitionTime = 0, flippedTransitionTime = 0;
+  const swapPositionsLength = swapPositions.length;
 
-  if (swapPositions.length > 0 || !isEqual(allFlippedChromosomes, bestFlippedChromosomes)) {
+  if (swapPositionsLength > 0 || !isEqual(allFlippedChromosomes, bestFlippedChromosomes)) {
     // Setting chromosome order with all the chromosomes
     // NOTE: Current chromosome order variable always includes all the chromosomes
     setCurrentChromosomeOrder(toChromosomeOrder(bestSolution, true));
@@ -1042,10 +1040,11 @@ export function swapPositionsAnimation({
     movePageContainerScroll("start");
 
     const chromosomeOrder = toChromosomeOrder(dataChromosomes);
+    const chromosomeOrderLength = chromosomeOrder.length;
 
     let visited = [];
     let hasMovedDragging = [];
-    for (let i = 0; i < chromosomeOrder.length; i++) {
+    for (let i = 0; i < chromosomeOrderLength; i++) {
       hasMovedDragging[chromosomeOrder[i]] = {
         angle: 0,
         hasMoved: false
@@ -1053,25 +1052,26 @@ export function swapPositionsAnimation({
       visited[chromosomeOrder[i]] = false;
     }
 
-    for (let i = 0; i < swapPositions.length; i++) {
+    for (let i = 0; i < swapPositionsLength; i++) {
       visited[swapPositions[i][0]] = true;
       visited[swapPositions[i][1]] = true;
     }
 
     const positionsNotBeingSwapped = [];
-    for (let i = 0; i < chromosomeOrder.length; i++) {
+    for (let i = 0; i < chromosomeOrderLength; i++) {
       if (visited[chromosomeOrder[i]] === false) {
         positionsNotBeingSwapped.push(chromosomeOrder[i]);
       }
     }
+    const positionsNotBeingSwappedLength = positionsNotBeingSwapped.length;
 
     console.log('POSITIONS NOT SWAPPED: ', positionsNotBeingSwapped);
 
     transitionTime = 0;
     let index = 0;
 
-    while (transitionTime < (TRANSITION_SWAPPING_TIME * swapPositions.length) &&
-      index < swapPositions.length) {
+    while (transitionTime < (TRANSITION_SWAPPING_TIME * swapPositionsLength) &&
+      index < swapPositionsLength) {
       const firstAngle = calculateAngleTransitionSwap(dataChromosomes, bestSolution, swapPositions[index][0]);
       const secondAngle = calculateAngleTransitionSwap(dataChromosomes, bestSolution, swapPositions[index][1]);
 
@@ -1124,8 +1124,8 @@ export function swapPositionsAnimation({
     index = 0;
 
     while ((positionsNotSwappedTransitionTime - transitionTime) <
-      (TRANSITION_SWAPPING_TIME * positionsNotBeingSwapped.length) &&
-      index < positionsNotBeingSwapped.length) {
+      (TRANSITION_SWAPPING_TIME * positionsNotBeingSwappedLength) &&
+      index < positionsNotBeingSwappedLength) {
       const angle = calculateAngleTransitionSwap(dataChromosomes, bestSolution, positionsNotBeingSwapped[index]);
       // Only do swap transition with remaining chromosomes if their angle is not equal to zero
       if (angle !== 0) {
@@ -1163,13 +1163,14 @@ export function swapPositionsAnimation({
       setCurrentFlippedChromosomes(bestFlippedChromosomes);
 
       const unionFlippedChromosomes = union(allFlippedChromosomes, bestFlippedChromosomes);
+      const unionFlippedChromosomesLength = unionFlippedChromosomes.length;
 
       const chrBlockDictionary = {};
       const blockChrDictionary = {};
       const visitedChrForFlipping = [];
       const visitedBlockForFlipping = [];
 
-      for (let i = 0; i < unionFlippedChromosomes.length; i++) {
+      for (let i = 0; i < unionFlippedChromosomesLength; i++) {
         visitedChrForFlipping[unionFlippedChromosomes[i]] = false;
       }
 
@@ -1186,7 +1187,7 @@ export function swapPositionsAnimation({
         const targetList = chrBlockDictionary[affectedChromosomes[1]];
 
         let allTrue = true;
-        for (let j = 0; j < sourceList.length; j++) {
+        for (let j = sourceList.length - 1; j >= 0; j--) {
           if (!visitedBlockForFlipping[sourceList[j].blockID]) {
             allTrue = false;
             break;
@@ -1198,7 +1199,7 @@ export function swapPositionsAnimation({
         }
 
         allTrue = true;
-        for (let j = 0; j < targetList.length; j++) {
+        for (let j = targetList.length - 1; j >= 0; j--) {
           if (!visitedBlockForFlipping[targetList[j].blockID]) {
             allTrue = false;
             break;
@@ -1287,7 +1288,7 @@ export function swapPositionsAnimation({
       // For those cases, I can't take the initial and final positions and visited decisions into account
 
       if (bestFlippedChromosomes.length > 0) {
-        for (let i = 0; i < unionFlippedChromosomes.length; i++) {
+        for (let i = 0; i < unionFlippedChromosomesLength; i++) {
           d3SelectAll(`path.chord.${unionFlippedChromosomes[i]}`)
             .each(function(d) {
               const blockID = d.source.value.id;
@@ -1300,14 +1301,14 @@ export function swapPositionsAnimation({
 
               let sourcePositionsObject = {};
               let targetPositionsObject = {};
-              for (let j = 0; j < sourceList.length; j++) {
+              for (let j = sourceList.length - 1; j >= 0 ; j--) {
                 if (sourceList[j].blockID === blockID) {
                   sourcePositionsObject = cloneDeep(sourceList[j].positions);
                   break;
                 }
               }
 
-              for (let j = 0; j < targetList.length; j++) {
+              for (let j = targetList.length - 1; j >= 0; j--) {
                 if (targetList[j].blockID === blockID) {
                   targetPositionsObject = cloneDeep(targetList[j].positions);
                   break;
@@ -1328,14 +1329,14 @@ export function swapPositionsAnimation({
         console.log('VISITED BLOCK FOR FLIPPING: ', visitedBlockForFlipping);
         console.log('VISITED CHR FOR FLIPPING BEFORE: ');
 
-        for (let r = 0; r < unionFlippedChromosomes.length; r++) {
+        for (let r = 0; r < unionFlippedChromosomesLength; r++) {
           console.log('chr visited: ', unionFlippedChromosomes[r], visitedChrForFlipping[unionFlippedChromosomes[r]]);
         }
       }
 
       while ((flippedTransitionTime - positionsNotSwappedTransitionTime) <
-        ((FLIPPING_CHROMOSOME_TIME + 25) * unionFlippedChromosomes.length) &&
-        index < unionFlippedChromosomes.length) {
+        ((FLIPPING_CHROMOSOME_TIME + 25) * unionFlippedChromosomesLength) &&
+        index < unionFlippedChromosomesLength) {
         // If all the blocks are not visited for the current chromosome or
         // current chromosome has blocks visible i.e. is present in dictionary
         if (!visitedChrForFlipping[unionFlippedChromosomes[index]] &&
@@ -1352,8 +1353,8 @@ export function swapPositionsAnimation({
               });
 
               console.log('affectedBlocks: ', affectedBlocks);
-
-              for (let j = 0; j < affectedBlocks.length; j++) {
+              const affectedBlocksLength = affectedBlocks.length;
+              for (let j = 0; j < affectedBlocksLength; j++) {
                 // Resetting zoom state object for all affected chords
                 // Only resetting the chords that WERE present in the flipping animation
                 const blockID = affectedBlocks[j];
@@ -1362,7 +1363,7 @@ export function swapPositionsAnimation({
                 visitedBlockForFlipping[blockID] = true;
               }
 
-              for (let j = 0; j < affectedBlocks.length; j++) {
+              for (let j = 0; j < affectedBlocksLength; j++) {
                 const blockID = affectedBlocks[j];
                 const affectedChromosomes = blockChrDictionary[blockID];
 
@@ -1479,7 +1480,7 @@ function applyFlippingDataChords(dataChords, flippedChromosomes) {
   // in this case bn2 will never be unflipped.
   //
   // Another way, is to just reset dataChords each time
-  for (let i = 0; i < tempDataChords.length; i++) {
+  for (let i = 0, length = tempDataChords.length; i < length; i++) {
     const blockID = tempDataChords[i].source.value.id;
 
     const { sourcePositions, targetPositions } = flipGenesPosition({
@@ -1638,6 +1639,8 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
           if (bestEnergy === 0) return;
 
           let newSolution = cloneDeep(currentSolution);
+          const newSolutionLength = newSolution.length;
+
           let pos1, pos2;
           const chooseRandomFlippingOrSwapping = Math.random();
           const doingFlipping = flippingFrequency > 0 && (
@@ -1649,7 +1652,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
 
             do {
               // Choose non-empty position to do flipping
-              pos1 = Math.trunc(newSolution.length * Math.random());
+              pos1 = Math.trunc(newSolutionLength * Math.random());
               currentID = newSolution[pos1].id.slice(0);
             } while (d3SelectAll(`path.chord.${currentID}`).empty());
 
@@ -1669,7 +1672,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
             do {
               // First chromosome can never be empty, to make sure to never swap
               // two empty chromosomes
-              pos1 = Math.trunc(newSolution.length * Math.random());
+              pos1 = Math.trunc(newSolutionLength * Math.random());
               currentID = newSolution[pos1].id.slice(0);
             } while(d3SelectAll(`path.chord.${currentID}`).empty());
 
@@ -1683,7 +1686,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
 
             if (shouldKeepChromosomesTogether) {
               // Checking if there are multiple chr with same first identifier
-              for (let i = 0; i < newSolution.length; i++) {
+              for (let i = 0; i < newSolutionLength; i++) {
                 const currentIdentifier = removeNonLettersFromString(newSolution[i].id.slice(0));
                 if (currentIdentifier === firstIdentifier) {
                   countFirstIdentifier++;
@@ -1701,7 +1704,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
 
             do {
               // Getting random positions until both positions are different
-              pos2 = Math.trunc(newSolution.length * Math.random());
+              pos2 = Math.trunc(newSolutionLength * Math.random());
 
               positionChecking = pos1 === pos2;
               currentID = newSolution[pos2].id.slice(0);
@@ -1759,9 +1762,10 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
 
       let afterCheckTime = 0;
       const excludeFlippedChromosomes = [];
+      const bestFlippedChromosomesLength = bestFlippedChromosomes.length;
 
       if (flippingFrequency > 0) {
-        if (bestFlippedChromosomes.length === 0) {
+        if (bestFlippedChromosomesLength === 0) {
           // Finishing in 100%
           d3Select(".genome-view-container .progress-bar")
             .style("width", "100%")
@@ -1769,10 +1773,10 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
           afterCheckTime += totalTime;
         } else {
           // Omitting flipped chromosomes that make the final solution worse
-          for (let i = 0; i < bestFlippedChromosomes.length; i++) {
+          for (let i = 0; i < bestFlippedChromosomesLength; i++) {
             (function(afterCheckTime, howMany) {
               setTimeout(async function() {
-                let progressBarValue = (howMany / bestFlippedChromosomes.length) * 5;
+                let progressBarValue = (howMany / bestFlippedChromosomesLength) * 5;
 
                 const progressBarWidth = 95 + Math.trunc(progressBarValue);
 
@@ -1786,7 +1790,8 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
                   afterCheckFlippedChromosomes.splice(positionCurrentChr, 1);
 
                   // Removing previously excluded chromosomes from list of flipped ones
-                  for (let j = 0; j < excludeFlippedChromosomes.length; j++) {
+                  const excludeFlippedChromosomesLength = excludeFlippedChromosomes.length;
+                  for (let j = 0; j < excludeFlippedChromosomesLength; j++) {
                     const positionExcludeChr = afterCheckFlippedChromosomes.indexOf(excludeFlippedChromosomes[j]);
                     if (positionExcludeChr !== (-1)) {
                       afterCheckFlippedChromosomes.splice(positionExcludeChr, 1);

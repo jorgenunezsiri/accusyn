@@ -360,6 +360,7 @@ export default function generateBlockView(data) {
 
   // Data from current block
   const blockArray = blockDictionary[blockID];
+  const blockArrayLength = blockArray.length;
 
   // Assuming source and target chromosomes are the same in all blocks
   // Thus, only need to check for the first one
@@ -374,7 +375,7 @@ export default function generateBlockView(data) {
   const domainSourceValues = { min: Number.MAX_SAFE_INTEGER, max: 0 };
   const domainTargetValues = { min: Number.MAX_SAFE_INTEGER, max: 0 };
 
-  for (let i = 0; i < blockArray.length; i++) {
+  for (let i = 0; i < blockArrayLength; i++) {
     const blockSource = blockArray[i].connectionSource;
     const blockTarget = blockArray[i].connectionTarget;
     const connectionID = blockArray[i].connection;

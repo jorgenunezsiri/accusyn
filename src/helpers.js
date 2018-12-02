@@ -88,14 +88,15 @@ export function showChromosomeConnectionInformation(connectionDictionary, select
   // for each other chromosome
 
   const chromosomeOrder = getDefaultChromosomeOrder();
+  const chromosomeOrderLength = chromosomeOrder.length;
 
   const visitedChr = {}; // Visited chromosomes dictionary
-  for (let i = 0; i < chromosomeOrder.length; i++) {
+  for (let i = 0; i < chromosomeOrderLength; i++) {
     visitedChr[chromosomeOrder[i]] = false;
   }
 
   visitedChr[selectedChromosomes[0]] = true;
-  for (let j = 0; j < chromosomeOrder.length; j++) {
+  for (let j = 0; j < chromosomeOrderLength; j++) {
     // If a connection is found, mark current chromosome as visited
     if (find(connectionDictionary[selectedChromosomes[0]], ['connection', chromosomeOrder[j]])) {
       visitedChr[chromosomeOrder[j]] = true;
@@ -199,20 +200,19 @@ export function renderReactAlert(alertMessage = "", color = "danger", timeout = 
  * @return {Array<Object>}                 Flipped additional track array
  */
 export function flipValueAdditionalTrack(additionalTrack) {
-  let temp = 0;
   const tempArray = cloneDeep(additionalTrack);
 
   // Only need to swap until size / 2 to flip entirely.
-  for (let i = 0; i < tempArray.length / 2; i++) {
-    temp = tempArray[i].value;
-    tempArray[i].value = tempArray[tempArray.length - i - 1].value;
-    tempArray[tempArray.length - i - 1].value = temp;
+  const length = tempArray.length;
+  for (let i = 0; i < length / 2; i++) {
+    [tempArray[i].value, tempArray[length - i - 1].value] =
+      [tempArray[length - i - 1].value, tempArray[i].value];
   }
 
   // Keeping old start and end positions (to show them correctly in tooltip)
-  for (let i = 0; i < tempArray.length; i++) {
-    tempArray[i].showStart = tempArray[tempArray.length - i - 1].start;
-    tempArray[i].showEnd = tempArray[tempArray.length - i - 1].end;
+  for (let i = 0; i < length; i++) {
+    tempArray[i].showStart = tempArray[length - i - 1].start;
+    tempArray[i].showEnd = tempArray[length - i - 1].end;
   }
 
   return tempArray;
@@ -596,12 +596,13 @@ export async function isUrlFound(url) {
  */
 export function lookForBlocksPositions(blockDictionary, geneDictionary, block) {
   const blockArray = blockDictionary[block];
+  const blockArrayLength = blockArray.length;
 
   let maxSource = 0;
   let minSource = Number.MAX_SAFE_INTEGER;
   let maxTarget = 0;
   let minTarget = Number.MAX_SAFE_INTEGER;
-  for (let i = 0; i < blockArray.length; i++) {
+  for (let i = 0; i < blockArrayLength; i++) {
     const currentSource = geneDictionary[blockArray[i].connectionSource];
     const currentTarget = geneDictionary[blockArray[i].connectionTarget];
 
@@ -613,7 +614,7 @@ export function lookForBlocksPositions(blockDictionary, geneDictionary, block) {
   }
 
   return {
-    blockLength: blockArray.length,
+    blockLength: blockArrayLength,
     // Taking score, eValue, and isFlipped from first connection in the blockArray
     blockScore: blockArray[0].score,
     blockEValue: blockArray[0].eValue,
@@ -662,7 +663,8 @@ export function assignFlippedChromosomeColors({
 }) {
   const tmpGffDictionary = cloneDeep(gffPositionDictionary);
 
-  for (let i = 0; i < gffKeys.length; i++) {
+  const gffKeysLength = gffKeys.length;
+  for (let i = 0; i < gffKeysLength; i++) {
     const isFlipped = currentFlippedChromosomes.indexOf(gffKeys[i]) !== (-1);
     tmpGffDictionary[gffKeys[i]].color = colorScale(!isFlipped ? 0 : 1);
   }
@@ -704,12 +706,15 @@ export function partitionGffKeys(gffKeys) {
 
   // Creating gffPartitionedDictionary to partition the gffKeys with their tags
   const gffPartitionedDictionary = {};
-  for (let i = 0; i < gffCopy.length; i++) {
+  const gffCopyLength = gffCopy.length;
+  const gffKeysLength = gffKeys.length;
+
+  for (let i = 0; i < gffCopyLength; i++) {
     if (!(gffCopy[i] in gffPartitionedDictionary)) {
       gffPartitionedDictionary[gffCopy[i]] = [];
     }
 
-    for (let j = 0; j < gffKeys.length; j++) {
+    for (let j = 0; j < gffKeysLength; j++) {
       if (gffKeys[j].includes(gffCopy[i])) {
         gffPartitionedDictionary[gffCopy[i]].push(gffKeys[j]);
       }
@@ -718,7 +723,7 @@ export function partitionGffKeys(gffKeys) {
 
   // Sorting gffCopy keys in descending order when having more than 1 key,
   // meaning more than 1 species to visualize
-  if (gffCopy.length > 1) {
+  if (gffCopyLength > 1) {
     gffCopy.sort(function compare(a, b) {
       const countA = gffPartitionedDictionary[a].length;
       const countB = gffPartitionedDictionary[b].length;
@@ -774,7 +779,8 @@ export function flipOrResetChromosomeOrder({
   console.log('ACTION AND GENOME: ', action, genome);
   console.log('CHR ORDER INSIDE F OR R: ', chromosomeOrder);
 
-  for (let i = 0; i < chromosomeOrder.length; i++) {
+  const chromosomeOrderLength = chromosomeOrder.length;
+  for (let i = 0; i < chromosomeOrderLength; i++) {
     // Getting all the positions of the chromosomes from `genome`
     const key = chromosomeOrder[i].slice(0);
     if (removeNonLettersFromString(key) === genome) {
@@ -786,13 +792,13 @@ export function flipOrResetChromosomeOrder({
     }
   }
 
+  const chromosomePositionsLength = chromosomePositions.length;
   if (action === "Flip") {
     // Return chromosomeOrder with the chromosomePositions inverted
     let temp = 0;
-    for (let i = 0; i < chromosomePositions.length / 2; i++) {
-      temp = chromosomePositions[i].pos;
-      chromosomePositions[i].pos = chromosomePositions[chromosomePositions.length - i - 1].pos;
-      chromosomePositions[chromosomePositions.length - i - 1].pos = temp;
+    for (let i = 0; i < chromosomePositionsLength / 2; i++) {
+      [chromosomePositions[i].pos, chromosomePositions[chromosomePositionsLength - i - 1].pos] =
+        [chromosomePositions[chromosomePositionsLength - i - 1].pos, chromosomePositions[i].pos];
     }
   } else if (action === "Reset") {
     // Return chromosomeOrder with the chromosomePositions in default order
@@ -806,7 +812,7 @@ export function flipOrResetChromosomeOrder({
     });
 
     let allNumericPositions = [];
-    for (let i = 0; i < chromosomePositions.length; i++) {
+    for (let i = 0; i < chromosomePositionsLength; i++) {
       allNumericPositions.push(Number(chromosomePositions[i].pos));
     }
 
@@ -820,13 +826,13 @@ export function flipOrResetChromosomeOrder({
     console.log('ALL NUMERIC POS: ', allNumericPositions);
 
     // Assigning sorted positions properties to sorted strings
-    for (let i = 0; i < chromosomePositions.length; i++) {
+    for (let i = 0; i < chromosomePositionsLength; i++) {
       chromosomePositions[i].pos = allNumericPositions[i];
     }
   }
 
   // Assigning new chromosome positions in chromosomeOrder
-  for (let i = 0; i < chromosomePositions.length; i++) {
+  for (let i = 0; i < chromosomePositionsLength; i++) {
     chromosomeOrder[chromosomePositions[i].pos] = chromosomePositions[i].chr.slice(0);
   }
 

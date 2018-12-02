@@ -160,9 +160,10 @@ function getDataChromosomes() {
 
   const gffPositionDictionary = getGffDictionary();
   let currentChromosomeOrder = getCurrentChromosomeOrder();
+  const currentChromosomeOrderLength = currentChromosomeOrder.length;
 
   // Using currentChromosomeOrder array to add selected chromosomes to the genome view
-  for (let i = 0; i < currentChromosomeOrder.length; i++) {
+  for (let i = 0; i < currentChromosomeOrderLength; i++) {
     const key = currentChromosomeOrder[i].slice(0);
 
     const currentObj = {
@@ -221,9 +222,10 @@ function getCurrentTrack(selectedTrack) {
 
   console.log('CURRENT TRACK Dictionary: ', currentTrackDictionary);
   const allKeysInDictionary = Object.keys(currentTrackDictionary);
+  const allKeysInDictionaryLength = allKeysInDictionary.length;
   console.log('OBJECT KEYS DICT: ', allKeysInDictionary);
   const currentTrack = []; // To insert all the tracks for all the chromosomes
-  for (let i = 0; i < allKeysInDictionary.length; i++) {
+  for (let i = 0; i < allKeysInDictionaryLength; i++) {
     const currentKey = allKeysInDictionary[i];
     let currentKeyArray = cloneDeep(currentTrackDictionary[currentKey]);
     // Flipping the content of the track if necessary
@@ -233,8 +235,9 @@ function getCurrentTrack(selectedTrack) {
       console.log('REVERSED: ', currentKey, currentKeyArray);
     }
 
+    const currentKeyArrayLength = currentKeyArray.length;
     // Getting min and max values for current view only
-    for (let j = 0; j < currentKeyArray.length; j++) {
+    for (let j = 0; j < currentKeyArrayLength; j++) {
       currentTrack.push(currentKeyArray[j]);
       const value = currentKeyArray[j].value;
 
@@ -291,9 +294,8 @@ function generateAdditionalTrack(trackName) {
         const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
         if (!isEmpty(currentChromosomeMouseDown)) return;
 
-        const { block_id, showStart, showEnd, start, end, value } = d;
-        const startPosition = showStart || start;
-        const endPosition = showEnd || end;
+        const { block_id, start, end, value } = d;
+        const { showStart: startPosition = start, showEnd: endPosition = end } = d;
 
         return `<h6><u>Bin information</u></h6>
           <h6>Chromosome: ${block_id}</h6>
@@ -380,8 +382,9 @@ function generateCircosLayout() {
           dataChromosomes: dataChromosomes
         });
 
+        const affectedBlocksLength = affectedBlocks.length;
         // Resetting zoom state object for all affected chords
-        for (let j = 0; j < affectedBlocks.length; j++) {
+        for (let j = 0; j < affectedBlocksLength; j++) {
           resetZoomBlockView(affectedBlocks[j]);
         }
 
@@ -674,7 +677,7 @@ function generatePathGenomeView({
 
   // Changing flipped chromosomes highlighting based on checkbox
   const currentFlippedChromosomes = getCurrentFlippedChromosomes();
-  for (let i = 0; i < currentFlippedChromosomes.length; i++) {
+  for (let i = currentFlippedChromosomes.length - 1; i >= 0; i--) {
     transitionFlipChromosomeStroke(currentFlippedChromosomes[i], highlightFlippedChromosomes);
   }
 
@@ -727,7 +730,7 @@ function generatePathGenomeView({
 
       // Check if genome is available in current layout
       let foundGenome = false;
-      for (let i = 0; i < dataChromosomes.length; i++) {
+      for (let i = dataChromosomes.length - 1; i >= 0; i--) {
         const key = dataChromosomes[i].id;
         if (removeNonLettersFromString(key) === genome) {
           foundGenome = true;
@@ -827,14 +830,12 @@ export default function generateGenomeView({
     lookID.push(selectedCheckboxes[0]);
   } else {
     // Many to many relationships
-    for (let j = 0; j < selectedCheckboxes.length; j++) {
-      lookID.push(selectedCheckboxes[j]);
-    }
+    lookID.push(...selectedCheckboxes);
   }
 
   const currentFlippedChromosomes = getCurrentFlippedChromosomes();
 
-  for (let i = 0; i < blockKeys.length; i++) {
+  for (let i = 0, blockKeysLength = blockKeys.length; i < blockKeysLength; i++) {
     const currentBlock = blockKeys[i];
 
     // Only need to enter if current block is not currently removed

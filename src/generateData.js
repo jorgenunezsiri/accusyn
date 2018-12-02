@@ -102,7 +102,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
   const maxEndChromosomesDictionary = {}; // Dictionary to help calculating the max end positon for each chromosome
 
   // For loop to update position dictionary with file data
-  for (let i = 0; i < gff.length; i++) {
+  for (let i = 0, gffLength = gff.length; i < gffLength; i++) {
     const currentChromosomeID = gff[i].chromosomeID;
 
     const start = parseInt(gff[i].start);
@@ -156,14 +156,15 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   // Obtaining keys from dictionary and sorting them in ascending order
   gffKeys = sortGffKeys(Object.keys(gffPositionDictionary)).slice();
+  const gffKeysLength = gffKeys.length;
+
   // Setting default color domain for chromosome palettes
-  const defaultColorDomain = [];
-  for (let i = 0; i < gffKeys.length; i++) defaultColorDomain.push(i);
+  const defaultColorDomain = [...gffKeys.keys()];
   colors.domain(defaultColorDomain);
 
   let totalChrEnd = 0;
   // Setting the color for each chromosome after sorting the gffKeys
-  for (let i = 0; i < gffKeys.length; i++) {
+  for (let i = 0; i < gffKeysLength; i++) {
     totalChrEnd += gffPositionDictionary[gffKeys[i]].end;
     gffPositionDictionary[gffKeys[i]].color = colors(i);
   }
@@ -181,11 +182,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
   console.log('additionalTrack: ', additionalTrack);
 
   if (additionalTrack) {
-    for (let i = 0; i < additionalTrack.length; i++) {
+    const additionalTrackLength = additionalTrack.length;
+    for (let i = 0; i < additionalTrackLength; i++) {
       const additionalTrackArray = []; // Array that includes the data from the additional tracks BedGraph file
       const { data: currentData, name } = additionalTrack[i];
+      const currentDataLength = currentData.length;
 
-      for (let j = 0; j < currentData.length; j++) {
+      for (let j = 0; j < currentDataLength; j++) {
         let value = roundFloatNumber(parseFloat(currentData[j].value), 6);
         const additionalTrackObject = {
           block_id: currentData[j].chromosomeID,
@@ -213,7 +216,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   const blockDictionary = {}; // Dictionary to store the data for all blocks
   const connectionDictionary = {}; // Dictionary to store the data for all the connections between any source and target
-  for (let i = 0; i < collinearity.length; i++) {
+  for (let i = 0, collinearityLength = collinearity.length; i < collinearityLength; i++) {
     const currentBlock = collinearity[i].block;
 
     if (!(currentBlock in blockDictionary)) {
@@ -299,7 +302,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
   // 2306 connections with top 5 BLAST hits
   // Also, adding all the minimum and maximum positions for each block
   let maxBlockSize = 0;
-  for (let i = 0; i < blockKeys.length; i++) {
+  for (let i = 0, blockKeysLength = blockKeys.length; i < blockKeysLength; i++) {
     const currentBlock = blockKeys[i];
     maxBlockSize = Math.max(maxBlockSize, blockDictionary[currentBlock].length);
     blockDictionary[currentBlock].blockPositions =
@@ -542,10 +545,12 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   // Partitioning gff keys to get the checkboxes division
   const { gffPartitionedDictionary, partitionedGffKeys } = partitionGffKeys(gffKeys);
+  const partitionedGffKeysLength = partitionedGffKeys.length;
 
   const allCategoricalColors = Object.keys(CATEGORICAL_COLOR_SCALES);
+  const allCategoricalColorsLength = allCategoricalColors.length;
   let categoricalColorOptions = "";
-  for (let i = 0; i < allCategoricalColors.length; i++) {
+  for (let i = 0; i < allCategoricalColorsLength; i++) {
     const key = allCategoricalColors[i];
     if (key === "Disabled") {
       categoricalColorOptions += `
@@ -553,7 +558,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
         `;
     } else {
       // Only adding Multiple key when visualizing multiple genomes
-      if (key === "Multiple" && partitionedGffKeys.length === 1) continue;
+      if (key === "Multiple" && partitionedGffKeysLength === 1) continue;
 
       categoricalColorOptions += `
         <option value="${key}">${key}</option>
@@ -580,25 +585,24 @@ export default function generateData(gff, collinearity, additionalTrack) {
           gffPositionDictionary: gffPositionDictionary
         }));
       } else if( selected === 'Multiple') {
-        const uniqueDomain = []; // Unique domain for multiple chromosomes
+        const uniqueDomain = [...partitionedGffKeys.keys()]; // Unique domain for multiple chromosomes
         const gffKeysHashDictionary = {}; // Hash dictionary between the identifiers and color domain
 
         // Assigning the domain and hash for each identifier
-        for (let i = 0; i < partitionedGffKeys.length; i++) {
-          uniqueDomain.push(i);
+        for (let i = 0; i < partitionedGffKeysLength; i++) {
           gffKeysHashDictionary[partitionedGffKeys[i]] = i;
         }
 
         colors.domain(uniqueDomain);
 
-        for (let i = 0; i < gffKeys.length; i++) {
+        for (let i = 0; i < gffKeysLength; i++) {
           // Removing all non-letters from current chr id
           const currentIdentifier = removeNonLettersFromString(gffKeys[i]);
           gffPositionDictionary[gffKeys[i]].color = colors(gffKeysHashDictionary[currentIdentifier]);
         }
       } else {
         // Setting the color for each chromosome with new color scale
-        for (let i = 0; i < gffKeys.length; i++) {
+        for (let i = 0; i < gffKeysLength; i++) {
           gffPositionDictionary[gffKeys[i]].color = colors(i);
         }
       }
@@ -755,7 +759,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("class", "all-genomes")
     .html(function() {
       let inputOptions = "";
-      for (let i = 0; i < partitionedGffKeys.length; i++) {
+      for (let i = 0; i < partitionedGffKeysLength; i++) {
         inputOptions += `
           <option value="${partitionedGffKeys[i]}">${partitionedGffKeys[i]}</option>
         `;
@@ -779,7 +783,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .html("<strong>Algorithm parameters</strong>");
 
   // Keep chromosomes from same genome together checkbox
-  if (partitionedGffKeys.length > 1) {
+  if (partitionedGffKeysLength > 1) {
     d3.select("#form-config .decluttering-panel")
       .append("p")
       .attr("class", "keep-chr-together")
@@ -882,10 +886,11 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   if (isAdditionalTrackAdded()) {
     const currentAdditionalTracks = getAdditionalTrackArray();
+    const currentAdditionalTracksLength = currentAdditionalTracks.length;
     console.log('currentAdditionalTracks: ', currentAdditionalTracks);
     // Loading input option tags for select
     let inputOptions = '<option value="None" selected="selected">None</option>';
-    for (let i = 0; i < currentAdditionalTracks.length; i++) {
+    for (let i = 0; i < currentAdditionalTracksLength; i++) {
       inputOptions += `
         <option value="${currentAdditionalTracks[i].name}">${currentAdditionalTracks[i].name}</option>
         `;
@@ -893,8 +898,9 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
     // Loading colors option tag for select
     const allColors = Object.keys(SEQUENTIAL_COLOR_SCALES);
+    const allColorsLength = allColors.length;
     let colorOptions = "";
-    for (let i = 0; i < allColors.length; i++) {
+    for (let i = 0; i < allColorsLength; i++) {
       const key = allColors[i];
       colorOptions += `
         <option value="${key}">${SEQUENTIAL_COLOR_SCALES[key]}</option>
@@ -1048,7 +1054,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     });
 
   // Show self connections checkbox
-  if (partitionedGffKeys.length > 1) {
+  if (partitionedGffKeysLength > 1) {
     d3.select("#form-config div.chr-options")
       .append("p")
       .attr("class", "panel-subtitle")
@@ -1068,10 +1074,10 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   d3.select("#form-config p.show-self-connections-chr > label")
     .append("span")
-    .text(partitionedGffKeys.length > 1 ? "Chromosomes" :
+    .text(partitionedGffKeysLength > 1 ? "Chromosomes" :
       "Show self connections");
 
-  if (partitionedGffKeys.length > 1) {
+  if (partitionedGffKeysLength > 1) {
     d3.select("#form-config div.chr-options")
       .append("p")
       .attr("class", "show-self-connections show-self-connections-genome")
@@ -1101,7 +1107,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .html("────────────────────");
 
   // Adding the checkbox by using the partitionedGffKeys
-  for (let i = 0; i < partitionedGffKeys.length; i++) {
+  for (let i = 0; i < partitionedGffKeysLength; i++) {
     d3.select("div.for-chr-boxes")
       .append("div")
       .attr("class", function() {

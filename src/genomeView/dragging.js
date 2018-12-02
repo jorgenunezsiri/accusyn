@@ -54,7 +54,8 @@ let trueLastAngle = 0; // Last angle from drag event without modification
 export function generateDraggingAnglesDictionary(dataChromosomes) {
   draggingAnglesDictionary = {};
 
-  for (let i = 0; i < dataChromosomes.length; i++) {
+  const dataChromosomesLength = dataChromosomes.length;
+  for (let i = 0; i < dataChromosomesLength; i++) {
     const currentID = dataChromosomes[i].id;
 
     if (!(dataChromosomes[i].id in draggingAnglesDictionary)) {
@@ -416,8 +417,9 @@ function onDragging(dataChromosomes) {
 function onEndDragging(dataChromosomes, dataChords) {
   const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
   console.log('CURRENT MOUSE DOWN: ', currentChromosomeMouseDown);
+  const dataChromosomesLength = dataChromosomes.length;
 
-  if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "" ||
+  if (dataChromosomesLength <= 1 || currentChromosomeMouseDown === "" ||
     d3.select(".best-guess > input").attr("disabled")) return;
 
   let currentChromosomeOrder = getCurrentChromosomeOrder().slice();
@@ -435,7 +437,7 @@ function onEndDragging(dataChromosomes, dataChords) {
     .style("stroke", "none");
 
   let collidedChr = "";
-  for (let i = 0; i < dataChromosomes.length; i++) {
+  for (let i = 0; i < dataChromosomesLength; i++) {
     const key = dataChromosomes[i].id;
     let lastChrPosition = (draggingAnglesDictionary[currentChromosomeMouseDown].startAngle + lastAngle);
 
