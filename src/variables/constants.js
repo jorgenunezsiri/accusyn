@@ -6,7 +6,21 @@ import {
   schemeSet2
 } from 'd3-scale-chromatic';
 
-const CONNECTION_COLOR = "sandybrown"; // Default connection color
+const CONNECTION_COLORS = {
+  Source: 'Source',
+  Target: 'Target',
+  Flipped: 'Flipped',
+  Disabled: 'Disabled',
+  Blue: 'dodgerblue',
+  Brown: 'brown',
+  Green: 'green',
+  Grey: 'grey',
+  Orange: 'sandybrown',
+  Purple: 'purple',
+  Red: 'red',
+  Yellow: 'khaki'
+};
+
 const GAP_AMOUNT = 0.03; // Circos plot gap - Value in radians
 const GENOME_INNER_RADIUS = 245; // Circos plot inner radius
 const GENOME_OUTER_RADIUS = GENOME_INNER_RADIUS + 30; // Circos plot outer radius
@@ -70,8 +84,8 @@ const CATEGORICAL_COLOR_SCALES = {
   Accent: schemeAccent,
   Dark: schemeDark2,
   Pastel: schemePastel2,
-  Disabled: "Disabled",
-  Flipped: ["#00bfff", "#dc143c"], // deepskyblue and crimson colors (blue-ish and red-ish)
+  Disabled: 'Disabled',
+  Flipped: ['#00bfff', '#dc143c'], // deepskyblue and crimson colors (blue-ish and red-ish)
   Multiple: schemeSet2
 };
 
@@ -126,7 +140,7 @@ const TRANSITION_FLIPPING_TIME = TRANSITION_NORMAL_TIME + 5;
 const TRANSITION_HEIGHT_DIVISION_MULTIPLE = 2;
 
 export {
-  CONNECTION_COLOR,
+  CONNECTION_COLORS,
   DEFAULT_GENOME_TRANSITION_TIME,
   RADIANS_TO_DEGREES,
   DEGREES_TO_RADIANS,

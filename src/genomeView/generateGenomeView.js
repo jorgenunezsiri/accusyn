@@ -76,7 +76,9 @@ import {
 } from './../variables/currentChromosomeOrder';
 import {
   getCurrentFlippedChromosomes,
-  setCurrentFlippedChromosomes
+  getPreviousFlippedChromosomes,
+  setCurrentFlippedChromosomes,
+  setPreviousFlippedChromosomes
 } from './../variables/currentFlippedChromosomes';
 import { generateUpdatedDataChromosomesFromOrder } from './../variables/dataChromosomes';
 import {
@@ -93,7 +95,7 @@ import { getCircosObject } from './../variables/myCircos';
 import {
   CATEGORICAL_COLOR_SCALES,
   CIRCOS_CONF,
-  CONNECTION_COLOR,
+  CONNECTION_COLORS,
   DEFAULT_BLOCK_VIEW_ZOOM_STATE,
   DEFAULT_GENOME_TRANSITION_TIME,
   FLIPPING_CHROMOSOME_TIME,
@@ -361,6 +363,8 @@ function generateCircosLayout() {
         let currentFlippedChromosomes = getCurrentFlippedChromosomes();
 
         const currentID = d.id; // Current chromosome ID
+        // Setting affected chromosome
+        setPreviousFlippedChromosomes([currentID]);
 
         const currentPosition = currentFlippedChromosomes.indexOf(currentID);
 
@@ -432,7 +436,7 @@ function generateCircosLayout() {
 
   if (darkMode) {
     extraLayoutConfiguration.labels = {
-      color: '#ffffff'
+      color: '#f3f3f3'
     };
   }
 
@@ -498,10 +502,6 @@ function generatePathGenomeView({
   transition,
   transitionRemove
 }) {
-  // To keep track of the value of the color blocks checkbox
-  const coloredBlocks = d3.select("p.color-blocks input").property("checked");
-  const gffPositionDictionary = getGffDictionary();
-
   // To keep track of the value of highlight flipped blocks checkbox
   const highlightFlippedBlocks = d3.select("p.highlight-flipped-blocks input").property("checked");
 
@@ -517,7 +517,7 @@ function generatePathGenomeView({
   if (transition == null) {
     transition = {
       shouldDo: true,
-      from: darkMode ? '222222' : '#ffffff',
+      from: darkMode ? '#222222' : '#ffffff',
       time: DEFAULT_GENOME_TRANSITION_TIME
     };
   }
@@ -552,11 +552,7 @@ function generatePathGenomeView({
       }
     },
     color: function(d) {
-      if (coloredBlocks) {
-        return gffPositionDictionary[d.source.id].color;
-      }
-
-      return CONNECTION_COLOR;
+      return d.source.value.color;
     },
     tooltipContent: function(d) {
       // Activate if SA is not running
@@ -646,10 +642,50 @@ function generatePathGenomeView({
     }
   });
 
-  // Updating block view using current selected block if not empty
+  // Updating block view using current selected block if object not empty
   if (!isEmpty(currentSelectedBlock)) {
     const currentPosition = findIndex(dataChords, ['source.value.id', currentSelectedBlock]);
-    if (currentPosition !== (-1)) generateBlockView(dataChords[currentPosition]);
+    if (currentPosition !== (-1)) {
+      const currentChord = dataChords[currentPosition];
+      const gffPositionDictionary = getGffDictionary();
+
+      // Checking if block view is empty (not present)
+      // To avoid updating the block view when not necessary
+      // i.e. when changing to multi-chr view and the currentSelectedBlock is still there
+      let shouldUpdateBlockView = d3.select("#block-view-container").empty();
+      if (!shouldUpdateBlockView) {
+        const {
+          source: { id: sourceID, value: { color } },
+          target: { id: targetID }
+        } = currentChord;
+
+        // If it is present, then checking if the block color is different from block view line color
+        const currentBlockViewLineColor =
+          d3.color(d3.select("#block-view-container g.clip-block-group .line").attr("fill")).hex();
+        const currentGenomeViewChordColor = d3.color(color).hex();
+
+        // Checking if axis color are different from chromosomes color
+        const currentAxisSourceColor =
+          d3.color(d3.select("#block-view-container g.axisY0").attr("fill")).hex();
+        const currentAxisTargetColor =
+          d3.color(d3.select("#block-view-container g.axisY1").attr("fill")).hex();
+
+        // Note: Previous flipped chromosomes includes all the affected chromosomes
+        // in the last flip animation (manual or SA). If this list includes the source or
+        // target chromosome from current selected block, then I need to update the
+        // block view because they are being affected
+        const previousFlippedChr = getPreviousFlippedChromosomes();
+        if (previousFlippedChr.includes(sourceID) || previousFlippedChr.includes(targetID)) {
+          shouldUpdateBlockView = true;
+        }
+
+        shouldUpdateBlockView = shouldUpdateBlockView || currentBlockViewLineColor !== currentGenomeViewChordColor ||
+          d3.color(gffPositionDictionary[sourceID].color).hex() !== currentAxisSourceColor ||
+          d3.color(gffPositionDictionary[targetID].color).hex() !== currentAxisTargetColor;
+      }
+
+      if (shouldUpdateBlockView) generateBlockView(currentChord);
+    }
   }
 
   // Rendering Circos plot with current configuration
@@ -670,8 +706,11 @@ function generatePathGenomeView({
 
   // Highlighting flipped blocks if checkbox is selected
   if (highlightFlippedBlocks) {
+    const flippedColorBlock = d3.select("div.blocks-color select").property("value") === 'Flipped';
+    const stroke = flippedColorBlock ? 'gold' : '#ea4848';
+
     d3.selectAll("path.chord.isFlipped")
-      .style("stroke", "#ea4848")
+      .style("stroke", stroke)
       .style("stroke-width", "2px");
   }
 
@@ -799,6 +838,9 @@ export default function generateGenomeView({
   const filterValue = Number(!d3.select('.filter-connections-div #filter-block-size').empty() &&
     d3.select('.filter-connections-div #filter-block-size').property("value")) || 1;
 
+  // To keep track of the value of the selected block color
+  const blockColor = d3.select("div.blocks-color select").property("value");
+
   // To keep track of the Show all input state
   const showAllChromosomes = d3.select("p.show-all input").property("checked");
 
@@ -882,6 +924,7 @@ export default function generateGenomeView({
 
     if (shouldAddDataChord) {
       const blockPositions = blockDictionary[currentBlock].blockPositions;
+      const { blockLength, blockScore, blockEValue, isFlipped } = blockPositions;
 
       const { sourcePositions, targetPositions } = flipGenesPosition({
         blockPositions: blockPositions,
@@ -890,6 +933,12 @@ export default function generateGenomeView({
         targetID: targetID
       });
 
+      let colorValue = CONNECTION_COLORS[blockColor];
+      if (blockColor === 'Source') colorValue = gffPositionDictionary[sourceID].color;
+      else if (blockColor === 'Target') colorValue = gffPositionDictionary[targetID].color;
+      // For flipped blocks, using deepskyblue and crimson colors (blue-ish and red-ish)
+      else if (blockColor === 'Flipped') colorValue = isFlipped ? '#dc143c' : '#00bfff';
+
       dataChords.push({
         source: {
           id: sourceID,
@@ -897,10 +946,11 @@ export default function generateGenomeView({
           end: sourcePositions.end,
           value: {
             id: currentBlock,
-            length: blockPositions.blockLength,
-            score: blockPositions.blockScore,
-            eValue: blockPositions.blockEValue,
-            isFlipped: blockPositions.isFlipped
+            color: colorValue,
+            length: blockLength,
+            score: blockScore,
+            eValue: blockEValue,
+            isFlipped: isFlipped
           }
         },
         target: {

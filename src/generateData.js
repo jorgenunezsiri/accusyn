@@ -72,6 +72,7 @@ import resetAllVariables from './variables/resetAllVariables';
 import { loadFiles } from './variables/templates';
 import {
   CATEGORICAL_COLOR_SCALES,
+  CONNECTION_COLORS,
   SEQUENTIAL_COLOR_SCALES,
   WIDTH,
   HEIGHT
@@ -382,30 +383,6 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .append("div")
     .attr("class", "panel layout-panel");
 
-  // Color blocks checkbox
-  d3.select("#form-config .layout-panel")
-    .append("p")
-    .attr("class", "color-blocks")
-    .attr("title", "If selected, all connections will be colored.")
-    .append("label")
-    .append("input")
-    .attr("type", "checkbox")
-    .attr("name", "color-blocks")
-    .attr("value", "Color blocks")
-    .property("checked", true); // Color blocks is checked by default
-
-  d3.select("#form-config p.color-blocks > label")
-    .append("span")
-    .text("Color blocks");
-
-  d3.select("p.color-blocks input")
-    .on("change", function() {
-      // Calling genome view for updates
-      generateGenomeView({
-        shouldUpdateBlockCollisions: false
-      });
-    });
-
   // Dark mode checkbox
   d3.select("#form-config .layout-panel")
     .append("p")
@@ -536,6 +513,32 @@ export default function generateData(gff, collinearity, additionalTrack) {
         .classed("outside", showTooltipOutside);
     });
 
+  // Blocks color dropdown select
+  d3.select("#form-config .layout-panel")
+    .append("div")
+    .attr("class", "blocks-color")
+    .append("p")
+    .text("Blocks color: ");
+
+  d3.select("div.blocks-color")
+    .append("p")
+    .append("select")
+    .html(function() {
+      return Object.keys(CONNECTION_COLORS).map(function (current) {
+        if (current === 'Disabled') return `<option disabled>─────</option>`;
+        return `<option value="${current}">${current}</option>`;
+      }).join(' ');
+    });
+
+  d3.select("div.blocks-color select")
+    .on("change", function() {
+      // Calling genome view for updates with default transition and no layout udpate
+      generateGenomeView({
+        shouldUpdateBlockCollisions: false,
+        shouldUpdateLayout: false
+      });
+    });
+
   // Chromosomes palette
   d3.select("#form-config .layout-panel")
     .append("div")
@@ -547,29 +550,17 @@ export default function generateData(gff, collinearity, additionalTrack) {
   const { gffPartitionedDictionary, partitionedGffKeys } = partitionGffKeys(gffKeys);
   const partitionedGffKeysLength = partitionedGffKeys.length;
 
-  const allCategoricalColors = Object.keys(CATEGORICAL_COLOR_SCALES);
-  const allCategoricalColorsLength = allCategoricalColors.length;
-  let categoricalColorOptions = "";
-  for (let i = 0; i < allCategoricalColorsLength; i++) {
-    const key = allCategoricalColors[i];
-    if (key === "Disabled") {
-      categoricalColorOptions += `
-        <option disabled>─────</option>
-        `;
-    } else {
-      // Only adding Multiple key when visualizing multiple genomes
-      if (key === "Multiple" && partitionedGffKeysLength === 1) continue;
-
-      categoricalColorOptions += `
-        <option value="${key}">${key}</option>
-        `;
-    }
-  }
-
   d3.select("div.chromosomes-palette")
     .append("p")
     .append("select")
-    .html(categoricalColorOptions);
+    .html(function() {
+      return Object.keys(CATEGORICAL_COLOR_SCALES).map(function (current) {
+        if (current === 'Disabled') return '<option disabled>─────</option>';
+        // Only adding Multiple key when visualizing multiple genomes
+        else if (current === 'Multiple' && partitionedGffKeysLength === 1) return '';
+        return `<option value="${current}">${current}</option>`;
+      }).join(' ');
+    });
 
   d3.select("div.chromosomes-palette select")
     .on("change", function() {
@@ -758,14 +749,9 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .append("select")
     .attr("class", "all-genomes")
     .html(function() {
-      let inputOptions = "";
-      for (let i = 0; i < partitionedGffKeysLength; i++) {
-        inputOptions += `
-          <option value="${partitionedGffKeys[i]}">${partitionedGffKeys[i]}</option>
-        `;
-      }
-
-      return inputOptions;
+      return partitionedGffKeys.map((current) =>
+        `<option value="${current}">${current}</option>`
+      ).join(' ');
     });
 
   d3.select("#form-config .decluttering-panel .change-chromosome-positions")
@@ -818,13 +804,12 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("p.calculate-temperature-ratio input")
     .on("change", function() {
       const currentValue = d3.select(this).property("checked");
+      const isDisabled = currentValue ? true : null;
 
-      d3.select("#filter-sa-temperature").attr("disabled", currentValue ? true : null);
-      d3.select("#filter-sa-ratio").attr("disabled", currentValue ? true : null);
+      d3.select("#filter-sa-temperature").attr("disabled", isDisabled);
+      d3.select("#filter-sa-ratio").attr("disabled", isDisabled);
 
-      if (currentValue) {
-        calculateDeclutteringETA();
-      }
+      if (currentValue) calculateDeclutteringETA();
     });
 
   // Filter Simulated Annealing temperature
@@ -1409,5 +1394,4 @@ export default function generateData(gff, collinearity, additionalTrack) {
     d3.select(".information-panel-title").node().click();
     d3.select(".connections-panel-title").node().click();
   }, 300);
-
 };

@@ -38,7 +38,6 @@ import { getCurrentFlippedChromosomes } from './variables/currentFlippedChromoso
 
 // Contants
 import {
-  CONNECTION_COLOR,
   DEFAULT_BLOCK_VIEW_ZOOM_STATE,
   OFFSET_DOMAIN,
   // Block view transition constants
@@ -87,10 +86,11 @@ export default function generateBlockView(data) {
 
   const darkMode = d3.select("p.dark-mode input").property("checked");
 
-  const sourceChromosomeID = data.source.id;
-  const targetChromosomeID = data.target.id;
+  const {
+    source: { id: sourceChromosomeID, value: { id: blockID, color: blockColor } },
+    target: { id: targetChromosomeID }
+  } = data;
 
-  const blockID = data.source.value.id;
   const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
   if (!(blockID in blockZoomStateDictionary)) {
     // Initializing zoom state object
@@ -714,25 +714,20 @@ export default function generateBlockView(data) {
           }
         });
 
-      // To keep track of the value of the color blocks checkbox
-      const coloredBlocks = d3.select("p.color-blocks input").property("checked");
-
-      const pathLineColor = coloredBlocks ? gffPositionDictionary[sourceChromosomeID].color : CONNECTION_COLOR;
-
       if (!onInputChange) {
         svgBlock.selectAll("polygon.line")
           .attr("fill", darkMode ? "#222222" : "#ffffff")
           .transition()
           .duration(500)
           .ease(d3.easeLinear)
-          .attr("fill", pathLineColor);
+          .attr("fill", blockColor);
       } else {
         svgBlock.selectAll("polygon.line")
           .attr("fill", "lightblue")
           .transition()
           .duration(COLOR_CHANGE_TIME)
           .ease(d3.easeLinear)
-          .attr("fill", pathLineColor);
+          .attr("fill", blockColor);
 
         // Enabling inputs and selects after calling the animation
         resetInputsAndSelectsOnAnimation();

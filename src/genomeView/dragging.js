@@ -426,10 +426,10 @@ function onEndDragging(dataChromosomes, dataChords) {
 
   const darkMode = d3.select("p.dark-mode input").property("checked");
 
-  // Changing fill back to white if in dark mode, because highlight is being turn off
+  // Changing fill back to white-ish if in dark mode, because highlight is being turned off
   if (darkMode) {
     d3.select(`g.${currentChromosomeMouseDown} textPath`)
-      .style("fill", "#ffffff");
+      .style("fill", "#f3f3f3");
   }
 
   // Turning off highlighting for current mouse down chromosome

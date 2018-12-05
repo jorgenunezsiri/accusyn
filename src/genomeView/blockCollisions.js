@@ -51,7 +51,8 @@ import {
 } from './../variables/currentChromosomeOrder';
 import {
   getCurrentFlippedChromosomes,
-  setCurrentFlippedChromosomes
+  setCurrentFlippedChromosomes,
+  setPreviousFlippedChromosomes
 } from './../variables/currentFlippedChromosomes';
 import {
   getDataChords,
@@ -111,10 +112,13 @@ export function getChordAngles(dataChromosomes, chord, reference) {
  * @return {undefined}               undefined
  */
 export function transitionFlipChromosomeStroke(currentChr, flipping = true) {
+  const flippedPalette = d3Select("div.chromosomes-palette select").property("value") === 'Flipped';
+  const stroke = flippedPalette ? 'gold' : '#ea4848';
+
   d3Select(`g.${currentChr} path#arc-label${currentChr}`)
     .transition()
     .duration(FLIPPING_CHROMOSOME_TIME - 25)
-    .style("stroke", flipping ? "#ea4848" : "none")
+    .style("stroke", flipping ? stroke : "none")
     .style("stroke-width", flipping ? "2px" : "0");
 };
 
@@ -149,7 +153,11 @@ export function transitionFlipping({
       .duration(FLIPPING_CHROMOSOME_TIME - 25)
       .ease(d3EaseLinear)
       .attr("d", function(d) {
-        const blockID = d.source.value.id;
+        const {
+          source: { id: sourceID, value: { id: blockID } },
+          target: { id: targetID }
+        } = d;
+
         currentFill[blockID] = d3Select(this).style("fill");
 
         let raiseAndBlueColor = false;
@@ -160,8 +168,7 @@ export function transitionFlipping({
             visitedBlockForFlipping[blockID] = true;
             raiseAndBlueColor = true;
           }
-        } else raiseAndBlueColor = true;
-        // visitedBlockForFlipping is not defined when manually flipping a chr
+        } else raiseAndBlueColor = true; // visitedBlockForFlipping is not defined when manually flipping a chr
 
         if (raiseAndBlueColor) {
           d3Select(this).raise();
@@ -169,24 +176,24 @@ export function transitionFlipping({
         }
 
         const { sourcePositions, targetPositions } = flipGenesPosition({
-          blockPositions: blockDictionary[d.source.value.id].blockPositions,
+          blockPositions: blockDictionary[blockID].blockPositions,
           currentFlippedChromosomes: currentFlippedChromosomes,
-          sourceID: d.source.id,
-          targetID: d.target.id
+          sourceID: sourceID,
+          targetID: targetID
         });
 
         // (Un)Highlighting the flipped chromosomes with a stroke
-        transitionFlipChromosomeStroke(d.source.id, currentFlippedChromosomes.indexOf(d.source.id) > (-1));
-        transitionFlipChromosomeStroke(d.target.id, currentFlippedChromosomes.indexOf(d.target.id) > (-1));
+        transitionFlipChromosomeStroke(sourceID, currentFlippedChromosomes.indexOf(sourceID) > (-1));
+        transitionFlipChromosomeStroke(targetID, currentFlippedChromosomes.indexOf(targetID) > (-1));
 
         const positions = {
           source: {
-            id: d.source.id,
+            id: sourceID,
             start: sourcePositions.start,
             end: sourcePositions.end
           },
           target: {
-            id: d.target.id,
+            id: targetID,
             start: targetPositions.start,
             end: targetPositions.end
           }
@@ -221,9 +228,7 @@ export function transitionFlipping({
     setTimeout(() => {
       // Setting the fill style back
       d3SelectAll(`path.chord.${currentChr}`)
-        .style("fill", function(d) {
-          return currentFill[d.source.value.id];
-        });
+        .style("fill", (d) => currentFill[d.source.value.id]);
     }, FLIPPING_CHROMOSOME_TIME);
   }
 
@@ -877,6 +882,10 @@ function transitionSwapOldToNew({
       .duration(TRANSITION_SWAPPING_TIME)
       .ease(d3EaseLinear)
       .attr("d", function(d) {
+        const {
+          source: { id: sourceID },
+          target: { id: targetID }
+        } = d;
 
         // For source
         const sourceObject = getChordAngles(dataChromosomes, d, 'source');
@@ -890,24 +899,24 @@ function transitionSwapOldToNew({
 
         const angleToMove = angle * DEGREES_TO_RADIANS;
 
-        if (d.source.id !== d.target.id) {
-          if (d.source.id === currentChr) {
+        if (sourceID !== targetID) {
+          if (sourceID === currentChr) {
             sourceStartAngle += angleToMove;
             sourceEndAngle += angleToMove;
 
-            if (hasMovedDragging[d.target.id].hasMoved) {
-              const extraAngle = hasMovedDragging[d.target.id].angle * DEGREES_TO_RADIANS;
+            if (hasMovedDragging[targetID].hasMoved) {
+              const extraAngle = hasMovedDragging[targetID].angle * DEGREES_TO_RADIANS;
               targetStartAngle += extraAngle;
               targetEndAngle += extraAngle;
             }
           }
 
-          if (d.target.id === currentChr) {
+          if (targetID === currentChr) {
             targetStartAngle += angleToMove;
             targetEndAngle += angleToMove;
 
-            if (hasMovedDragging[d.source.id].hasMoved) {
-              const extraAngle = hasMovedDragging[d.source.id].angle * DEGREES_TO_RADIANS;
+            if (hasMovedDragging[sourceID].hasMoved) {
+              const extraAngle = hasMovedDragging[sourceID].angle * DEGREES_TO_RADIANS;
               sourceStartAngle += extraAngle;
               sourceEndAngle += extraAngle;
             }
@@ -1162,8 +1171,12 @@ export function swapPositionsAnimation({
       // NOTE: In SA, best flipped chromosomes starts with the other flipped chromosomes from the global array
       setCurrentFlippedChromosomes(bestFlippedChromosomes);
 
+      // All affected chromosomes that need to be checked: the previously flipped and the current best ones
       const unionFlippedChromosomes = union(allFlippedChromosomes, bestFlippedChromosomes);
       const unionFlippedChromosomesLength = unionFlippedChromosomes.length;
+
+      // Setting affected chromosomes
+      setPreviousFlippedChromosomes(unionFlippedChromosomes);
 
       const chrBlockDictionary = {};
       const blockChrDictionary = {};
@@ -1217,11 +1230,12 @@ export function swapPositionsAnimation({
 
       d3SelectAll("path.chord")
         .each(function(d) {
-          const blockID = d.source.value.id;
-          visitedBlockForFlipping[blockID] = false;
+          const {
+            source: { id: sourceID, value: { id: blockID } },
+            target: { id: targetID }
+          } = d;
 
-          const sourceID = d.source.id;
-          const targetID = d.target.id;
+          visitedBlockForFlipping[blockID] = false;
           const blockPositions = blockDictionary[blockID].blockPositions;
 
           const { sourcePositions, targetPositions } = flipGenesPosition({
@@ -1291,9 +1305,10 @@ export function swapPositionsAnimation({
         for (let i = 0; i < unionFlippedChromosomesLength; i++) {
           d3SelectAll(`path.chord.${unionFlippedChromosomes[i]}`)
             .each(function(d) {
-              const blockID = d.source.value.id;
-              const sourceID = d.source.id;
-              const targetID = d.target.id;
+              const {
+                source: { id: sourceID, value: { id: blockID } },
+                target: { id: targetID }
+              } = d;
 
               const affectedChromosomes = blockChrDictionary[blockID];
               const sourceList = chrBlockDictionary[affectedChromosomes[0]];
