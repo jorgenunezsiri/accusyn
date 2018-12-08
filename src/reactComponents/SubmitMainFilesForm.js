@@ -82,10 +82,10 @@ class SubmitMainFilesForm extends React.Component {
       })
       .catch((error) => {
         d3Select("#loader").style("display", "none");
+        console.log('ERROR: ', error);
 
         // If error is defined and it is a string
         if (error && isString(error)) {
-          console.log('ERROR: ', error);
           // Showing custom alert using react
           renderReactAlert(error, "danger", 15000);
         } else {
@@ -105,7 +105,7 @@ class SubmitMainFilesForm extends React.Component {
         <div className="gff-file-upload-container">
           <p>
             <label>
-              <span>GFF file: </span>
+              <span>General Feature Format (GFF) file: </span>
               <input type="file" name="gff-file-upload" id="gff-file-upload" />
             </label>
           </p>

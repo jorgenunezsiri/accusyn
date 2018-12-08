@@ -1,7 +1,7 @@
 // _genomeView.scss partial file
 
 svg#genome-view {
-  margin-left: 25px;
+  margin-left: 15px;
   margin-top: 65px;
 
   &.dark-mode {
@@ -36,6 +36,19 @@ div.genome-view-container {
   }
 
   svg#genome-view {
+    g.all path.point {
+      // Scatter points should have no stroke
+      stroke: none;
+      stroke-width: 0;
+    }
+
+    g.block {
+      // Making the last axis darker
+      path.axis.last {
+        stroke: #8c8c8c;
+      }
+    }
+
     &.dark-mode + .progress {
       .progress-bar {
         color: #f3f3f3;

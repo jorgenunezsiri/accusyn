@@ -10,7 +10,7 @@ Student ID: 11239727
 
 Function file: generateGenomeView.js
 
-@2018, Jorge Nunez Siri, All rights reserved
+@2018-2019, Jorge Nunez Siri, All rights reserved
 */
 
 import * as d3 from 'd3';
@@ -20,6 +20,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import defaultsDeep from 'lodash/defaultsDeep';
 import isEqual from 'lodash/isEqual';
 import isEmpty from 'lodash/isEmpty';
+import forEach from 'lodash/forEach';
 import findIndex from 'lodash/findIndex';
 
 import generateBlockView, { resetZoomBlockView } from './../generateBlockView';
@@ -32,7 +33,6 @@ import {
   flipValueAdditionalTrack,
   getChordsRadius,
   getInnerAndOuterRadiusAdditionalTracks,
-  getFlippedGenesPosition,
   getSelectedCheckboxes,
   getTransformValuesAdditionalTracks,
   removeBlockView,
@@ -96,13 +96,10 @@ import {
   CATEGORICAL_COLOR_SCALES,
   CIRCOS_CONF,
   CONNECTION_COLORS,
-  DEFAULT_BLOCK_VIEW_ZOOM_STATE,
   DEFAULT_GENOME_TRANSITION_TIME,
   FLIPPING_CHROMOSOME_TIME,
   GENOME_INNER_RADIUS,
-  REMOVE_BLOCK_VIEW_TRANSITION_TIME,
-  WIDTH,
-  HEIGHT
+  REMOVE_BLOCK_VIEW_TRANSITION_TIME
 } from './../variables/constants';
 
 // Local variables
@@ -253,83 +250,91 @@ function getCurrentTrack(selectedTrack) {
   return {
     currentTrack,
     minValue,
-    maxValue,
-    selectedTrackPosition
+    maxValue
   };
 }
 
 /**
  * Generates additional track from additional track array
  *
- * @param  {string}    trackName Current trackName
+ * @param  {string}  trackName   Current custom name of the track
+ * @param  {string}  trackRadius Radius to be used for the current track
+ * @param  {string}  trackType   Type of track: heatmap, histogram, line, or scatter
  * @return {undefined} undefined
  */
-function generateAdditionalTrack(trackName) {
+function generateAdditionalTrack(trackName, trackRadius, trackType) {
   const myCircos = getCircosObject();
 
-  const selectedTrack = !d3.select(`div.${trackName}-track-input select`).empty() &&
-    d3.select(`div.${trackName}-track-input select`).property("value");
+  const trackColor = (!d3.select(`div.additional-track.${trackName} .track-color select`).empty() &&
+    d3.select(`div.additional-track.${trackName} .track-color select`).property("value")) || 'YlOrRd';
 
-  // Resetting heatmap or histogram by removing it first
-  myCircos.removeTracks(trackName);
+  // Inner and outer radius
+  const { inner: innerRadius, outer: outerRadius } = trackRadius;
 
-  if (selectedTrack !== 'None') {
-    const trackColor = (!d3.select(`div.${trackName}-track-color select`).empty() &&
-      d3.select(`div.${trackName}-track-color select`).property("value")) || 'YlOrRd';
+  // Current track array and position
+  const { currentTrack, minValue, maxValue } = getCurrentTrack(trackName);
 
-    // Inner and outer radius
-    const { innerRadius, outerRadius } = getInnerAndOuterRadiusAdditionalTracks()[trackName];
-    // Current track array and position
-    const { currentTrack, minValue, maxValue, selectedTrackPosition } = getCurrentTrack(selectedTrack);
+  const configuration = {
+    innerRadius: innerRadius,
+    outerRadius: outerRadius,
+    logScale: false,
+    color: trackColor,
+    tooltipContent: function(d) {
+      // Activate if SA is not running
+      if (d3.select(".best-guess > input").attr("disabled")) return;
+      // Only show tooltip if the user is not dragging
+      // Note: Still need this, because we don't want to view the tooltip when
+      // holding a chromosome
+      const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
+      if (!isEmpty(currentChromosomeMouseDown)) return;
 
-    const configuration = {
-      innerRadius: innerRadius,
-      outerRadius: outerRadius,
-      logScale: false,
-      color: trackColor,
-      tooltipContent: function(d) {
-        // Activate if SA is not running
-        if (d3.select(".best-guess > input").attr("disabled")) return;
-        // Only show tooltip if the user is not dragging
-        // Note: Still need this, because we don't want to view the tooltip when
-        // holding a chromosome
-        const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
-        if (!isEmpty(currentChromosomeMouseDown)) return;
+      const { block_id, start, end, value } = d;
+      const { showStart: startPosition = start, showEnd: endPosition = end } = d;
 
-        const { block_id, start, end, value } = d;
-        const { showStart: startPosition = start, showEnd: endPosition = end } = d;
-
-        return `<h6><u>Bin information</u></h6>
-          <h6>Chromosome: ${block_id}</h6>
-          <h6>Start: ${d3.format(",")(startPosition)}</h6>
-          <h6>End: ${d3.format(",")(endPosition)}</h6>
-          <h6>Value: ${d3.format(",")(value)}</h6>`;
-      }
-    };
-
-    if (trackName === 'heatmap') {
-      // Loading heatmap
-      myCircos.heatmap('heatmap', currentTrack, configuration);
-    } else if (trackName === 'histogram') {
-      // Middle value
-      const middleValue = calculateMiddleValue(minValue, maxValue);
-
-      const axes = []; // Always pushing 5 axes
-      axes.push({ position: roundFloatNumber(minValue, 2), thickness: 2 });
-      axes.push({ position: roundFloatNumber(calculateMiddleValue(minValue, middleValue), 2), thickness: 2 });
-      axes.push({ position: roundFloatNumber(middleValue, 2), thickness: 2 });
-      axes.push({ position: roundFloatNumber(calculateMiddleValue(middleValue, maxValue), 2), thickness: 2 });
-      axes.push({ position: roundFloatNumber(maxValue, 2), thickness: 2 });
-
-      console.log('AXES: ', axes);
-
-      configuration.axes = axes;
-      configuration.showAxesTooltip = true; // Showing axes tooltip by default
-
-      // Loading histogram
-      myCircos.histogram('histogram', currentTrack, configuration);
+      return `<h6><u>Bin information</u></h6>
+        <h6>Chromosome: ${block_id}</h6>
+        <h6>Start: ${d3.format(",")(startPosition)}</h6>
+        <h6>End: ${d3.format(",")(endPosition)}</h6>
+        <h6>Value: ${d3.format(",")(value)}</h6>`;
     }
+  };
+
+  const axes = [];
+  if (trackType === 'histogram' || trackType === 'line' || trackType === 'scatter') {
+    // Middle value
+    const middleValue = calculateMiddleValue(minValue, maxValue);
+
+    // Always pushing 5 axes
+    axes.push({ position: roundFloatNumber(minValue, 2), thickness: 2 });
+    axes.push({ position: roundFloatNumber(calculateMiddleValue(minValue, middleValue), 2), thickness: 2 });
+    axes.push({ position: roundFloatNumber(middleValue, 2), thickness: 2 });
+    axes.push({ position: roundFloatNumber(calculateMiddleValue(middleValue, maxValue), 2), thickness: 2 });
+    axes.push({ position: roundFloatNumber(maxValue, 2), thickness: 2 });
+
+    console.log('AXES: ', axes);
+
+    configuration.axes = axes;
+    // Showing axes tooltip by default
+    configuration.showAxesTooltip = true;
   }
+
+  // Increasing the radius of the scatter points when having less than 6 chromosomes
+  if (dataChromosomes.length < 6 && trackType === 'scatter') configuration.size = 30;
+
+  // Adding an invisible scatter track in case of line track
+  // To be able to use the tooltip
+  if (trackType === 'line') {
+    const configurationHidden = cloneDeep(configuration);
+    // Using opacity 0 to hide the points and the axes
+    configurationHidden.opacity = 0;
+    // Removing tooltip from line track to only use it in scatter track
+    configuration.tooltipContent = null;
+    // Rendering hidden scatter track
+    myCircos['scatter'](`${trackName}-scatter`, currentTrack, configurationHidden);
+  }
+
+  // Loading track
+  myCircos[trackType](trackName, currentTrack, configuration);
 }
 
 /**
@@ -443,10 +448,20 @@ function generateCircosLayout() {
   // Generating layout configuration for the Circos plot
   myCircos.layout(dataChromosomes, defaultsDeep(extraLayoutConfiguration, cloneDeep(CIRCOS_CONF)));
 
+  // Resetting tracks by removing all of them first by not sending
+  // any trackID as parameter
+  // Note: Anything except for the layout is a track on Circos, so this
+  // also removes the chords track
+  // Always calling the function, so when the last track gets deleted, it also
+  // gets removed from genome view
+  myCircos.removeTracks(); // This resets the tracks object inside Circos to empty object
+
   // Adding additional tracks
   if (isAdditionalTrackAdded()) {
-    generateAdditionalTrack('heatmap');
-    generateAdditionalTrack('histogram');
+    // Only adding the tracks that are available
+    forEach(getInnerAndOuterRadiusAdditionalTracks().availableTracks, ({ name, radius, type }) =>
+      generateAdditionalTrack(name, radius, type)
+    );
   }
 
   // Adding the dragHandler to the svg after populating the dataChromosomes object
@@ -610,6 +625,12 @@ function generatePathGenomeView({
         // Activate if SA is not running
         if (d3.select(".best-guess > input").attr("disabled")) return;
 
+        const currentSelectedBlock = d.source.value.id;
+
+        const confirming = confirm(`Are you sure you want to delete the block with ID "${currentSelectedBlock}"?`);
+        // Return if the user does not want to delete
+        if (!confirming) return;
+
         unhighlightCurrentSelectedBlock();
 
         // Hiding and removing node when right clicking block
@@ -677,9 +698,13 @@ function generatePathGenomeView({
         const previousFlippedChr = getPreviousFlippedChromosomes();
         if (previousFlippedChr.includes(sourceID) || previousFlippedChr.includes(targetID)) {
           shouldUpdateBlockView = true;
+          // Resetting previous flipped chromosomes after updating block view,
+          // so in case nothing changes, it does not update again unnecessarily
+          setPreviousFlippedChromosomes([]);
         }
 
-        shouldUpdateBlockView = shouldUpdateBlockView || currentBlockViewLineColor !== currentGenomeViewChordColor ||
+        shouldUpdateBlockView = shouldUpdateBlockView || darkMode ||
+          currentBlockViewLineColor !== currentGenomeViewChordColor ||
           d3.color(gffPositionDictionary[sourceID].color).hex() !== currentAxisSourceColor ||
           d3.color(gffPositionDictionary[targetID].color).hex() !== currentAxisTargetColor;
       }
@@ -700,14 +725,26 @@ function generatePathGenomeView({
     getTransformValuesAdditionalTracks();
 
   d3.select("g.all")
-    .attr("transform", `scale(${currentScale})
-      translate(${currentTranslate.width},${currentTranslate.height})
+    .attr("transform", `translate(${currentTranslate.width},${currentTranslate.height})
+      scale(${currentScale})
       rotate(${currentRotate})`);
+
+  // Adding class last axis of each additional track block
+  d3.selectAll('g.block').each(function() {
+    // Choosing the path.axis inside each block
+    const lastElement = d3.select(this).selectAll('path.axis').filter((d, i) => i === 4);
+    if (lastElement && lastElement.node()) lastElement.node().classList.add('last');
+  });
 
   // Highlighting flipped blocks if checkbox is selected
   if (highlightFlippedBlocks) {
-    const flippedColorBlock = d3.select("div.blocks-color select").property("value") === 'Flipped';
-    const stroke = flippedColorBlock ? 'gold' : '#ea4848';
+    const chromosomePalette = d3.select("div.chromosomes-palette select").property("value");
+    const flippedColorBlock = d3.select("div.blocks-color select").property("value");
+    const shouldChangeColor = (flippedColorBlock === 'Flipped' ||
+      (flippedColorBlock === 'Source' && chromosomePalette === 'Flipped') ||
+      (flippedColorBlock === 'Target' && chromosomePalette === 'Flipped'));
+
+    const stroke = shouldChangeColor ? 'gold' : '#ea4848';
 
     d3.selectAll("path.chord.isFlipped")
       .style("stroke", stroke)
@@ -1014,8 +1051,8 @@ export default function generateGenomeView({
       let confirming = true;
       // Taking the calculated time string from the hint
       const timeString = d3.select(".filter-sa-hint").text().split("-")[0].trim();
-      if (finalTime > 120) {
-        confirming = confirm(`Are you willing to wait at least ${timeString} for the calculation to finish?`);
+      if (finalTime >= 120) {
+        confirming = confirm(`Are you willing to wait at least "${timeString}" for the calculation to finish?`);
       }
 
       if (confirming) {

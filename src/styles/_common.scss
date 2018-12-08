@@ -27,6 +27,10 @@ p {
   }
 }
 
+input[type="button"] {
+  padding: 0 10px;
+}
+
 .disabled {
   color: gainsboro;
 }
@@ -77,7 +81,7 @@ label {
 
   // Button for bootstrap alert
   &.alert-dismissible button.close {
-    padding: 9px 22px;
+    padding: 10px 22px;
 
     > span {
       display: block;
@@ -108,7 +112,16 @@ label {
     div.gff-file-upload-container {
       p {
         display: inline-block;
+
+        &:first-child {
+          margin-right: 10px;
+        }
       }
+    }
+
+    input#collinearity-file-upload {
+      display: inline-block;
+      margin-left: 44px;
     }
 
     // To add cursor pointer to any input file adjacent to an span inside a label
@@ -121,6 +134,17 @@ label {
 
     span + select {
       margin-left: 4px;
+    }
+  }
+
+  .submit-additional-tracks-form-container {
+    #additional-track-file-upload {
+      width: 205px;
+    }
+
+    .additional-track-name-field span {
+      display: inline-block;
+      width: 54px;
     }
   }
 }

@@ -120,9 +120,9 @@ if (process.env.NODE_ENV === 'production') {
 
       generateData(gffData, collinearityData, additionalTrackData);
     } catch (error) {
+      console.log('ERROR: ', error);
       // If error is defined and it is a string
       if (error && isString(error)) {
-        console.log('ERROR: ', error);
         // Showing custom alert using react
         renderReactAlert(error, "danger", 15000);
       } else {

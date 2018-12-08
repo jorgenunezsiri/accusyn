@@ -9,11 +9,17 @@
 
 #page-container #load-files-container {
   button {
+    color: #3b88fd;
     font-size: 12px;
     position: fixed;
     right: 10px;
+    text-decoration: none;
     top: 10px;
     z-index: 10;
+
+    &:hover {
+      color: #0056b3;
+    }
   }
 }
 
@@ -24,7 +30,7 @@
   margin-bottom: 15px;
 
   .panel-title {
-    background-color: #eee;
+    background-color: #f1f1f1;
     border: none;
     color: #000;
     cursor: pointer;
@@ -32,25 +38,36 @@
     margin-bottom: 5px;
     outline: none;
     padding: 6px;
+    position: relative;
     text-align: left;
     transition: 0.3s;
     width: 100%;
 
-    &.active, &:hover {
+    &:hover {
+      background-color: #ddd;
+    }
+
+    &.active {
       background-color: #ccc;
     }
 
     &:after {
       color: #000;
       content: '\02795'; // Unicode character for "plus" sign (+)
-      float: right;
-      font-size: 11px;
-      margin: 2px;
     }
 
     &.active:after {
-      content: "\2796"; // Unicode character for "minus" sign (-)
+      content: '\02796'; // Unicode character for "minus" sign (-)
+      top: 8px;
     }
+  }
+
+  // Style the accordion panel. Note: hidden by default
+  .panel {
+    background-color: white;
+    max-height: 0;
+    transition: max-height 0.2s ease-out;
+    overflow: hidden;
   }
 
   .show-all,
@@ -65,29 +82,42 @@
   }
 
   div.change-chromosome-positions {
+    p:not(:first-of-type) {
+      padding-left: 4px;
+    }
+
     p {
       display: inline-block;
-      padding-left: 4px;
     }
   }
 
-  // Style the accordion panel. Note: hidden by default
-  .panel {
-    background-color: white;
-    max-height: 0;
-    transition: max-height 0.2s ease-out;
-    overflow: hidden;
-  }
-
-  div.draw-blocks-order,
   div.additional-track-block,
   div.blocks-color,
+  div.draw-blocks-order,
   div.chromosomes-palette {
     p {
       display: inline-block;
+      text-align: left;
+
+      &:nth-child(1) {
+        width: 45%;
+      }
 
       &:nth-child(2) {
         margin-left: 5px;
+        width: 50%;
+      }
+    }
+  }
+
+  div.additional-track-block {
+    p {
+      &:nth-child(1) {
+        width: 28%;
+      }
+
+      &:nth-child(2) {
+        width: 67%;
       }
     }
   }
@@ -99,8 +129,8 @@
   div.filter-sa-flipping-frequency-div p {
     input {
       height: 5px;
-      margin-left: 35px;
-      width: 155px;
+      margin-left: 2px;
+      width: 190px;
     }
   }
 
@@ -136,16 +166,17 @@
     display: inline-block;
 
     > input {
-      padding: 0 15px;
+      padding: 0 25px;
     }
   }
 
   p.save-layout {
-    margin-right: 10px;
+    margin-right: 18px;
   }
 
   .separator {
     margin: 0;
+    overflow: hidden;
   }
 
   div.chr-options {
@@ -168,6 +199,140 @@
     .select-all {
       padding-top: 5px;
       margin-bottom: 0;
+    }
+  }
+
+  h5.panel-title:after,
+  span.add-track {
+    font-size: 12px;
+    font-weight: bold;
+    top: 7px;
+    right: 7px;
+    position: absolute;
+  }
+
+  div.additional-tracks-panel-container {
+    // Additional tracks tabs styles
+    div.tabs {
+      border: 1px solid #ccc;
+      background-color: #f1f1f1;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      overflow: hidden;
+
+      // Style the buttons that are used to open the tab content
+      button.tab-link,
+      div.add-track button.add-track {
+        background-color: inherit;
+        border: none;
+        border-bottom: 1px solid gainsboro;
+        cursor: pointer;
+        font-size: 10px;
+        height: 30px;
+        outline: none;
+        padding: 7px 0;
+        position: relative;
+        transition: 0.3s;
+        width: 100%;
+
+        span.text {
+          display: inline-block;
+          margin: 0;
+          text-overflow: ellipsis;
+          // Required for text-overflow to do anything
+          white-space: nowrap;
+          overflow: hidden;
+
+          width: 70%;
+        }
+
+        span.hamburger-icon {
+          cursor: grab;
+
+          font-size: 14px;
+          top: 3px;
+          left: 10px;
+          position: absolute;
+        }
+
+        span.delete {
+          font-size: 12px;
+          font-weight: bold;
+          top: 6px;
+          right: 11px;
+          position: absolute;
+        }
+      }
+
+      button.tab-link {
+        &:hover {
+          background-color: #ddd; // Change background color of buttons on hover
+        }
+
+        &.active {
+          background-color: #ccc; // Change color for the active/current tablink class
+        }
+
+        &.draggable-mirror {
+          box-shadow: 1px 1px 1px #000000, 0px 0px 1px gray;
+          outline: 1px solid gray;
+          transition: none;
+
+          &:not(.active) {
+            background-color: #ddd; // Using the hover color when not active
+          }
+        }
+      }
+
+      div.draggable-tabs,
+      div.add-track {
+        background-color: inherit;
+        width: 100%;
+      }
+
+      div.draggable-tabs {
+        &.draggable-container--is-dragging {
+          button.tab-link,
+          button.tab-link span.hamburger-icon {
+            cursor: grabbing;
+          }
+
+          + div.add-track, + div.add-track button.add-track {
+            cursor: not-allowed;
+          }
+        }
+      }
+
+      div.add-track {
+        button.add-track {
+          color: #000;
+          text-decoration: none;
+        }
+      }
+    }
+
+    // Tab content styles
+    div.tab-content {
+      border: 1px solid gainsboro;
+      border-top: none;
+      display: none;
+      padding: 5px;
+
+      // Go from zero to full opacity
+      @-webkit-keyframes fadeEffect {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes fadeEffect {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      > div {
+        animation: fadeEffect 0.5s; // Fading effect takes 0.5 seconds
+      }
     }
   }
 }

@@ -35,7 +35,12 @@ class Modal extends React.Component {
   render() {
     return (
       <div>
-        <Button color={this.props.buttonColor} onClick={this.toggle}>{this.props.buttonLabel}</Button>
+        <Button
+          className={this.props.buttonClassName}
+          color={this.props.buttonColor}
+          onClick={this.toggle}>
+          {this.props.buttonLabel}
+        </Button>
         <ModalReactstrap
           centered={this.props.centered}
           className={this.props.className}
@@ -73,8 +78,9 @@ Modal.defaultProps = {
  * @type {Object}
  */
 Modal.propTypes = {
+  buttonClassName: PropTypes.string,
   buttonColor: PropTypes.string,
-  buttonLabel: PropTypes.string,
+  buttonLabel: PropTypes.node,
   centered: PropTypes.bool,
   children: PropTypes.node,
   className: PropTypes.string,

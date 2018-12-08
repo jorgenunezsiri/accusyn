@@ -10,7 +10,7 @@ Student ID: 11239727
 
 Function file: generateData.js
 
-@2018, Jorge Nunez Siri, All rights reserved
+@2018-2019, Jorge Nunez Siri, All rights reserved
 */
 
 import * as d3 from 'd3';
@@ -24,6 +24,10 @@ import Modal from './reactComponents/Modal';
 
 import generateGenomeView from './genomeView/generateGenomeView';
 
+import generateAdditionalTracks, {
+  addAdditionalTracksMenu
+} from './generateAdditionalTracks';
+
 import {
   calculateDeclutteringETA,
   showSavedLayout,
@@ -32,6 +36,7 @@ import {
 
 import {
   assignFlippedChromosomeColors,
+  calculateMiddleValue,
   getSelectedCheckboxes,
   isInViewport,
   lookForBlocksPositions,
@@ -62,8 +67,7 @@ import { setGeneDictionary } from './variables/geneDictionary';
 import { setGffDictionary } from './variables/gffDictionary';
 import {
   getAdditionalTrackArray,
-  isAdditionalTrackAdded,
-  pushAdditionalTrack
+  setAdditionalTrackArray
 } from './variables/additionalTrack';
 import { setCircosObject } from './variables/myCircos';
 import resetAllVariables from './variables/resetAllVariables';
@@ -73,7 +77,6 @@ import { loadFiles } from './variables/templates';
 import {
   CATEGORICAL_COLOR_SCALES,
   CONNECTION_COLORS,
-  SEQUENTIAL_COLOR_SCALES,
   WIDTH,
   HEIGHT
 } from './variables/constants';
@@ -183,36 +186,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
   console.log('additionalTrack: ', additionalTrack);
 
   if (additionalTrack) {
-    const additionalTrackLength = additionalTrack.length;
-    for (let i = 0; i < additionalTrackLength; i++) {
-      const additionalTrackArray = []; // Array that includes the data from the additional tracks BedGraph file
-      const { data: currentData, name } = additionalTrack[i];
-      const currentDataLength = currentData.length;
-
-      for (let j = 0; j < currentDataLength; j++) {
-        let value = roundFloatNumber(parseFloat(currentData[j].value), 6);
-        const additionalTrackObject = {
-          block_id: currentData[j].chromosomeID,
-          start: parseInt(currentData[j].start),
-          end: parseInt(currentData[j].end),
-          value: value
-        };
-
-        // Not adding values that are above the chromosome limit
-        if (additionalTrackObject.start > gffPositionDictionary[currentData[j].chromosomeID].end &&
-            additionalTrackObject.end > gffPositionDictionary[currentData[j].chromosomeID].end &&
-            additionalTrackObject.value === 0) {
-          continue;
-        }
-
-        additionalTrackArray.push(additionalTrackObject);
-      }
-
-      pushAdditionalTrack({
-        data: additionalTrackArray,
-        name: name
-      });
-    }
+    setAdditionalTrackArray(generateAdditionalTracks(additionalTrack));
   }
 
   const blockDictionary = {}; // Dictionary to store the data for all blocks
@@ -369,9 +343,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .append("div")
     .attr("class", "container")
     .append("div")
-    .attr("class", function() {
-      return "row for-chr-boxes";
-    });
+    .attr("class", "row for-chr-boxes");
 
   // Layout title
   d3.select("#form-config")
@@ -401,9 +373,11 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   d3.select("p.dark-mode input")
     .on("change", function() {
+      const isDarkMode = d3.select(this).property("checked");
       // Calling genome view for updates
-
       generateGenomeView({
+        // Transitioning only when entering dark mode
+        transition: isDarkMode ? null : { shouldDo: false },
         shouldUpdateBlockCollisions: false
       });
     });
@@ -523,12 +497,12 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("div.blocks-color")
     .append("p")
     .append("select")
-    .html(function() {
-      return Object.keys(CONNECTION_COLORS).map(function (current) {
+    .html(() =>
+      Object.keys(CONNECTION_COLORS).map(function(current) {
         if (current === 'Disabled') return `<option disabled>─────</option>`;
         return `<option value="${current}">${current}</option>`;
-      }).join(' ');
-    });
+      }).join(' ')
+    );
 
   d3.select("div.blocks-color select")
     .on("change", function() {
@@ -539,12 +513,12 @@ export default function generateData(gff, collinearity, additionalTrack) {
       });
     });
 
-  // Chromosomes palette
+  // Genome palette
   d3.select("#form-config .layout-panel")
     .append("div")
     .attr("class", "chromosomes-palette")
     .append("p")
-    .text("Chromosomes palette: ");
+    .text("Genome palette: ");
 
   // Partitioning gff keys to get the checkboxes division
   const { gffPartitionedDictionary, partitionedGffKeys } = partitionGffKeys(gffKeys);
@@ -553,14 +527,14 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("div.chromosomes-palette")
     .append("p")
     .append("select")
-    .html(function() {
-      return Object.keys(CATEGORICAL_COLOR_SCALES).map(function (current) {
+    .html(() =>
+      Object.keys(CATEGORICAL_COLOR_SCALES).map(function(current) {
         if (current === 'Disabled') return '<option disabled>─────</option>';
         // Only adding Multiple key when visualizing multiple genomes
         else if (current === 'Multiple' && partitionedGffKeysLength === 1) return '';
         return `<option value="${current}">${current}</option>`;
-      }).join(' ');
-    });
+      }).join(' ')
+    );
 
   d3.select("div.chromosomes-palette select")
     .on("change", function() {
@@ -617,14 +591,12 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("div.draw-blocks-order")
     .append("p")
     .append("select")
-    .html(function() {
-      return `
-        <option value="Block ID (↑)" selected="selected">Block ID (↑)</option>
-        <option value="Block ID (↓)">Block ID (↓)</option>
-        <option value="Block length (↑)">Block length (↑)</option>
-        <option value="Block length (↓)">Block length (↓)</option>
-        `;
-    });
+    .html(`
+      <option value="Block ID (↑)" selected="selected">Block ID (↑)</option>
+      <option value="Block ID (↓)">Block ID (↓)</option>
+      <option value="Block length (↑)">Block length (↑)</option>
+      <option value="Block length (↓)">Block length (↓)</option>
+    `);
 
   d3.select("div.draw-blocks-order select")
     .on("change", function() {
@@ -676,12 +648,10 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("class", "filter-connections")
     .append("select")
     .attr("class", "filter-connections")
-    .html(function() {
-      return `
-        <option value="At Least" selected="selected">At Least</option>
-        <option value="At Most">At Most</option>
-        `;
-    });
+    .html(`
+      <option value="At Least" selected="selected">At Least</option>
+      <option value="At Most">At Most</option>
+    `);
 
   d3.select(".filter-connections-div select.filter-connections")
     .on("change", function() {
@@ -695,36 +665,30 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select(".filter-connections-div")
     .append("p")
     .attr("class", "filter-connections")
-    .html(function() {
-      return `
-        <label for="filter-block-size">
-          <span id="filter-block-size-value">...</span>
-        </label>
-        `;
-    });
+    .html(`
+      <label for="filter-block-size">
+        <span id="filter-block-size-value">...</span>
+      </label>
+    `);
 
   d3.select(".filter-connections-div")
     .append("p")
     .attr("class", "filter-connections")
-    .html(function() {
-      return `<input type="range" min="1" max=${maxBlockSize.toString()} id="filter-block-size">`;
-    });
+    .html(`<input type="range" min="1" max=${maxBlockSize.toString()} id="filter-block-size">`);
 
   // Filter angle input range
   d3.select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-angle-div")
-    .html(function() {
-      return `
-        <label for="nAngle-genome-view">
-          <span>Rotate = </span>
-          <span id="nAngle-genome-view-value">…</span>
-        </label>
-        <p>
-          <input type="range" min="0" max="360" id="nAngle-genome-view">
-        </p>
-      `;
-    });
+    .html(`
+      <label for="nAngle-genome-view">
+        <span>Rotate = </span>
+        <span id="nAngle-genome-view-value">…</span>
+      </label>
+      <p>
+        <input type="range" min="0" max="360" id="nAngle-genome-view">
+      </p>
+    `);
 
   // Flip/Reset chromosome order (positions)
   d3.select("#form-config .decluttering-panel ")
@@ -737,22 +701,20 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .append("p")
     .append("select")
     .attr("class", "flip-reset")
-    .html(function() {
-      return `
-        <option value="Flip">Flip</option>
-        <option value="Reset">Reset</option>
-      `;
-    });
+    .html(`
+      <option value="Flip">Flip</option>
+      <option value="Reset">Reset</option>
+    `);
 
   d3.select("#form-config .decluttering-panel .change-chromosome-positions")
     .append("p")
     .append("select")
     .attr("class", "all-genomes")
-    .html(function() {
-      return partitionedGffKeys.map((current) =>
+    .html(() =>
+      partitionedGffKeys.map((current) =>
         `<option value="${current}">${current}</option>`
-      ).join(' ');
-    });
+      ).join(' ')
+    );
 
   d3.select("#form-config .decluttering-panel .change-chromosome-positions")
     .append("p")
@@ -761,6 +723,11 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("type", "button")
     .attr("value", "Apply")
     .attr("title", "Flips or resets the chromosome order of the selected genome.");
+
+  d3.select("#form-config .decluttering-panel")
+    .append("p")
+    .attr("class","separator disabled")
+    .html("────────────────────");
 
   // Parameters title inside decluttering panel
   d3.select("#form-config .decluttering-panel")
@@ -816,49 +783,43 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-sa-temperature-div")
-    .html(function() {
-      return `
-        <label for="filter-sa-temperature">
-          <span>Temperature = </span>
-          <span id="filter-sa-temperature-value">…</span>
-        </label>
-        <p>
-          <input type="range" min="100" max="200000" step="100" id="filter-sa-temperature" disabled>
-        </p>
-      `;
-    });
+    .html(`
+      <label for="filter-sa-temperature">
+        <span>Temperature = </span>
+        <span id="filter-sa-temperature-value">…</span>
+      </label>
+      <p>
+        <input type="range" min="100" max="200000" step="100" id="filter-sa-temperature" disabled>
+      </p>
+    `);
 
   // Filter Simulated Annealing ratio
   d3.select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-sa-ratio-div")
-    .html(function() {
-      return `
-        <label for="filter-sa-ratio">
-          <span>Ratio = </span>
-          <span id="filter-sa-ratio-value">…</span>
-        </label>
-        <p>
-          <input type="range" min="0.001" max="0.2" step="0.001" id="filter-sa-ratio" disabled>
-        </p>
-      `;
-    });
+    .html(`
+      <label for="filter-sa-ratio">
+        <span>Ratio = </span>
+        <span id="filter-sa-ratio-value">…</span>
+      </label>
+      <p>
+        <input type="range" min="0.001" max="0.2" step="0.001" id="filter-sa-ratio" disabled>
+      </p>
+    `);
 
   // Filter Simulated Annealing Flipping frequency
   d3.select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-sa-flipping-frequency-div")
-    .html(function() {
-      return `
-        <label for="filter-sa-flipping-frequency">
-          <span>Flipping frequency = </span>
-          <span id="filter-sa-flipping-frequency-value">…</span>
-        </label>
-        <p>
-          <input type="range" min="0" max="100" step="1" id="filter-sa-flipping-frequency">
-        </p>
-      `;
-    });
+    .html(`
+      <label for="filter-sa-flipping-frequency">
+        <span>Flipping frequency = </span>
+        <span id="filter-sa-flipping-frequency-value">…</span>
+      </label>
+      <p>
+        <input type="range" min="0" max="100" step="1" id="filter-sa-flipping-frequency">
+      </p>
+    `);
 
   // Minimize collisions button
   d3.select("#form-config .decluttering-panel")
@@ -869,149 +830,28 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("type", "button")
     .attr("value", "Minimize collisions");
 
-  if (isAdditionalTrackAdded()) {
-    const currentAdditionalTracks = getAdditionalTrackArray();
-    const currentAdditionalTracksLength = currentAdditionalTracks.length;
-    console.log('currentAdditionalTracks: ', currentAdditionalTracks);
-    // Loading input option tags for select
-    let inputOptions = '<option value="None" selected="selected">None</option>';
-    for (let i = 0; i < currentAdditionalTracksLength; i++) {
-      inputOptions += `
-        <option value="${currentAdditionalTracks[i].name}">${currentAdditionalTracks[i].name}</option>
-        `;
-    }
+  // Additional tracks
+  d3.select("#form-config")
+  // Additional tracks panel title
+    .append("h5")
+    .attr("class", "panel-title additional-tracks-panel-title")
+    .text("Additional tracks");
 
-    // Loading colors option tag for select
-    const allColors = Object.keys(SEQUENTIAL_COLOR_SCALES);
-    const allColorsLength = allColors.length;
-    let colorOptions = "";
-    for (let i = 0; i < allColorsLength; i++) {
-      const key = allColors[i];
-      colorOptions += `
-        <option value="${key}">${SEQUENTIAL_COLOR_SCALES[key]}</option>
-        `;
-    }
+  // Additional tracks container
+  d3.select("#form-config")
+    .append("div")
+    .attr("class", "panel additional-tracks-panel")
+    .append("div")
+    .attr("class", "additional-tracks-panel-container")
+    .append("div")
+    .attr("class", "tabs")
+    .append("div")
+    .attr("class", "draggable-tabs");
 
-    // Additional tracks title
-    d3.select("#form-config")
-      .append("h5")
-      .attr("class", "panel-title additional-tracks-panel-title")
-      .text("Additional tracks");
+  // Adding the rest of the menu for the additional tracks
+  addAdditionalTracksMenu(getAdditionalTrackArray());
 
-    d3.select("#form-config")
-      .append("div")
-      .attr("class", "panel additional-tracks-panel");
-
-    // Heatmap track
-    d3.select("#form-config .additional-tracks-panel")
-      .append("div")
-      .attr("class", "heatmap-track additional-track")
-      .append("p")
-      .attr("class", "panel-subtitle")
-      .html("<strong>Heatmap track</strong>");
-
-    // Heatmap additional track select input
-    d3.select(".heatmap-track")
-      .append("div")
-      .attr("class", "heatmap-track-input additional-track-block")
-      .append("p")
-      .text("Input: ");
-
-    d3.select("div.heatmap-track-input")
-      .append("p")
-      .append("select")
-      .html(inputOptions);
-
-    // Heatmap color scale
-    d3.select(".heatmap-track")
-      .append("div")
-      .attr("class", "heatmap-track-color additional-track-block")
-      .append("p")
-      .text("Palette: ");
-
-    d3.select("div.heatmap-track-color")
-      .append("p")
-      .append("select")
-      .html(colorOptions);
-
-    // Heatmap placement
-    d3.select(".heatmap-track")
-      .append("div")
-      .attr("class", "heatmap-track-placement additional-track-block")
-      .append("p")
-      .text("Placement: ");
-
-    d3.select("div.heatmap-track-placement")
-      .append("p")
-      .append("select")
-      .html(function() {
-        return `
-          <option value="Outside" selected="selected">Outside</option>
-          <option value="Inside">Inside</option>
-          `;
-      });
-
-    // Histogram track
-    d3.select("#form-config .additional-tracks-panel")
-      .append("div")
-      .attr("class", "histogram-track additional-track")
-      .append("p")
-      .attr("class", "panel-subtitle")
-      .html("<strong>Histogram track</strong>");
-
-    // Histogram additional track select input
-    d3.select(".histogram-track")
-      .append("div")
-      .attr("class", "histogram-track-input additional-track-block")
-      .append("p")
-      .text("Input: ");
-
-    d3.select("div.histogram-track-input")
-      .append("p")
-      .append("select")
-      .html(inputOptions);
-
-    // Histogram color scale
-    d3.select(".histogram-track")
-      .append("div")
-      .attr("class", "histogram-track-color additional-track-block")
-      .append("p")
-      .text("Palette: ");
-
-    d3.select("div.histogram-track-color")
-      .append("p")
-      .append("select")
-      .html(colorOptions);
-
-    // Histogram placement
-    d3.select(".histogram-track")
-      .append("div")
-      .attr("class", "histogram-track-placement additional-track-block")
-      .append("p")
-      .text("Placement: ");
-
-    d3.select("div.histogram-track-placement")
-      .append("p")
-      .append("select")
-      .html(function() {
-        return `
-          <option value="Outside" selected="selected">Outside</option>
-          <option value="Inside">Inside</option>
-          `;
-      });
-
-    // Select on change for heatmap and histogram
-    d3.selectAll("div.additional-track-block select")
-      .on("change", function() {
-        // Calling genome view for updates with default transition
-        generateGenomeView({
-          transition: { shouldDo: false },
-          shouldUpdateBlockCollisions: false,
-          shouldUpdateLayout: true
-        });
-      });
-  }
-
+  // Chromosome checkboxes
   d3.select("div.for-chr-boxes")
     .append("div")
     .attr("class", "chr-options col-lg-12");
@@ -1095,32 +935,22 @@ export default function generateData(gff, collinearity, additionalTrack) {
   for (let i = 0; i < partitionedGffKeysLength; i++) {
     d3.select("div.for-chr-boxes")
       .append("div")
-      .attr("class", function() {
-        return `chr-boxes ${partitionedGffKeys[i]} col-lg-6`;
-      })
+      .attr("class", `chr-boxes ${partitionedGffKeys[i]} col-lg-6`)
       .selectAll("div.chr-box-inner-content")
       .data(gffPartitionedDictionary[partitionedGffKeys[i]]).enter()
       .append("div")
       .attr("class", "chr-box-inner-content")
       .append("label")
       .append("input")
-      .attr("class", function(chrKey) {
-        return `chr-box ${partitionedGffKeys[i]} ${chrKey}`;
-      })
+      .attr("class", (chrKey) => `chr-box ${partitionedGffKeys[i]} ${chrKey}`)
       .attr("type", "checkbox")
-      .attr("name", function(chrKey) {
-        return chrKey;
-      })
-      .attr("value", function(chrKey) {
-        return chrKey;
-      });
+      .attr("name", (chrKey) => chrKey)
+      .attr("value", (chrKey) => chrKey);
 
     // Select all button
     d3.select(`div.chr-boxes.${partitionedGffKeys[i]}`)
       .append("p")
-      .attr("class", function() {
-        return `select-all ${partitionedGffKeys[i]}`;
-      })
+      .attr("class", `select-all ${partitionedGffKeys[i]}`)
       .attr("title", "Selects all the connections.")
       .append("input")
       .attr("type", "button")
@@ -1131,9 +961,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .selectAll("div.chr-box-inner-content > label")
     .append("span")
     .attr("class", "chr-box-text")
-    .text(function(chrKey) {
-      return chrKey;
-    });
+    .text((chrKey) => chrKey);
 
   d3.select("#form-config")
     .selectAll("div.chr-box-inner-content")
@@ -1149,7 +977,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
       // The second class is the identifier in the chr-box input
       // `chr-box ${partitionedGffKeys[i]} ${chrKey}`
       const identifierClass =
-        d3.select(this).attr("class").split(" ")[1];
+        d3.select(this).attr("class").split(' ')[1];
 
       const {
         currentClassCheckboxes,
@@ -1275,22 +1103,20 @@ export default function generateData(gff, collinearity, additionalTrack) {
   //
   // svg.select(".all").append("g").attr("clip-path", "url(#clip-block)");
 
-  // More info: https://www.w3schools.com/howto/howto_js_accordion.asp
+
+  // More info about collapse: https://www.w3schools.com/howto/howto_js_accordion.asp
   d3.selectAll(".panel-title")
     .on("click", function() {
       const currentNode = d3.select(this).node();
       // Toggle between adding and removing the "active" class,
       // to highlight the title that controls the panel
-      currentNode.classList.toggle("active");
+      currentNode.classList.toggle('active');
 
       const panel = currentNode.nextElementSibling;
 
       // Hiding and showing the active panel by changing the max height
-      if (panel.style.maxHeight) {
-        panel.style.maxHeight = null;
-      } else {
-        panel.style.maxHeight = panel.scrollHeight + "px";
-      }
+      if (panel.style.maxHeight) panel.style.maxHeight = null;
+      else panel.style.maxHeight = `${panel.scrollHeight.toString()}px`;
 
       // Move scroll to the end of the page, if element is not in viewport and
       // maxHeight is defined i.e. the panel is opening
@@ -1300,6 +1126,14 @@ export default function generateData(gff, collinearity, additionalTrack) {
             movePageContainerScroll("end");
           }
         }, 200);
+
+        // If opening the tracks panel, then click the first tab by default when
+        // tabs are available but no tabs are clicked
+        if (d3.select(this).text().includes('Additional tracks') &&
+          !d3.select("#form-config .additional-tracks-panel div.tabs button.tab-link").empty() &&
+          d3.select("#form-config .additional-tracks-panel div.tabs button.tab-link.active").empty()) {
+          d3.select("#form-config .additional-tracks-panel div.tabs button.tab-link").node().click();
+        }
       }
     });
 

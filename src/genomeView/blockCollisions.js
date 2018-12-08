@@ -23,7 +23,6 @@ import { updateAdditionalTracksWhileDragging } from './dragging';
 import {
   flipGenesPosition,
   getChordsRadius,
-  getFlippedGenesPosition,
   movePageContainerScroll,
   removeNonLettersFromString,
   renderReactAlert,
@@ -71,10 +70,8 @@ import {
 // Constants
 import {
   CIRCOS_CONF,
-  DEFAULT_BLOCK_VIEW_ZOOM_STATE,
   DEGREES_TO_RADIANS,
   FLIPPING_CHROMOSOME_TIME,
-  GENOME_INNER_RADIUS,
   RADIANS_TO_DEGREES,
   TRANSITION_SWAPPING_TIME
 } from './../variables/constants';
@@ -647,9 +644,9 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords, should
     .require(intersects)
     .require(isSuperimposed);
 
-  p.spawn(function (data) {
+  p.spawn(function(data) {
     return getBlockCollisions(data.dataChromosomes, data.dataChords, false);
-  }).then(function (data) {
+  }).then(function(data) {
     const {
       collisionCount,
       superimposedCollisionCount,
@@ -1733,10 +1730,8 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
 
             } while (positionChecking || identifierChecking);
 
-            const val1 = newSolution[pos1];
-            const val2 = newSolution[pos2];
-            newSolution[pos2] = val1;
-            newSolution[pos1] = val2;
+            // Swapping the chromosome content of the two positions
+            [newSolution[pos1], newSolution[pos2]] = [newSolution[pos2], newSolution[pos1]];
           }
 
           myCircos.layout(newSolution, CIRCOS_CONF);

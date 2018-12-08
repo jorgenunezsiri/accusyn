@@ -12,6 +12,15 @@ export function getAdditionalTrackArray() {
 };
 
 /**
+ * Getter function for additional tracks names
+ *
+ * @return {Array<string>} Names from additionalTrackArray
+ */
+export function getAdditionalTrackNames() {
+  return _additionalTrackArray.map((current) => current.name);
+};
+
+/**
  * Setter function for additional tracks
  *
  * @param {Array<Object>} track Data for additionalTrackArray

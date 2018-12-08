@@ -10,7 +10,7 @@ Student ID: 11239727
 
 Function file: generateBlockView.js
 
-@2018, Jorge Nunez Siri, All rights reserved
+@2018-2019, Jorge Nunez Siri, All rights reserved
 */
 
 import * as d3 from 'd3';
@@ -39,6 +39,7 @@ import { getCurrentFlippedChromosomes } from './variables/currentFlippedChromoso
 // Contants
 import {
   DEFAULT_BLOCK_VIEW_ZOOM_STATE,
+  DEFAULT_GENOME_TRANSITION_TIME,
   OFFSET_DOMAIN,
   // Block view transition constants
   COLOR_CHANGE_TIME,
@@ -718,7 +719,7 @@ export default function generateBlockView(data) {
         svgBlock.selectAll("polygon.line")
           .attr("fill", darkMode ? "#222222" : "#ffffff")
           .transition()
-          .duration(500)
+          .duration(DEFAULT_GENOME_TRANSITION_TIME)
           .ease(d3.easeLinear)
           .attr("fill", blockColor);
       } else {

@@ -10438,8 +10438,8 @@ var Core = function () {
         delete this.tracks[trackIds];
       } else if ((0, _isArray2.default)(trackIds)) {
         (0, _forEach2.default)(trackIds, function (trackId) {
-          this.svg.select('.' + trackId).remove();
-          delete this.tracks[trackId];
+          _this.svg.select('.' + trackId).remove();
+          delete _this.tracks[trackId];
         });
       } else {
         console.warn('removeTracks received an unhandled attribute type');
@@ -24251,10 +24251,10 @@ var _buildAxesData = exports._buildAxesData = function _buildAxesData(conf) {
       _logger2.default.warn('Skipping axe group with no position and spacing defined');
       return aggregator;
     }
-    if (axesGroup.position) {
+    if (axesGroup.position != null) {
       aggregator.push(_buildAxisData(axesGroup.position, axesGroup, conf));
     }
-    if (axesGroup.spacing) {
+    if (axesGroup.spacing != null) {
       var builtAxes = (0, _range2.default)(axesGroup.start || conf.cmin, axesGroup.end || conf.cmax, axesGroup.spacing).map(function (value) {
         return _buildAxisData(value, axesGroup, conf);
       });

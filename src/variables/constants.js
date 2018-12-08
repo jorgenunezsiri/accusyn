@@ -22,12 +22,12 @@ const CONNECTION_COLORS = {
 };
 
 const GAP_AMOUNT = 0.03; // Circos plot gap - Value in radians
-const GENOME_INNER_RADIUS = 245; // Circos plot inner radius
+const GENOME_INNER_RADIUS = 250; // Circos plot inner radius
 const GENOME_OUTER_RADIUS = GENOME_INNER_RADIUS + 30; // Circos plot outer radius
 const RADIANS_TO_DEGREES = (180.0 / Math.PI); // Convert radians to degrees
 const DEGREES_TO_RADIANS = (Math.PI / 180.0); // Concert degrees to radians
-const WIDTH = 700; // Circos plot width
-const HEIGHT = 700; // Circos plot height
+const WIDTH = 715; // Circos plot width
+const HEIGHT = 715; // Circos plot height
 
 // Genome view
 const CIRCOS_CONF = {
@@ -49,33 +49,23 @@ const CIRCOS_CONF = {
 };
 
 // Genome view additional tracks
-// NOTE: Histogram is always on top of heatmap
-// 4 positioning options:
-//  -> heatmap outside, histogram inside
-//  -> histogram outside, heatmap inside
-//  -> heatmap outside, histogram outside
-//  -> heatmap inside, histogram inside
-
-// Using 10% separation between inner and outer radius in tracks
+// Positioning: Using 10% separation between inner and outer radius in tracks
 // and 2% separation from genome inner radius
-
-// Track inside top
-const TRACK_INNER_RADIUS_INSIDE_TOP = 0.88;
-const TRACK_OUTER_RADIUS_INSIDE_TOP = 0.98;
-// Track inside bottom
-const TRACK_INNER_RADIUS_INSIDE_BOTTOM = 0.76;
-const TRACK_OUTER_RADIUS_INSIDE_BOTTOM = 0.86;
-
-// Track outside top
-const TRACK_INNER_RADIUS_OUTSIDE_TOP = 1.14;
-const TRACK_OUTER_RADIUS_OUTSIDE_TOP = 1.24;
-// Track outside bottom
-const TRACK_INNER_RADIUS_OUTSIDE_BOTTOM = 1.02;
-const TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM = 1.12;
+const TRACK_SEPARATION_INNER_OUTER = 0.10;
+const TRACK_SEPARATION_GENOME = 0.02;
 
 // Transform changes when adding tracks
-const SCALE_DECREASE = 6; // 6% scaling decrese
-const TRANSLATE_INSCREASE = 24; // 24px increase in both x and y coordinates
+const SCALE_DECREASE = 0.05; // 5% scaling decrese
+const SCALE_INCREASE = 0.02; // 2% scaling increase
+
+// Additional track types
+const ADDITIONAL_TRACK_TYPES = {
+  None: 'None',
+  Heatmap: 'heatmap',
+  Histogram: 'histogram',
+  Line: 'line',
+  Scatter: 'scatter'
+};
 
 // Categorical color scales - palettes
 // Each scale is using 8 colors
@@ -147,21 +137,16 @@ export {
   WIDTH,
   HEIGHT,
   // Genome view
+  ADDITIONAL_TRACK_TYPES,
   CIRCOS_CONF,
   GAP_AMOUNT,
   GENOME_INNER_RADIUS,
-  TRACK_INNER_RADIUS_INSIDE_TOP,
-  TRACK_OUTER_RADIUS_INSIDE_TOP,
-  TRACK_INNER_RADIUS_INSIDE_BOTTOM,
-  TRACK_OUTER_RADIUS_INSIDE_BOTTOM,
-  TRACK_INNER_RADIUS_OUTSIDE_TOP,
-  TRACK_OUTER_RADIUS_OUTSIDE_TOP,
-  TRACK_INNER_RADIUS_OUTSIDE_BOTTOM,
-  TRACK_OUTER_RADIUS_OUTSIDE_BOTTOM,
+  TRACK_SEPARATION_INNER_OUTER,
+  TRACK_SEPARATION_GENOME,
   CATEGORICAL_COLOR_SCALES,
   SEQUENTIAL_COLOR_SCALES,
   SCALE_DECREASE,
-  TRANSLATE_INSCREASE,
+  SCALE_INCREASE,
   // Genome view transitions
   FLIPPING_CHROMOSOME_TIME,
   TRANSITION_DRAG_TIME,

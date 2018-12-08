@@ -3,6 +3,12 @@ import {
   tsvParse as d3TsvParse
 } from 'd3';
 
+import cloneDeep from 'lodash/cloneDeep';
+import isEmpty from 'lodash/isEmpty';
+import isString from 'lodash/isString';
+
+import { getAdditionalTrackNames } from './variables/additionalTrack';
+
 let currentChromosomesInsideGFF = [];
 
 /**
@@ -35,8 +41,37 @@ function shouldAddChromosomeID(chromosomeID) {
 export function processBedGraph(files, fileNames, reader = d3Text) {
   const allPromises = [];
   let haveAtLeastOneGffChromosome = false;
+  const currentAdditionalTrackNames = cloneDeep(getAdditionalTrackNames());
   for (let i = 0; i < files.length; i++) {
     allPromises.push(reader(files[i]).then(function(data) {
+      const currentFileName = fileNames[i].toString();
+      // Checking for file format
+      // The second column needs to be a number. If it is NaN then error
+      const firstLineSplit = data.split('\n')[0].split('\t');
+      if (firstLineSplit.length !== 4 ||
+        !isEmpty(firstLineSplit[1]) && isNaN(firstLineSplit[1])) {
+        return new Promise((resolve, reject) =>
+          reject(`The additional track file "${currentFileName}" was not submitted in the BedGraph file format. Please, try again!`)
+        );
+      }
+
+      // Checking for file name duplication
+      // If current file name is found in the current additional tracks or
+      // if the fileNames array contains the current file name more than once
+      if (currentAdditionalTrackNames.indexOf(currentFileName) !== (-1) ||
+        fileNames.filter(file => file === currentFileName).length > 1) {
+        return new Promise((resolve, reject) =>
+          reject(`The additional track name "${currentFileName}" is already being used by another track. Please, try again!`)
+        );
+      }
+
+      // Checking for spaces in file name
+      if (currentFileName.includes(' ')) {
+        return new Promise((resolve, reject) =>
+          reject(`The additional track "${currentFileName}" is using spaces on its name. Please, remove the spaces and try again!`)
+        );
+      }
+
       haveAtLeastOneGffChromosome = false;
       const result = `chromosomeID\tstart\tend\tvalue\n${data}`;
       const returnData = d3TsvParse(result).reduce((dataInside, current) => {
@@ -58,12 +93,13 @@ export function processBedGraph(files, fileNames, reader = d3Text) {
 
       // Return promise for each file
       return new Promise((resolve, reject) => {
+        // Checking for compatibility with GFF file
         if (!haveAtLeastOneGffChromosome) {
-          reject(`The additional track file ${fileNames[i]} is not compatible with the GFF file. Please, try again!`);
+          reject(`The additional track file "${currentFileName}" is not compatible with the GFF file. Please, try again!`);
         } else {
           resolve({
             data: returnData,
-            name: fileNames[i]
+            name: currentFileName
           });
         }
       });
@@ -84,9 +120,14 @@ export function processBedGraph(files, fileNames, reader = d3Text) {
 export function processGFF(file, reader = d3Text) {
   currentChromosomesInsideGFF = [];
   return reader(file).then(function(data) {
-    if (data.split("\n")[0].split("\t").length !== 4) {
+    // Checking for file format
+    // The second column needs to be a string. If it is not NaN (it is a number) then error
+    const firstLineSplit = data.split('\n')[0].split('\t');
+    if (firstLineSplit.length !== 4 ||
+      !isEmpty(firstLineSplit[1]) && !isNaN(firstLineSplit[1]) && isString(firstLineSplit[1])) {
       return new Promise((resolve, reject) =>
-        reject("The GFF file was not submitted in GFF simplified file format. Please, try again!"));
+        reject("The GFF file was not submitted in GFF simplified file format. Please, try again!")
+      );
     }
 
     const result = `chromosomeID\tgeneID\tstart\tend\n${data}`;
@@ -123,9 +164,15 @@ export function processGFF(file, reader = d3Text) {
 export function processGFF3(file, reader = d3Text) {
   currentChromosomesInsideGFF = [];
   return reader(file).then(function(data) {
-    if (data.split("\n")[0].split("\t").length !== 9) {
+    // Checking for file format
+    // The fourth and fifth columns need to be a number. If they are NaN then error
+    const firstLineSplit = data.split('\n')[0].split('\t');
+    if (firstLineSplit.length !== 9 ||
+      !isEmpty(firstLineSplit[3]) && isNaN(firstLineSplit[3]) ||
+      !isEmpty(firstLineSplit[4]) && isNaN(firstLineSplit[4])) {
       return new Promise((resolve, reject) =>
-        reject("The GFF file was not submitted in GFF3 complete file format. Please, try again!"));
+        reject("The GFF file was not submitted in GFF3 complete file format. Please, try again!")
+      );
     }
 
     const result = `chromosomeID\torigin\ttype\tstart\tend\tscore\tstrand\tphase\tattributes\n${data}`;
@@ -269,6 +316,7 @@ export function readFileAsText(fileID) {
   let fileType = fileID.replace('-file-upload', '');
   if (fileType === 'gff') fileType = 'GFF';
   else if (fileType === 'collinearity') fileType = 'MCScanX Collinearity';
+  else if (fileType === 'additional-track') fileType = 'Additional Track';
 
   const reader = new FileReader();
 
