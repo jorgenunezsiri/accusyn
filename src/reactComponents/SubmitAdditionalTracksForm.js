@@ -82,12 +82,12 @@ class SubmitAdditionalTracksForm extends React.Component {
       // If error is defined and it is a string
       if (error && isString(error)) {
         // Showing custom alert using react
-        renderReactAlert(error, "danger", 15000);
+        renderReactAlert(error, 'danger', 15000);
       } else {
         // Showing error alert using react
         renderReactAlert(
-          "There was an error while submitting the file. Please, try again!",
-          "danger",
+          'There was an error while submitting the file. Please, try again!',
+          'danger',
           15000
         );
       }

@@ -11,7 +11,7 @@ import cloneDeep from 'lodash/cloneDeep';
 import find from 'lodash/find';
 import findIndex from 'lodash/findIndex';
 import sortBy from 'lodash/sortBy';
-import sortedUniq from 'lodash/sortedUniq';
+import uniq from 'lodash/uniq';
 
 import generateGenomeView from './genomeView/generateGenomeView';
 import { calculateDeclutteringETA } from './genomeView/blockCollisions';
@@ -684,14 +684,46 @@ export function removeNonLettersFromString(str) {
 };
 
 /**
+ * Returns true if str1 is a subsequence of str2
+ * More info: https://www.geeksforgeeks.org/given-two-strings-find-first-string-subsequence-second/
+ *
+ * @param  {string}  str1 First string
+ * @param  {string}  str2 Second string
+ * @return {boolean}      True if subsequence, false otherwise
+ */
+export function isSubSequence(str1, str2) {
+   let j = 0; // For index of str1 (or subsequence)
+   let m = str1.length, n = str2.length;
+
+   // Traverse str2 and str1, and compare current character
+   // of str2 with first unmatched char of str1, if matched
+   // then move ahead in str1
+   for (let i = 0; i < n && j < m; i++) {
+     if (str1[j] === str2[i]) j++;
+   }
+
+   // If all characters of str1 were found in str2
+   return j === m;
+};
+
+/**
  * Partition Gff keys for the ordering inside the checkboxes
  *
  * @param  {Array<string>} gffKeys Array that includes the keys from the gff dictionary
  * @return {Object}        Partitioned dictionary along with the ordered keys
  */
 export function partitionGffKeys(gffKeys) {
+  // Using localCompare collator to sort alphanumeric strings.
+  // More info: https://stackoverflow.com/a/38641281
+  // Using numeric collation
+  // e.g. "1" < "2" < "10"
+  // Using sensitivity: base
+  // This means that only strings that differ in base letters compare as unequal.
+  // e.g. a ≠ b, a = á, a = A.
+  const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+
   // Sorted input gffKeys
-  let gffCopy = sortGffKeys(gffKeys.slice()).slice();
+  let gffCopy = gffKeys.sort(collator.compare).slice();
 
   // Removing all non-letters from string
   // e.g. from gffCopy = ["at1, at2, at3"]
@@ -701,9 +733,8 @@ export function partitionGffKeys(gffKeys) {
   });
 
   // Creating a duplicate-free version of gffCopy array
-  // sortedUniq function is optimized for sorted arrays
   // e.g. gffCopy = ["at"]
-  gffCopy = sortedUniq(gffCopy);
+  gffCopy = uniq(gffCopy);
 
   // Creating gffPartitionedDictionary to partition the gffKeys with their tags
   const gffPartitionedDictionary = {};
@@ -716,7 +747,8 @@ export function partitionGffKeys(gffKeys) {
     }
 
     for (let j = 0; j < gffKeysLength; j++) {
-      if (gffKeys[j].includes(gffCopy[i])) {
+      if (isSubSequence(gffCopy[i], gffKeys[j])) {
+        // NOTE: gffKeys is already sorted in place above
         gffPartitionedDictionary[gffCopy[i]].push(gffKeys[j]);
       }
     }
@@ -735,7 +767,7 @@ export function partitionGffKeys(gffKeys) {
   }
 
   return {
-    gffPartitionedDictionary: gffPartitionedDictionary,
+    gffPartitionedDictionary,
     partitionedGffKeys: gffCopy
   };
 };
@@ -748,17 +780,17 @@ export function partitionGffKeys(gffKeys) {
  */
 export function sortGffKeys(gffKeys) {
   const gffCopy = gffKeys.slice();
+  let sortedGffKeys = [];
 
-  // Using localCompare collator to sort alphanumeric strings.
-  // More info: https://stackoverflow.com/a/38641281
-  // Using numeric collation
-  // e.g. "1" < "2" < "10"
-  // Using sensitivity: base
-  // This means that only strings that differ in base letters compare as unequal.
-  // e.g. a ≠ b, a = á, a = A.
-  const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+  const { gffPartitionedDictionary, partitionedGffKeys } = partitionGffKeys(gffCopy);
 
-  return gffCopy.sort(collator.compare);
+  for (let i = 0; i < partitionedGffKeys.length; i++) {
+    sortedGffKeys = [...sortedGffKeys, ...gffPartitionedDictionary[partitionedGffKeys[i]]];
+  }
+
+  console.log('SORTED GFF KEYS\n\n', sortedGffKeys);
+
+  return sortedGffKeys;
 };
 
 /**
@@ -806,7 +838,7 @@ export function flipOrResetChromosomeOrder({
     // by sorting chromosomePositions in ascending order
 
     // Using localCompare collator to sort alphanumeric strings.
-    // Same as sortGffKeys function
+    // Same as partitionGffKeys function
     const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
     chromosomePositions.sort(function compare(a, b) {
       return collator.compare(a.chr, b.chr);

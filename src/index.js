@@ -27,46 +27,47 @@ if (process.env.NODE_ENV === 'production') {
 */
 
 (async function main() {
-  // Alerting the user and returning early if not Google Chrome
-  if (!window.chrome) {
-    // Showing alert using react
-    renderReactAlert(
-      "Please, use the latest version of Google Chrome for the best app experience.",
-      "danger",
-      15000
-    );
-
-    return;
-  }
-
-  console.log('SCREN WIDTH: ', window.screen.width, detectDeviceType(window.navigator.userAgent).type);
-
-  // Alerting the user and returning early if not Desktop browser
   const deviceType = detectDeviceType(window.navigator.userAgent).type;
+  const {
+    chrome,
+    screen: { width: screenWidth },
+    devicePixelRatio
+  } = window;
+
   if (deviceType !== 'desktop') {
+    // Alerting the user if not Desktop browser
     // Showing alert using react
     renderReactAlert(
-      `Please, use a desktop browser for the best app experience.
+      `Warning: Use a desktop browser for the best app experience.
       Your current device is ${deviceType}.`,
-      "danger",
+      'warning',
       15000
     );
-
-    return;
-  }
-
-  // Alerting the user and returning early if not Desktop resolution
-  const screenWidth = window.screen.width;
-  if (screenWidth < 1440) {
+  } else if (!chrome) {
+    // Alerting the user if not Google Chrome
     // Showing alert using react
     renderReactAlert(
-      `Please, use a desktop screen width of at least 1440 pixels for the best app experience.
-      Your current screen width is ${screenWidth} pixels.`,
-      "danger",
+      'Warning: Use the latest version of Google Chrome for the best app experience.',
+      'warning',
       15000
     );
-
-    return;
+  } else if (screenWidth < 1440) {
+    // Alerting the user if not Desktop resolution
+    // Showing alert using react
+    renderReactAlert(
+      `Warning: Use a desktop screen width of at least 1440 pixels for the best app experience.
+      Your current screen width is ${screenWidth} pixels.`,
+      'warning',
+      15000
+    );
+  } else if (devicePixelRatio !== 1 && devicePixelRatio !== 2) {
+    // Alerting the user if not Desktop resolution
+    // Showing alert using react
+    renderReactAlert(
+      'Warning: Set the browser zoom level to 100% for the best app experience.',
+      'warning',
+      15000
+    );
   }
 
   // Reading query parameters

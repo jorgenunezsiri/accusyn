@@ -5,8 +5,6 @@ Course: CMPT994 - Research
 
 Name: Jorge Nunez Siri
 E-mail: jdn766@mail.usask.ca
-NSID: jdn766
-Student ID: 11239727
 
 Function file: generateGenomeView.js
 

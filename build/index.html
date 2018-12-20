@@ -7,8 +7,6 @@ Course: CMPT994 - Research
 
 Name: Jorge Nunez Siri
 E-mail: jdn766@mail.usask.ca
-NSID: jdn766
-Student ID: 11239727
 
 Main file: index.html
 
@@ -20,6 +18,21 @@ Main file: index.html
 <head>
   <meta charset="utf-8">
   <title>GSB: A Web-based Genome Synteny Browser</title>
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-131211042-1"></script>
+  <script type="text/javascript">
+    if (document.location.hostname === 'usask-gsb.netlify.com') {
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+
+      gtag('js', new Date());
+      gtag('config', 'UA-131211042-1');
+    }
+  </script>
+
   <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
   <!-- Loading local css -->
   <link type="text/css" rel="stylesheet" href="./bundle.css">

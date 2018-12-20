@@ -956,6 +956,7 @@ export function lookUpPositionCollisionsDictionary(bestSolution, dataChords) {
   let bestSolutionChromosomeOrder = bestSolution;
   // If object inside has id, then generate chromosome order
   // If not, it means that it's already in chromosome order format (array of strings)
+  // NOTE: This is needed for the function disableShowSavedLayout
   if (bestSolution[0] && bestSolution[0].id) {
     bestSolutionChromosomeOrder = toChromosomeOrder(bestSolution);
   }

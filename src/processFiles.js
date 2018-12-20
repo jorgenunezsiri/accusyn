@@ -9,6 +9,8 @@ import isString from 'lodash/isString';
 
 import { getAdditionalTrackNames } from './variables/additionalTrack';
 
+// Local variable to store the chromosomes in the GFF file
+// This is used to make sure the user loads compatible collinearity and additional files
 let currentChromosomesInsideGFF = [];
 
 /**
@@ -21,11 +23,14 @@ function shouldAddChromosomeID(chromosomeID) {
   // Not including Scaffold chromosomes
   if (chromosomeID.toLowerCase().includes('scaffold')) return false;
 
-  // Checking if last character is a number,
-  // and if the chromosome ID length is maximum 5.
-  // If not is treated as scaffold, i.e. is not included
-  if (!isFinite(chromosomeID[chromosomeID.length - 1]) ||
-    chromosomeID.length > 5) return false;
+  const chromosomeIDLength = chromosomeID.length;
+  const lastChrPosition = chromosomeID[chromosomeIDLength - 1];
+
+  // If last character is not a number and is not an uppercase letter,
+  // or if the chromosome ID length is more than 5.
+  // Then it is treated as scaffold, i.e. is not included
+  if ((!isFinite(lastChrPosition) && !(lastChrPosition >= 'A' && lastChrPosition <= 'Z')) ||
+    chromosomeIDLength > 5) return false;
 
   return true;
 };
@@ -147,6 +152,13 @@ export function processGFF(file, reader = d3Text) {
       return dataInside;
     }, []);
 
+    if (currentChromosomesInsideGFF.length === 0) {
+      return new Promise((resolve, reject) =>
+        reject(`The first column in the GFF file is not following the correct format. The last character
+          of the chromosomes needs to be a number or an uppercase letter (i.e. chr1, chrA1, chr1A).`)
+      );
+    }
+
     console.log('RESULT: ', currentChromosomesInsideGFF);
 
     // Return promise if task is successful
@@ -193,6 +205,13 @@ export function processGFF3(file, reader = d3Text) {
       return dataInside;
     }, []);
 
+    if (currentChromosomesInsideGFF.length === 0) {
+      return new Promise((resolve, reject) =>
+        reject(`The first column in the GFF3 file is not following the correct format. The last character
+          of the chromosomes needs to be a number or an uppercase letter (i.e. chr1, chrA1, chr1A).`)
+      );
+    }
+
     // Return promise if task is successful
     return new Promise(resolve => resolve(returnData));
   });
@@ -206,6 +225,8 @@ export function processGFF3(file, reader = d3Text) {
  * @return {undefined}       undefined
  */
 export function processCollinearity(file, reader = d3Text) {
+  let blockID = -1;
+  let connectionID = 0;
   let score = 0;
   let eValueBlock = 0;
   let sourceChromosome = null;
@@ -255,6 +276,9 @@ export function processCollinearity(file, reader = d3Text) {
             } else if (currentLineSplit[currentLineSplit.length - 1].trim() === 'minus') {
               isFlipped = 'yes';
             }
+            // Increasing block ID and resetting connection ID for the next block
+            blockID++;
+            connectionID = 0;
           } else if (!trimmedCurrent.startsWith('#')) {
             // Reading block connections
             if (isScaffold) {
@@ -263,8 +287,8 @@ export function processCollinearity(file, reader = d3Text) {
 
             const currentLineSplit = trimmedCurrent.split(':');
             const currentObject = {
-              block: currentLineSplit[0].split('-')[0].trim(),
-              connection: currentLineSplit[0].split('-')[1].trim()
+              block: blockID,
+              connection: connectionID++
             };
 
             // Splitting connection details by any amount of white space

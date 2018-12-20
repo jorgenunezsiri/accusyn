@@ -74,7 +74,7 @@ class SubmitMainFilesForm extends React.Component {
         setTimeout(function() {
           // Removing url parameters without refreshing page
           // More info here: https://stackoverflow.com/a/45012889
-          const newURL = window.location.href.split("?")[0];
+          const newURL = window.location.href.split('?')[0];
           window.history.pushState('object', document.title, newURL);
 
           generateData(gffData, collinearityData);
@@ -87,12 +87,12 @@ class SubmitMainFilesForm extends React.Component {
         // If error is defined and it is a string
         if (error && isString(error)) {
           // Showing custom alert using react
-          renderReactAlert(error, "danger", 15000);
+          renderReactAlert(error, 'danger', 15000);
         } else {
           // Showing error alert using react
           renderReactAlert(
-            "There was an error while submitting the files. Please, try again!",
-            "danger",
+            'There was an error while submitting the files. Please, try again!',
+            'danger',
             15000
           );
         }
