@@ -31,6 +31,10 @@ const loadFiles = (
       Bn</a> - <em>Brassica napus</em> (Canola)
     </p>
     <p>
+      <a href={`${getCurrentHost()}?gff=brassica&collinearity=brassica&additionalTrack=brassica_gene_count&additionalTrack=brassica_gene_density`}>
+      Brassica</a> - <em>A(rapa), B(nigra), C(oleracea), D(napus)</em>
+    </p>
+    <p>
       <a href={`${getCurrentHost()}?gff=camelina&collinearity=camelina&additionalTrack=camelina_gene_count&additionalTrack=camelina_gene_density&additionalTrack=camelina_repeat_count&additionalTrack=camelina_repeat_density`}>
       Cs</a> - <em>Camelina sativa</em> (Camelina)
     </p>
