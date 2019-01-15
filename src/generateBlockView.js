@@ -55,7 +55,6 @@ import {
  * @return {undefined} undefined
  */
 export function resetZoomBlockView(blockID) {
-  console.log('AFFECTED BLOCK ID: ', blockID);
   const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
 
   if (isEqual(blockZoomStateDictionary[blockID], DEFAULT_BLOCK_VIEW_ZOOM_STATE)) return;
@@ -194,7 +193,6 @@ export default function generateBlockView(data) {
     const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
 
     if (!isBlockStateDefault(blockZoomStateDictionary[blockID], DEFAULT_BLOCK_VIEW_ZOOM_STATE)) {
-      console.log('ENTERING 1!!!');
       // If the zoom state is not default, then show hint (opacity 1)
       d3.select("#block-view-container .zoom-state-hint")
         .style("opacity", function() {
@@ -206,9 +204,6 @@ export default function generateBlockView(data) {
         .ease(d3.easeLinear)
         .style("opacity", 1);
     } else {
-      const valueToPrint = d3.select("#block-view-container .zoom-state-hint").style("opacity");
-      console.log('ENTERING 2!!!', valueToPrint);
-
       // If the zoom state is default and the hint is showing, then hide it (opacity 0)
       d3.select("#block-view-container .zoom-state-hint")
         .style("opacity", function() {
@@ -220,6 +215,28 @@ export default function generateBlockView(data) {
         .ease(d3.easeLinear)
         .style("opacity", 0);
     }
+  };
+
+  /**
+   * Applies style to block view axes based on dark mode
+   * NOTE: This should be called each time the axes are generated or modified
+   *
+   * @return {undefined} undefined
+   */
+  function applyStyleToAxes() {
+    const darkMode = d3.select("p.dark-mode input").property("checked");
+
+    d3.selectAll("svg.block-view .axisY0 g.tick text,svg.block-view .axisY1 g.tick text")
+      .attr("fill", darkMode ? "#ffffff" : "#000000");
+
+    d3.selectAll("svg.block-view .axisY0 g.tick line,svg.block-view .axisY1 g.tick line")
+      .attr("stroke", darkMode ? "#ffffff" : "#000000");
+
+    d3.selectAll("svg.block-view .axisY0 g.tick line,svg.block-view .axisY1 g.tick line")
+      .attr("stroke-width", "2px");
+
+    d3.selectAll("svg.block-view g.tick text")
+      .attr("font-size", "9");
   };
 
   // Zoom behavior
@@ -254,6 +271,8 @@ export default function generateBlockView(data) {
       d3.select("svg.block-view g.clip-block-group g")
         .style("transform", `translate(0px,${blockZoomStateDictionary[blockID].zoom.y}px)
           scale(1,${blockZoomStateDictionary[blockID].zoom.k})`);
+
+      applyStyleToAxes();
 
       console.log('GLOBAL ZOOM: ', blockZoomStateDictionary[blockID].zoom);
 
@@ -550,8 +569,6 @@ export default function generateBlockView(data) {
               offsetTransition = (heightBlock - (heightBlock / transitionHeightDivision)) / 2;
             }
 
-            // console.log('HEIGHT BLOCK: ', heightBlock, offsetTransition, transitionHeightDivision);
-
             // Creating new scales for y1 to improve the flipping transition
             const minimumRange = offsetTransition + ((heightBlock - offsetTransition) / transitionHeightDivision);
             const maximumRange = offsetTransition;
@@ -561,6 +578,8 @@ export default function generateBlockView(data) {
 
             y1axis = d3.axisRight(newY[1]).tickSize(12).ticks(10);
             gY1.call(y1axis.scale(blockZoomStateDictionary[blockID].zoom.rescaleY(newY[1])));
+
+            applyStyleToAxes();
 
             // Plotting the lines path using the new scales
             svgBlock.selectAll("polygon.line")
@@ -656,6 +675,7 @@ export default function generateBlockView(data) {
         .attr("clip-path", "url(#clip-block)")
         .append("rect")
         .attr("class", "rect-clip-block")
+        .attr("fill", "none")
         .attr("width", widthBlock)
         .attr("height", heightBlock);
 
@@ -742,7 +762,9 @@ export default function generateBlockView(data) {
 
       gY0 = svgBlock.append("g")
         .attr("class", "axisY0")
-        .call(y0axis.ticks(10))
+        .call(y0axis.ticks(10));
+
+      gY0.select("path.domain")
         .attr("fill", function() {
           return gffPositionDictionary[sourceChromosomeID].color;
         });
@@ -758,10 +780,14 @@ export default function generateBlockView(data) {
       gY1 = svgBlock.append("g")
         .attr("class", "axisY1")
         .attr("transform", `translate(${widthBlock},0)`)
-        .call(y1axis.ticks(10))
+        .call(y1axis.ticks(10));
+
+      gY1.select("path.domain")
         .attr("fill", function() {
           return gffPositionDictionary[targetChromosomeID].color;
         });
+
+      applyStyleToAxes();
 
       // Use these rectangles to be able to select anywhere inside the scales,
       // in order to drag them
@@ -856,6 +882,8 @@ export default function generateBlockView(data) {
             gY1.call(y1axis.scale(blockZoomStateDictionary[blockID].zoom.rescaleY(y[1])));
           }
 
+          applyStyleToAxes();
+
           // Saving the axis state in the dictionary
           blockZoomStateDictionary[blockID].y0Domain = cloneDeep(y[0].domain());
           blockZoomStateDictionary[blockID].y1Domain = cloneDeep(y[1].domain());
@@ -943,6 +971,9 @@ export default function generateBlockView(data) {
     .attr("y", 0 - margin.left)
     .attr("x", 0 - (heightBlock / 2))
     .attr("dy", "1em")
+    .attr("fill", darkMode ? "#ffffff" : "#000000")
+    .attr("font-size", "11")
+    .attr("text-anchor", "middle")
     .text(sourceChromosomeID);
 
   // Add the Y1 Axis label text with target chromosome ID
@@ -952,6 +983,9 @@ export default function generateBlockView(data) {
     .attr("y", 0 - widthBlock - margin.right)
     .attr("x", (heightBlock / 2))
     .attr("dy", "1em")
+    .attr("fill", darkMode ? "#ffffff" : "#000000")
+    .attr("font-size", "11")
+    .attr("text-anchor", "middle")
     .text(targetChromosomeID);
 
   // Add the Chart title
@@ -959,5 +993,8 @@ export default function generateBlockView(data) {
     .attr("class", "axis-label")
     .attr("x", (widthBlock / 2))
     .attr("y", 0 - (margin.top / 3))
+    .attr("fill", darkMode ? "#ffffff" : "#000000")
+    .attr("font-size", "11")
+    .attr("text-anchor", "middle")
     .text(`${sourceChromosomeID} vs. ${targetChromosomeID} - Block ${d3.format(",")(blockID)}`);
 }

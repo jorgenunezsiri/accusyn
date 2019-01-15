@@ -24993,7 +24993,7 @@ var Chords = function (_Track) {
       var track = parentElement.append('g');
 
       var link = track.selectAll('.chord').data(data).enter().append('path').attr('class', function (d) {
-        return 'chord ' + d.source.id + ' ' + d.target.id + (d.source.value.isFlipped ? ' isFlipped' : '');
+        return 'chord ' + d.source.id + ' ' + d.target.id + ' id' + d.source.value.id + (d.source.value.isFlipped ? ' isFlipped' : '');
       }).attr('d', (0, _d3Chord.ribbon)().source(function (d) {
         return getCoordinates(d.source, instance._layout, _this2.conf, d);
       }).target(function (d) {

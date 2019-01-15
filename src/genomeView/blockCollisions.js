@@ -115,8 +115,8 @@ export function transitionFlipChromosomeStroke(currentChr, flipping = true) {
   d3Select(`g.${currentChr} path#arc-label${currentChr}`)
     .transition()
     .duration(FLIPPING_CHROMOSOME_TIME - 25)
-    .style("stroke", flipping ? stroke : "none")
-    .style("stroke-width", flipping ? "2px" : "0");
+    .attr("stroke", flipping ? stroke : "none")
+    .attr("stroke-width", flipping ? "2px" : "0");
 };
 
 /**

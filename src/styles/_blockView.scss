@@ -21,37 +21,11 @@
       background-color: #222222;
       border-radius: 20px;
     }
-
-    text.axis-label,
-    .axisY0 g.tick text,
-    .axisY1 g.tick text {
-      fill: #ffffff;
-    }
-
-    .axisY0 g.tick line,
-    .axisY1 g.tick line {
-      stroke: #ffffff;
-    }
-  }
-
-  .axisY0 g.tick line,
-  .axisY1 g.tick line {
-    stroke-width: 2px;
   }
 
   .rect-clip-block {
-    fill: none;
     pointer-events: all;
     visibility: hidden;
-  }
-
-  .axis-label {
-    font-size: 11px;
-    text-anchor: middle;
-  }
-
-  g.tick text {
-    font-size: 9px;
   }
 
   .outer-content {

@@ -108,6 +108,18 @@ label {
     font-size: 18px;
   }
 
+  // To add cursor pointer to any input file adjacent to an span inside a label
+  label {
+    input[type="file"],
+    input::-webkit-file-upload-button {
+      cursor: pointer;
+    }
+  }
+
+  span + select {
+    margin-left: 4px;
+  }
+
   .submit-main-files-form-container {
     div.gff-file-upload-container {
       p {
@@ -123,18 +135,6 @@ label {
       display: inline-block;
       margin-left: 44px;
     }
-
-    // To add cursor pointer to any input file adjacent to an span inside a label
-    label {
-      input[type="file"],
-      input::-webkit-file-upload-button {
-        cursor: pointer;
-      }
-    }
-
-    span + select {
-      margin-left: 4px;
-    }
   }
 
   .submit-additional-tracks-form-container {
@@ -145,6 +145,20 @@ label {
     .additional-track-name-field span {
       display: inline-block;
       width: 54px;
+    }
+  }
+
+  .download-files-form-container {
+    .options-container {
+      p.keep-block-highlighted,
+      p.plot-type {
+        display: inline-block;
+      }
+
+      p.keep-block-highlighted,
+      p.plot-type select {
+        margin-left: 16px;
+      }
     }
   }
 }

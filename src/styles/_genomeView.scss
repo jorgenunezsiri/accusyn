@@ -36,19 +36,6 @@ div.genome-view-container {
   }
 
   svg#genome-view {
-    g.all path.point {
-      // Scatter points should have no stroke
-      stroke: none;
-      stroke-width: 0;
-    }
-
-    g.block {
-      // Making the last axis darker
-      path.axis.last {
-        stroke: #8c8c8c;
-      }
-    }
-
     &.dark-mode + .progress {
       .progress-bar {
         color: #f3f3f3;

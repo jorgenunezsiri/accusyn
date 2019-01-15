@@ -177,16 +177,16 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
     // Loading add track modal inside its container
     ReactDOM.render(
       <Modal
-      buttonClassName="add-track"
-      buttonLabel={
-        <div>
-        <span className="text">Add track</span>
-        <span className="add-track">&#10133;</span>
-        </div>
-      }
-      modalHeader="Add track"
-      size="sm">
-      {<SubmitAdditionalTracksForm />}
+        buttonClassName="add-track"
+        buttonLabel={
+          <div>
+            <span className="text">Add track</span>
+            <span className="add-track">&#10133;</span>
+          </div>
+        }
+        modalHeader="Add track"
+        size="sm">
+        {<SubmitAdditionalTracksForm />}
       </Modal>,
       d3.select("#form-config .additional-tracks-panel-container div.tabs div.add-track").node()
     );

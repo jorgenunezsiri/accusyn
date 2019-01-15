@@ -78,6 +78,10 @@ import {
   setCurrentFlippedChromosomes,
   setPreviousFlippedChromosomes
 } from './../variables/currentFlippedChromosomes';
+import {
+  getCurrentSelectedBlock,
+  setCurrentSelectedBlock
+} from './../variables/currentSelectedBlock';
 import { generateUpdatedDataChromosomesFromOrder } from './../variables/dataChromosomes';
 import {
   getGffDictionary,
@@ -101,7 +105,6 @@ import {
 } from './../variables/constants';
 
 // Local variables
-let currentSelectedBlock = null; // To store the block id of the current selected block
 const currentRemovedBlocks = []; // Array that stores the current set of blocks that are removed
 let dataChords = []; // Array that stores the plotting information for each block chord
 let dataChromosomes = []; // Array that stores the current chromosomes in the Circos plot
@@ -316,8 +319,14 @@ function generateAdditionalTrack(trackName, trackRadius, trackType) {
     configuration.showAxesTooltip = true;
   }
 
-  // Increasing the radius of the scatter points when having less than 6 chromosomes
-  if (dataChromosomes.length < 6 && trackType === 'scatter') configuration.size = 30;
+  if (trackType === 'scatter') {
+    // Scatter points should have no stroke
+    configuration.strokeColor = null;
+    configuration.strokeWidth = 0;
+
+    // Increasing the radius of the scatter points when having less than 6 chromosomes
+    if (dataChromosomes.length < 6) configuration.size = 30;
+  }
 
   // Adding an invisible scatter track in case of line track
   // To be able to use the tooltip
@@ -492,8 +501,8 @@ function unhighlightCurrentSelectedBlock() {
   // Removing block view
   removeBlockView(REMOVE_BLOCK_VIEW_TRANSITION_TIME);
 
-  // Resetting current selected block to null value
-  currentSelectedBlock = null;
+  // Resetting current selected block to empty value
+  setCurrentSelectedBlock("");
 }
 
 /**
@@ -542,10 +551,13 @@ function generatePathGenomeView({
   // Updating block collisions should happen if flag is true
   // (when filtering transitions are not happening and flag is true at the end of filtering)
   // It should also happen when transitions are true and flag is not defined
+  // (it won't update if shouldDo is explicitly false)
   if (shouldUpdateBlockCollisions ||
     shouldUpdateBlockCollisions == null && (transition && transition.shouldDo)) {
     updateBlockCollisionHeadline(dataChromosomes, dataChords, shouldUpdateLayout);
   }
+
+  const currentSelectedBlock = getCurrentSelectedBlock();
 
   // Adding the configuration for the Circos chords using the generated array
   const radius = getChordsRadius();
@@ -604,7 +616,7 @@ function generatePathGenomeView({
         const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
         if (!isEmpty(currentChromosomeMouseDown)) return;
 
-        currentSelectedBlock = d.source.value.id;
+        setCurrentSelectedBlock(d.source.value.id);
 
         d3.selectAll(nodes).attr("opacity", 0.7);
 
@@ -623,9 +635,9 @@ function generatePathGenomeView({
         // Activate if SA is not running
         if (d3.select(".best-guess > input").attr("disabled")) return;
 
-        const currentSelectedBlock = d.source.value.id;
+        const blockToDelete = d.source.value.id;
 
-        const confirming = confirm(`Are you sure you want to delete the block with ID "${currentSelectedBlock}"?`);
+        const confirming = confirm(`Are you sure you want to delete the block with ID "${blockToDelete}"?`);
         // Return if the user does not want to delete
         if (!confirming) return;
 
@@ -661,7 +673,7 @@ function generatePathGenomeView({
     }
   });
 
-  // Updating block view using current selected block if object not empty
+  // Updating block view using current selected block if block id is not empty
   if (!isEmpty(currentSelectedBlock)) {
     const currentPosition = findIndex(dataChords, ['source.value.id', currentSelectedBlock]);
     if (currentPosition !== (-1)) {
@@ -685,9 +697,9 @@ function generatePathGenomeView({
 
         // Checking if axis color are different from chromosomes color
         const currentAxisSourceColor =
-          d3.color(d3.select("#block-view-container g.axisY0").attr("fill")).hex();
+          d3.color(d3.select("#block-view-container g.axisY0 path.domain").attr("fill")).hex();
         const currentAxisTargetColor =
-          d3.color(d3.select("#block-view-container g.axisY1").attr("fill")).hex();
+          d3.color(d3.select("#block-view-container g.axisY1 path.domain").attr("fill")).hex();
 
         // Note: Previous flipped chromosomes includes all the affected chromosomes
         // in the last flip animation (manual or SA). If this list includes the source or
@@ -701,7 +713,7 @@ function generatePathGenomeView({
           setPreviousFlippedChromosomes([]);
         }
 
-        shouldUpdateBlockView = shouldUpdateBlockView || darkMode ||
+        shouldUpdateBlockView = shouldUpdateBlockView ||
           currentBlockViewLineColor !== currentGenomeViewChordColor ||
           d3.color(gffPositionDictionary[sourceID].color).hex() !== currentAxisSourceColor ||
           d3.color(gffPositionDictionary[targetID].color).hex() !== currentAxisTargetColor;
@@ -714,6 +726,11 @@ function generatePathGenomeView({
   // Rendering Circos plot with current configuration
   if (transition && transition.shouldDo) {
     myCircos.render(undefined, undefined, transition, transitionRemove);
+
+    if (transitionRemove) {
+      // Removing the nodes inside genome view main-container if the view is being removed
+      d3.select("#genome-view g.all").remove();
+    }
   } else {
     myCircos.render();
   }
@@ -727,11 +744,11 @@ function generatePathGenomeView({
       scale(${currentScale})
       rotate(${currentRotate})`);
 
-  // Adding class last axis of each additional track block
+  // Making the last axis darker for each additional track block
   d3.selectAll('g.block').each(function() {
     // Choosing the path.axis inside each block
     const lastElement = d3.select(this).selectAll('path.axis').filter((d, i) => i === 4);
-    if (lastElement && lastElement.node()) lastElement.node().classList.add('last');
+    if (lastElement) lastElement.attr("stroke", "#8c8c8c");
   });
 
   // Highlighting flipped blocks if checkbox is selected
@@ -745,8 +762,8 @@ function generatePathGenomeView({
     const stroke = shouldChangeColor ? 'gold' : '#ea4848';
 
     d3.selectAll("path.chord.isFlipped")
-      .style("stroke", stroke)
-      .style("stroke-width", "2px");
+      .attr("stroke", stroke)
+      .attr("stroke-width", "2px");
   }
 
   // Changing flipped chromosomes highlighting based on checkbox
@@ -911,6 +928,7 @@ export default function generateGenomeView({
   }
 
   const currentFlippedChromosomes = getCurrentFlippedChromosomes();
+  const currentSelectedBlock = getCurrentSelectedBlock();
 
   for (let i = 0, blockKeysLength = blockKeys.length; i < blockKeysLength; i++) {
     const currentBlock = blockKeys[i];
@@ -1034,10 +1052,10 @@ export default function generateGenomeView({
     return 0;
   });
 
-  // Resetting currentSelectedBlock object back to default if no block is found
+  // Resetting currentSelectedBlock block id back to empty if no block is found
   if (!foundCurrentSelectedBlock && !isEmpty(currentSelectedBlock)) {
     console.log('HERE RESETTING!!!!');
-    currentSelectedBlock = null;
+    setCurrentSelectedBlock("");
   }
 
   d3.select(".best-guess > input")

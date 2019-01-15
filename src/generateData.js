@@ -14,12 +14,15 @@ Function file: generateData.js
 import * as d3 from 'd3';
 import find from 'lodash/find';
 import findIndex from 'lodash/findIndex';
+import isEmpty from 'lodash/isEmpty';
 
 // React
 import React from 'react';
 import ReactDOM from 'react-dom';
 import Modal from './reactComponents/Modal';
+import DownloadFilesForm from './reactComponents/DownloadFilesForm';
 
+import generateBlockView from './generateBlockView';
 import generateGenomeView from './genomeView/generateGenomeView';
 
 import generateAdditionalTracks, {
@@ -59,6 +62,7 @@ import {
   setDefaultChromosomeOrder
 } from './variables/currentChromosomeOrder';
 import { getCurrentFlippedChromosomes } from './variables/currentFlippedChromosomes';
+import { getCurrentSelectedBlock } from './variables/currentSelectedBlock';
 import { getDataChords } from './variables/dataChords';
 import { getDataChromosomes } from './variables/dataChromosomes';
 import { setGeneDictionary } from './variables/geneDictionary';
@@ -372,10 +376,20 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("p.dark-mode input")
     .on("change", function() {
       const isDarkMode = d3.select(this).property("checked");
+      const currentSelectedBlock = getCurrentSelectedBlock();
+      const dataChords = getDataChords();
+      if (!isEmpty(currentSelectedBlock)) {
+        const currentPosition = findIndex(dataChords, ['source.value.id', currentSelectedBlock]);
+        if (currentPosition !== (-1)) {
+          const currentChord = dataChords[currentPosition];
+          // Calling block view if block is found
+          generateBlockView(currentChord);
+        }
+      }
+
       // Calling genome view for updates
       generateGenomeView({
         // Transitioning only when entering dark mode
-        transition: isDarkMode ? null : { shouldDo: false },
         shouldUpdateBlockCollisions: false
       });
     });
@@ -1207,6 +1221,22 @@ export default function generateData(gff, collinearity, additionalTrack) {
       {loadFiles}
     </Modal>,
     document.getElementById('load-files-container')
+  );
+
+  // Loading download button modal inside its container
+  ReactDOM.render(
+    <Modal
+      buttonClassName="download-files"
+      buttonLabel={
+        <svg className="download-files-svg">
+          <use xlinkHref="images/download-sprite.svg#si-ant-download" />
+        </svg>
+      }
+      modalHeader="Download files"
+      size="sm">
+      {<DownloadFilesForm />}
+    </Modal>,
+    d3.select("#download-svg-container").node()
   );
 
   // Displaying all the content after everything is loaded
