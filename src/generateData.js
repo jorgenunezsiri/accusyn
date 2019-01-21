@@ -12,6 +12,7 @@ Function file: generateData.js
 */
 
 import * as d3 from 'd3';
+import cloneDeep from 'lodash/cloneDeep';
 import find from 'lodash/find';
 import findIndex from 'lodash/findIndex';
 import isEmpty from 'lodash/isEmpty';
@@ -19,8 +20,11 @@ import isEmpty from 'lodash/isEmpty';
 // React
 import React from 'react';
 import ReactDOM from 'react-dom';
-import Modal from './reactComponents/Modal';
 import DownloadFilesForm from './reactComponents/DownloadFilesForm';
+import Modal from './reactComponents/Modal';
+import SavedStamps from './reactComponents/SavedStamps';
+
+import undoManager, { resetUndoRedoButtons, updateUndoRedoButtons } from './vendor/undoManager';
 
 import generateBlockView from './generateBlockView';
 import generateGenomeView from './genomeView/generateGenomeView';
@@ -31,7 +35,9 @@ import generateAdditionalTracks, {
 
 import {
   calculateDeclutteringETA,
-  showSavedLayout,
+  callSwapPositionsAnimation,
+  saveToSolutionsDictionary,
+  simulatedAnnealing,
   updateWaitingBlockCollisionHeadline
 } from './genomeView/blockCollisions';
 
@@ -44,6 +50,8 @@ import {
   movePageContainerScroll,
   partitionGffKeys,
   removeNonLettersFromString,
+  renderReactAlert,
+  renderSvgButton,
   resetChromosomeCheckboxes,
   roundFloatNumber,
   showChromosomeConnectionInformation,
@@ -58,26 +66,39 @@ import {
 // Variables getters and setters
 import { setBlockDictionary } from './variables/blockDictionary';
 import {
+  getCollisionCount,
+  getCollisionCalculationTime,
+  getTotalNumberOfIterations
+} from './variables/collisionCount';
+import {
+  getDefaultChromosomeOrder,
   setCurrentChromosomeOrder,
   setDefaultChromosomeOrder
 } from './variables/currentChromosomeOrder';
 import { getCurrentFlippedChromosomes } from './variables/currentFlippedChromosomes';
 import { getCurrentSelectedBlock } from './variables/currentSelectedBlock';
 import { getDataChords } from './variables/dataChords';
-import { getDataChromosomes } from './variables/dataChromosomes';
+import {
+  generateUpdatedDataChromosomesFromOrder,
+  getDataChromosomes
+} from './variables/dataChromosomes';
 import { setGeneDictionary } from './variables/geneDictionary';
 import { setGffDictionary } from './variables/gffDictionary';
 import {
   getAdditionalTrackArray,
   setAdditionalTrackArray
 } from './variables/additionalTrack';
-import { setCircosObject } from './variables/myCircos';
+import {
+  getCircosObject,
+  setCircosObject
+} from './variables/myCircos';
 import resetAllVariables from './variables/resetAllVariables';
 
 // Constants
 import { loadFiles } from './variables/templates';
 import {
   CATEGORICAL_COLOR_SCALES,
+  CIRCOS_CONF,
   CONNECTION_COLORS,
   WIDTH,
   HEIGHT
@@ -394,32 +415,6 @@ export default function generateData(gff, collinearity, additionalTrack) {
       });
     });
 
-  // Highlight flipped chromosomes checkbox
-  d3.select("#form-config .layout-panel")
-    .append("p")
-    .attr("class", "highlight-flipped-chromosomes")
-    .attr("title", "If selected, all flipped chromosomes will be highlighted.")
-    .append("label")
-    .append("input")
-    .attr("type", "checkbox")
-    .attr("name", "highlight-flipped-chromosomes")
-    .attr("value", "Highlight flipped chromosomes")
-    .property("checked", true); // Highligh flipped chromosomes is checked by default
-
-  d3.select("#form-config p.highlight-flipped-chromosomes > label")
-    .append("span")
-    .text("Highlight flipped chromosomes");
-
-  d3.select("p.highlight-flipped-chromosomes input")
-    .on("change", function() {
-      // Calling genome view for updates
-      generateGenomeView({
-        transition: { shouldDo: false },
-        shouldUpdateBlockCollisions: false,
-        shouldUpdateLayout: false
-      });
-    });
-
   // Highlight flipped blocks checkbox
   d3.select("#form-config .layout-panel")
     .append("p")
@@ -445,34 +440,30 @@ export default function generateData(gff, collinearity, additionalTrack) {
       });
     });
 
-  // Show saved layout checkbox
+  // Highlight flipped chromosomes checkbox
   d3.select("#form-config .layout-panel")
     .append("p")
-    .attr("class", "show-best-layout")
-    .attr("title", "If selected, the last saved layout for the current configuration will be shown by default.")
+    .attr("class", "highlight-flipped-chromosomes")
+    .attr("title", "If selected, all flipped chromosomes will be highlighted.")
     .append("label")
     .append("input")
     .attr("type", "checkbox")
-    .attr("name", "show-best-layout")
-    .attr("value", "Show saved layout")
-    .property("checked", true); // Show best layout is checked by default
+    .attr("name", "highlight-flipped-chromosomes")
+    .attr("value", "Highlight flipped chromosomes")
+    .property("checked", true); // Highligh flipped chromosomes is checked by default
 
-  d3.select("#form-config .show-best-layout > label")
+  d3.select("#form-config p.highlight-flipped-chromosomes > label")
     .append("span")
-    .text("Show saved layout");
+    .text("Highlight flipped chromosomes");
 
-  d3.select("p.show-best-layout input")
+  d3.select("p.highlight-flipped-chromosomes input")
     .on("change", function() {
-      if (d3.select(this).property("checked")) {
-        // Updating without modifying block collision count
-        // * If the layout is going to change, generateGenomeView is being called again,
-        // and the count will be updated anyways after the animation
-        // * If the layout is going to stay the same, there is no need to update the count
-        const currentDataChromosomes = getDataChromosomes();
-        const currentDataChords = getDataChords();
-
-        showSavedLayout(currentDataChromosomes, currentDataChords, true);
-      }
+      // Calling genome view for updates
+      generateGenomeView({
+        transition: { shouldDo: false },
+        shouldUpdateBlockCollisions: false,
+        shouldUpdateLayout: false
+      });
     });
 
   // Show tooltip inside checkbox
@@ -509,6 +500,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("div.blocks-color")
     .append("p")
     .append("select")
+    .attr("class", "form-control")
     .html(() =>
       Object.keys(CONNECTION_COLORS).map(function(current) {
         if (current === 'Disabled') return `<option disabled>─────</option>`;
@@ -539,6 +531,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("div.chromosomes-palette")
     .append("p")
     .append("select")
+    .attr("class", "form-control")
     .html(() =>
       Object.keys(CATEGORICAL_COLOR_SCALES).map(function(current) {
         if (current === 'Disabled') return '<option disabled>─────</option>';
@@ -587,10 +580,15 @@ export default function generateData(gff, collinearity, additionalTrack) {
       // For 'Flipped' case the dictionary is already being set
       if (selected !== 'Flipped') setGffDictionary(gffPositionDictionary);
 
-      // Calling genome view for updates with default transition
-      generateGenomeView({
-        shouldUpdateBlockCollisions: false
-      });
+      let shouldUpdate = (d3.event.detail || {}).shouldUpdate;
+      // shoulUpdate = null or undefined is true, meaning true by default
+      shouldUpdate = shouldUpdate == null ? true : shouldUpdate;
+      if (shouldUpdate) {
+        // Calling genome view for updates with default transition
+        generateGenomeView({
+          shouldUpdateBlockCollisions: false
+        });
+      }
     });
 
   // Draw blocks ordered by: Block ID or Block length (ascending or descending)
@@ -603,6 +601,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("div.draw-blocks-order")
     .append("p")
     .append("select")
+    .attr("class", "form-control")
     .html(`
       <option value="Block ID (↑)" selected="selected">Block ID (↑)</option>
       <option value="Block ID (↓)">Block ID (↓)</option>
@@ -621,21 +620,88 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   // Save layout button
   d3.select("#form-config .layout-panel")
-    .append("p")
+    .append("div")
+    .attr("class", "layout-panel-buttons")
+    .append("div")
     .attr("class", "save-layout")
-    .attr("title", "Save layout")
-    .append("input")
-    .attr("type", "button")
-    .attr("value", "Save");
+    .attr("title", "Save layout");
+
+  // Loading save layout button inside its container
+  renderSvgButton({
+    buttonContainer: d3.select("#form-config .layout-panel .layout-panel-buttons div.save-layout").node(),
+    svgClassName: 'save-layout-svg',
+    svgHref: './images/icons.svg#save-sprite_si-ant-save',
+    onClickFunction: function() {
+      const collisionCount = getCollisionCount();
+      const currentFlippedChromosomes = getCurrentFlippedChromosomes();
+      const dataChords = getDataChords();
+      const dataChromosomes = getDataChromosomes();
+
+      saveToSolutionsDictionary({
+        bestFlippedChromosomes: currentFlippedChromosomes,
+        bestSolution: dataChromosomes,
+        collisionCount: collisionCount,
+        dataChords: dataChords
+      });
+    }
+  });
+
+  // Stamps layout button
+  d3.select("#form-config .layout-panel .layout-panel-buttons")
+    .append("div")
+    .attr("class", "stamps-layout")
+    .attr("title", "Show saved stamps");
+
+  // Loading stamps layout button and modal inside its container
+  ReactDOM.render(
+    <Modal
+      buttonClassName="stamps-layout-button"
+      buttonLabel={
+        <svg className="stamps-layout-svg" pointerEvents="none">
+          <use
+            href="./images/icons.svg#thumbnails-sprite_si-flat-list-small-thumbnails"
+            xlinkHref="./images/icons.svg#thumbnails-sprite_si-flat-list-small-thumbnails" />
+        </svg>
+      }
+      modalHeader="Saved stamps">
+      {<SavedStamps />}
+    </Modal>,
+    d3.select("#form-config .layout-panel .layout-panel-buttons div.stamps-layout").node()
+  );
 
   // Reset layout button
-  d3.select("#form-config .layout-panel")
-    .append("p")
+  d3.select("#form-config .layout-panel .layout-panel-buttons")
+    .append("div")
     .attr("class", "reset-layout")
-    .attr("title", "Reset layout")
-    .append("input")
-    .attr("type", "button")
-    .attr("value", "Reset");
+    .attr("title", "Reset layout connections");
+
+  // Loading reset layout button inside its container
+  renderSvgButton({
+    buttonContainer: d3.select("#form-config .layout-panel .layout-panel-buttons div.reset-layout").node(),
+    svgClassName: 'reset-layout-svg',
+    svgHref: './images/icons.svg#reset-sprite_si-bootstrap-refresh',
+    onClickFunction: function() {
+      const dataChords = getDataChords();
+      const dataChromosomes = getDataChromosomes();
+      const myCircos = getCircosObject();
+
+      const localDataChromosomes = cloneDeep(dataChromosomes);
+      const orderedDataChromosomes =
+        generateUpdatedDataChromosomesFromOrder(getDefaultChromosomeOrder().slice(), localDataChromosomes);
+
+      // To introduce start and end properties into dataChromosomes
+      myCircos.layout(localDataChromosomes, CIRCOS_CONF);
+      myCircos.layout(orderedDataChromosomes, CIRCOS_CONF);
+
+      console.log('OLD AND CURRENT: ', localDataChromosomes, orderedDataChromosomes);
+
+      callSwapPositionsAnimation({
+        dataChromosomes: localDataChromosomes,
+        bestSolution: orderedDataChromosomes,
+        bestFlippedChromosomes: [] // No flipped chromosomes in the default view
+      });
+    }
+  });
 
   // Decluttering title
   d3.select("#form-config")
@@ -651,15 +717,17 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-connections-div")
+    .append("div")
+    .attr("class", "filter-connections-options")
     .append("p")
     .attr("class", "filter-connections")
     .text("Filter:");
 
-  d3.select(".filter-connections-div")
+  d3.select(".filter-connections-div .filter-connections-options")
     .append("p")
     .attr("class", "filter-connections")
     .append("select")
-    .attr("class", "filter-connections")
+    .attr("class", "filter-connections form-control")
     .html(`
       <option value="At Least" selected="selected">At Least</option>
       <option value="At Most">At Most</option>
@@ -672,9 +740,11 @@ export default function generateData(gff, collinearity, additionalTrack) {
         shouldUpdateBlockCollisions: true,
         shouldUpdateLayout: true
       });
+
+      resetUndoRedoButtons();
     });
 
-  d3.select(".filter-connections-div")
+  d3.select(".filter-connections-div .filter-connections-options")
     .append("p")
     .attr("class", "filter-connections")
     .html(`
@@ -685,7 +755,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   d3.select(".filter-connections-div")
     .append("p")
-    .attr("class", "filter-connections")
+    .attr("class", "filter-connections-input")
     .html(`<input type="range" min="1" max=${maxBlockSize.toString()} id="filter-block-size">`);
 
   // Filter angle input range
@@ -712,7 +782,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("#form-config .decluttering-panel .change-chromosome-positions")
     .append("p")
     .append("select")
-    .attr("class", "flip-reset")
+    .attr("class", "flip-reset form-control")
     .html(`
       <option value="Flip">Flip</option>
       <option value="Reset">Reset</option>
@@ -721,7 +791,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("#form-config .decluttering-panel .change-chromosome-positions")
     .append("p")
     .append("select")
-    .attr("class", "all-genomes")
+    .attr("class", "all-genomes form-control")
     .html(() =>
       partitionedGffKeys.map((current) =>
         `<option value="${current}">${current}</option>`
@@ -732,6 +802,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .append("p")
     .attr("class", "apply-button")
     .append("input")
+    .attr("class", "btn btn-outline-primary")
     .attr("type", "button")
     .attr("value", "Apply")
     .attr("title", "Flips or resets the chromosome order of the selected genome.");
@@ -835,12 +906,85 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   // Minimize collisions button
   d3.select("#form-config .decluttering-panel")
-    .append("p")
+    .append("div")
+    .attr("class", "layout-panel-buttons")
+    .append("div")
     .attr("class", "best-guess")
-    .attr("title", "Minimize collisions")
-    .append("input")
-    .attr("type", "button")
-    .attr("value", "Minimize collisions");
+    .attr("title", "Minimize collisions");
+
+  // Loading minimize collisions button inside its container
+  renderSvgButton({
+    buttonContainer: d3.select("#form-config .decluttering-panel .layout-panel-buttons div.best-guess").node(),
+    svgClassName: 'best-guess-svg',
+    svgHref: './images/icons.svg#magic-sprite_si-elusive-magic',
+    onClickFunction: function() {
+      const dataChords = getDataChords();
+      const dataChromosomes = getDataChromosomes();
+
+      const totalTime = getCollisionCalculationTime();
+      const totalNumberOfIterations = getTotalNumberOfIterations();
+      const finalTime = roundFloatNumber(totalTime * totalNumberOfIterations, 2);
+
+      let confirming = true;
+      // Taking the calculated time string from the hint
+      const timeString = d3.select(".filter-sa-hint").text().split("-")[0].trim();
+      if (finalTime >= 120) {
+        confirming = confirm(`Are you willing to wait at least "${timeString}" for the calculation to finish?`);
+      }
+
+      if (confirming) {
+        d3.select("#form-config .decluttering-panel .layout-panel-buttons div.best-guess button")
+          .attr("disabled", true);
+        simulatedAnnealing(dataChromosomes, dataChords);
+      }
+    }
+  });
+
+  // Undo layout button
+  d3.select("#form-config .decluttering-panel .layout-panel-buttons")
+    .append("div")
+    .attr("class", "undo-layout")
+    .attr("title", "Undo layout interactions");
+
+  // Loading undo layout button inside its container
+  renderSvgButton({
+    buttonContainer: d3.select("#form-config .decluttering-panel .layout-panel-buttons div.undo-layout").node(),
+    svgClassName: 'undo-layout-svg',
+    svgHref: './images/icons.svg#undo-sprite_si-open-action-undo',
+    onClickFunction: function() {
+      if (!undoManager.hasUndo()) {
+        renderReactAlert(`There are no layout interactions to undo. Only flipping, dragging, and minimizing are supported.
+          Please, try again!`, 'danger', 10000);
+        return;
+      }
+
+      updateUndoRedoButtons();
+      undoManager.undo();
+    }
+  });
+
+  // Redo layout button
+  d3.select("#form-config .decluttering-panel .layout-panel-buttons")
+    .append("div")
+    .attr("class", "redo-layout")
+    .attr("title", "Redo layout interactions");
+
+  // Loading redo layout button inside its container
+  renderSvgButton({
+    buttonContainer: d3.select("#form-config .decluttering-panel .layout-panel-buttons div.redo-layout").node(),
+    svgClassName: 'redo-layout-svg',
+    svgHref: './images/icons.svg#redo-sprite_si-open-action-redo',
+    onClickFunction: function() {
+      if (!undoManager.hasRedo()) {
+        renderReactAlert(`There are no layout interactions to redo. Only dragging, flipping, and minimizing are supported.
+          Please, try again!`, 'danger', 10000);
+        return;
+      }
+
+      updateUndoRedoButtons();
+      undoManager.redo();
+    }
+  });
 
   // Additional tracks
   d3.select("#form-config")
@@ -888,6 +1032,8 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .on("change", function() {
       // Calling genome view for updates
       generateGenomeView({});
+
+      resetUndoRedoButtons();
     });
 
   // Show self connections checkbox
@@ -935,6 +1081,8 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .on("change", function() {
       // Calling genome view for updates
       generateGenomeView({});
+
+      resetUndoRedoButtons();
     });
 
   // Chromosomes title inside connections panel
@@ -965,6 +1113,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
       .attr("class", `select-all ${partitionedGffKeys[i]}`)
       .attr("title", "Selects all the connections.")
       .append("input")
+      .attr("class", "btn btn-outline-primary")
       .attr("type", "button")
       .attr("value", "Select all");
   }
@@ -1010,8 +1159,15 @@ export default function generateData(gff, collinearity, additionalTrack) {
         showChromosomeConnectionInformation(connectionDictionary, selectedCheckboxes);
       }
 
-      // Calling genome view for updates
-      generateGenomeView({});
+      let shouldUpdate = (d3.event.detail || {}).shouldUpdate;
+      // shoulUpdate = null or undefined is true, meaning true by default
+      shouldUpdate = shouldUpdate == null ? true : shouldUpdate;
+      if (shouldUpdate) {
+        // Calling genome view for updates
+        generateGenomeView({});
+      }
+
+      resetUndoRedoButtons();
     });
 
   // Select all button click
@@ -1069,6 +1225,8 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
       // Calling genome view for updates
       generateGenomeView({});
+
+      resetUndoRedoButtons();
     });
 
   // SVG element that will include the Circos plot
@@ -1139,9 +1297,16 @@ export default function generateData(gff, collinearity, additionalTrack) {
           }
         }, 200);
 
+        const panelText = d3.select(this).text();
+
+        // If opening the decluttering panel, update the state of undo/redo buttons
+        if (panelText.includes('Decluttering')) {
+          updateUndoRedoButtons();
+        }
+
         // If opening the tracks panel, then click the first tab by default when
         // tabs are available but no tabs are clicked
-        if (d3.select(this).text().includes('Additional tracks') &&
+        if (panelText.includes('Additional tracks') &&
           !d3.select("#form-config .additional-tracks-panel div.tabs button.tab-link").empty() &&
           d3.select("#form-config .additional-tracks-panel div.tabs button.tab-link.active").empty()) {
           d3.select("#form-config .additional-tracks-panel div.tabs button.tab-link").node().click();
@@ -1195,6 +1360,8 @@ export default function generateData(gff, collinearity, additionalTrack) {
   // Updating filter on input
   d3.select("#filter-block-size")
     .on("input", function() {
+      resetUndoRedoButtons();
+
       updateWaitingBlockCollisionHeadline();
 
       updateFilter({
@@ -1228,9 +1395,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
     <Modal
       buttonClassName="download-files"
       buttonLabel={
-        <svg className="download-files-svg">
-          <use xlinkHref="images/download-sprite.svg#si-ant-download" />
-        </svg>
+        <div title="Download files">
+          <svg className="download-files-svg" pointerEvents="none">
+            <use
+              href="./images/icons.svg#download-sprite_si-ant-download"
+              xlinkHref="./images/icons.svg#download-sprite_si-ant-download" />
+          </svg>
+        </div>
       }
       modalHeader="Download files"
       size="sm">

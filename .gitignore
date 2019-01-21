@@ -3,6 +3,7 @@ Thumbs.db
 node_modules
 build/bundle.js
 build/bundle.css
+build/images/icons.svg
 .npm
 .eslintcache
 npm-debug.log

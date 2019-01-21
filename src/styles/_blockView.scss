@@ -30,31 +30,42 @@
 
   .outer-content {
     margin: 0 auto;
-    max-width: 400px; // block-view width
+    max-width: 420px; // block-view width
   }
 
   .outer-clickable-content {
+    align-items: center;
     display: flex;
     justify-content: space-between;
     margin-top: 5px;
   }
 
-  p {
-    &.reset-button {
-      font-size: 11px;
-      margin-left: 20px;
+  div.reset-button {
+    margin-left: 25px;
 
-      > input {
-        padding: 0 15px;
+    > button {
+      border: 0;
+      padding: 0;
+
+      &:hover {
+        > svg {
+          @extend %svg-button-hover;
+        }
+      }
+
+      > svg {
+        @extend %svg-button;
       }
     }
+  }
 
+  p {
     &.flip-orientation {
       margin-right: 25px;
     }
 
     &.zoom-state-hint {
-      margin-right: 25px;
+      margin: 2px 25px 0 0;
       text-align: right;
     }
   }

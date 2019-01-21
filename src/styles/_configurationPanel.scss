@@ -28,16 +28,20 @@
 
   button.btn.download-files {
     border: none;
+    bottom: 20px;
+    cursor: pointer;
     padding: 0;
+    position: fixed;
+    right: 20px;
+
+    &:hover {
+      svg.download-files-svg {
+        @extend %svg-button-hover;
+      }
+    }
 
     svg.download-files-svg {
-      bottom: 20px;
-      cursor: pointer;
-      fill: #3b88fd;
-      height: 30px;
-      position: fixed;
-      right: 20px;
-      width: 30px;
+      @extend %svg-button;
     }
   }
 }
@@ -45,7 +49,7 @@
 #form-config {
   // overflow-y: scroll; // To consider later
   // height: 1300px; // To consider later
-  padding: 15px;
+  padding: 12px;
   margin-bottom: 15px;
 
   .panel-title {
@@ -53,7 +57,7 @@
     border: none;
     color: #000;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 14px;
     margin-bottom: 5px;
     outline: none;
     padding: 6px;
@@ -101,8 +105,10 @@
   }
 
   div.change-chromosome-positions {
-    p:not(:first-of-type) {
-      padding-left: 4px;
+    white-space: nowrap;
+
+    p:not(:first-of-type):not(:last-of-type) {
+      padding-left: 3px;
     }
 
     p {
@@ -123,8 +129,8 @@
       }
 
       &:nth-child(2) {
-        margin-left: 5px;
-        width: 50%;
+        margin-left: 2px;
+        width: 53%;
       }
     }
   }
@@ -136,21 +142,30 @@
       }
 
       &:nth-child(2) {
+        margin-left: 8px;
         width: 67%;
       }
     }
   }
 
-  p.filter-connections,
+  p.filter-connections-input,
   div.filter-angle-div p,
   div.filter-sa-temperature-div p,
   div.filter-sa-ratio-div p,
   div.filter-sa-flipping-frequency-div p {
     input {
       height: 5px;
-      margin-left: 2px;
-      width: 190px;
+      margin-left: 3px;
+      width: 195px;
     }
+  }
+
+  div.filter-connections-options,
+  div.change-chromosome-positions {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    white-space: nowrap;
   }
 
   p.filter-connections {
@@ -160,12 +175,12 @@
     }
 
     &:nth-child(2), &:nth-child(3) {
-      margin: 0 0 0 5px;
+      margin: 0 0 0 2px;
     }
+  }
 
-    &:nth-child(4) {
-      margin: 5px 0 5px;
-    }
+  p.filter-connections-input {
+    margin: 5px 0;
   }
 
   div.filter-angle-div,
@@ -181,22 +196,46 @@
     }
   }
 
-  p.save-layout, p.reset-layout {
-    display: inline-block;
+  div.layout-panel-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    margin: 5px 0;
 
-    > input {
-      padding: 0 25px;
+    > div {
+      display: inline-block;
+
+      button {
+        border: 0;
+        padding: 0;
+
+        &:disabled,
+        &.button-disabled {
+          cursor: default;
+
+          > svg {
+            border: 1px solid gainsboro;
+            fill: gainsboro;
+          }
+
+          &:focus {
+            outline: none;
+          }
+        }
+
+        &:hover:not(:disabled):not(.button-disabled) {
+          > svg {
+            @extend %svg-button-hover;
+          }
+        }
+
+        > svg {
+          @extend %svg-button;
+        }
+      }
     }
   }
 
-  p.save-layout {
-    margin-right: 18px;
-  }
-
-  .separator {
-    margin: 0;
-    overflow: hidden;
-  }
 
   div.chr-options {
     padding: 0;
@@ -205,14 +244,22 @@
   .chr-boxes {
     padding: 0 0 5px;
 
-    label {
-      margin-bottom: 0;
-    }
+    .chr-box-inner-content {
+      white-space: nowrap;
 
-    span.chr-box-extra > em {
-      display: inline-block;
-      text-align: right;
-      width: 52px;
+      label {
+        margin-bottom: 0;
+      }
+
+      span.chr-box-extra {
+        font-size: 10px;
+
+        > em {
+          display: inline-block;
+          text-align: right;
+          width: 55px;
+        }
+      }
     }
 
     .select-all {
@@ -336,7 +383,7 @@
       border: 1px solid gainsboro;
       border-top: none;
       display: none;
-      padding: 5px;
+      padding: 4px;
 
       // Go from zero to full opacity
       @-webkit-keyframes fadeEffect {

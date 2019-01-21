@@ -1,6 +1,7 @@
 'use strict';
 
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
+const SpriteLoaderPlugin = require('svg-sprite-loader/plugin');
 const webpack = require('webpack');
 
 module.exports = {
@@ -44,6 +45,14 @@ module.exports = {
             loader: 'sass-loader'
           }]
         })
+      },
+      {
+        test: /\.svg$/,
+        loader: 'svg-sprite-loader',
+        options: {
+          extract: true,
+          spriteFilename: 'images/icons.svg'
+        }
       }
     ]
   },
@@ -51,6 +60,9 @@ module.exports = {
     child_process: 'empty'
   },
   plugins: [
+    new SpriteLoaderPlugin({
+      plainSprite: true
+    }),
     new ExtractTextPlugin({
       filename: 'bundle.css'
     }),

@@ -21,6 +21,8 @@ import isEmpty from 'lodash/isEmpty';
 import forEach from 'lodash/forEach';
 import findIndex from 'lodash/findIndex';
 
+import { addActionToUndoManager, updateUndoRedoButtons } from './../vendor/undoManager';
+
 import generateBlockView, { resetZoomBlockView } from './../generateBlockView';
 
 import {
@@ -48,9 +50,6 @@ import {
 
 import {
   callSwapPositionsAnimation,
-  disableShowSavedLayout,
-  saveToCollisionsDictionary,
-  simulatedAnnealing,
   transitionFlipChromosomeStroke,
   transitionFlipping,
   updateBlockCollisionHeadline
@@ -58,11 +57,6 @@ import {
 
 // Variable getters and setters
 import { getBlockDictionary } from './../variables/blockDictionary';
-import {
-  getCollisionCount,
-  getCollisionCalculationTime,
-  getTotalNumberOfIterations
-} from './../variables/collisionCount';
 import {
   getCurrentChromosomeMouseDown,
   setCurrentChromosomeMouseDown
@@ -261,13 +255,11 @@ function getCurrentTrack(selectedTrack) {
  * @param  {string}  trackName   Current custom name of the track
  * @param  {string}  trackRadius Radius to be used for the current track
  * @param  {string}  trackType   Type of track: heatmap, histogram, line, or scatter
+ * @param  {string}  trackColor  Color of the track
  * @return {undefined} undefined
  */
-function generateAdditionalTrack(trackName, trackRadius, trackType) {
+function generateAdditionalTrack(trackName, trackRadius, trackType, trackColor) {
   const myCircos = getCircosObject();
-
-  const trackColor = (!d3.select(`div.additional-track.${trackName} .track-color select`).empty() &&
-    d3.select(`div.additional-track.${trackName} .track-color select`).property("value")) || 'YlOrRd';
 
   // Inner and outer radius
   const { inner: innerRadius, outer: outerRadius } = trackRadius;
@@ -282,7 +274,7 @@ function generateAdditionalTrack(trackName, trackRadius, trackType) {
     color: trackColor,
     tooltipContent: function(d) {
       // Activate if SA is not running
-      if (d3.select(".best-guess > input").attr("disabled")) return;
+      if (d3.select(".best-guess > button").attr("disabled")) return;
       // Only show tooltip if the user is not dragging
       // Note: Still need this, because we don't want to view the tooltip when
       // holding a chromosome
@@ -361,13 +353,10 @@ function generateCircosLayout() {
         event.preventDefault();
 
         // Activate if SA is not running
-        if (d3.select(".best-guess > input").attr("disabled")) return;
+        if (d3.select(".best-guess > button").attr("disabled")) return;
 
         // Disabling inputs and selects before calling the animation
         resetInputsAndSelectsOnAnimation(true);
-
-        // Disable checkbox if there is a saved layout for the current configuration
-        disableShowSavedLayout(dataChromosomes, dataChords);
 
         // Before flipping, set all chords with the same opacity
         d3.selectAll("path.chord").attr("opacity", 0.7);
@@ -414,9 +403,12 @@ function generateCircosLayout() {
         // Resetting chr mouse down because of flipping (contextmenu is not mousedown)
         setCurrentChromosomeMouseDown("");
 
+        addActionToUndoManager(nodes[i], 'contextmenu');
+
         setTimeout(() => {
           // Enabling inputs and selects after calling the animation
           resetInputsAndSelectsOnAnimation();
+          updateUndoRedoButtons();
 
           generateGenomeView({
             transition: { shouldDo: false },
@@ -427,7 +419,7 @@ function generateCircosLayout() {
       },
       'mousedown.chr': function(d) {
         // Activate if SA is not running
-        if (d3.select(".best-guess > input").attr("disabled")) return;
+        if (d3.select(".best-guess > button").attr("disabled")) return;
 
         setCurrentChromosomeMouseDown(d.id);
       }
@@ -466,8 +458,8 @@ function generateCircosLayout() {
   // Adding additional tracks
   if (isAdditionalTrackAdded()) {
     // Only adding the tracks that are available
-    forEach(getInnerAndOuterRadiusAdditionalTracks().availableTracks, ({ name, radius, type }) =>
-      generateAdditionalTrack(name, radius, type)
+    forEach(getInnerAndOuterRadiusAdditionalTracks().availableTracks, ({ name, radius, type, color }) =>
+      generateAdditionalTrack(name, radius, type, color)
     );
   }
 
@@ -554,7 +546,7 @@ function generatePathGenomeView({
   // (it won't update if shouldDo is explicitly false)
   if (shouldUpdateBlockCollisions ||
     shouldUpdateBlockCollisions == null && (transition && transition.shouldDo)) {
-    updateBlockCollisionHeadline(dataChromosomes, dataChords, shouldUpdateLayout);
+    updateBlockCollisionHeadline(dataChromosomes, dataChords);
   }
 
   const currentSelectedBlock = getCurrentSelectedBlock();
@@ -581,7 +573,7 @@ function generatePathGenomeView({
     },
     tooltipContent: function(d) {
       // Activate if SA is not running
-      if (d3.select(".best-guess > input").attr("disabled")) return;
+      if (d3.select(".best-guess > button").attr("disabled")) return;
       // Only show tooltip if the user is not dragging
       // Note: Still need this, because we don't want to view the tooltip when
       // holding a chromosome
@@ -602,13 +594,13 @@ function generatePathGenomeView({
     events: {
       'click.block': function() {
         // Activate if SA is not running
-        if (d3.select(".best-guess > input").attr("disabled")) return;
+        if (d3.select(".best-guess > button").attr("disabled")) return;
 
         unhighlightCurrentSelectedBlock();
       },
       'mouseover.block': function(d, i, nodes) {
         // Activate if SA is not running
-        if (d3.select(".best-guess > input").attr("disabled")) return;
+        if (d3.select(".best-guess > button").attr("disabled")) return;
 
         // Only update block view if the user is not dragging
         // Note: Still need this, because we don't want to mouseover and highlight
@@ -633,7 +625,7 @@ function generatePathGenomeView({
         event.preventDefault();
 
         // Activate if SA is not running
-        if (d3.select(".best-guess > input").attr("disabled")) return;
+        if (d3.select(".best-guess > button").attr("disabled")) return;
 
         const blockToDelete = d.source.value.id;
 
@@ -740,6 +732,9 @@ function generatePathGenomeView({
     getTransformValuesAdditionalTracks();
 
   d3.select("g.all")
+    .transition()
+    .duration(200)
+    .ease(d3.easeLinear)
     .attr("transform", `translate(${currentTranslate.width},${currentTranslate.height})
       scale(${currentScale})
       rotate(${currentRotate})`);
@@ -772,47 +767,6 @@ function generatePathGenomeView({
     transitionFlipChromosomeStroke(currentFlippedChromosomes[i], highlightFlippedChromosomes);
   }
 
-  // Save layout button
-  d3.select(".save-layout > input")
-    .on("click", function() {
-      const collisionCount = getCollisionCount();
-      const currentFlippedChromosomes = getCurrentFlippedChromosomes();
-
-      saveToCollisionsDictionary({
-        bestFlippedChromosomes: currentFlippedChromosomes,
-        bestSolution: dataChromosomes,
-        collisionCount: collisionCount,
-        dataChords: dataChords
-      });
-
-      // Showing alert using react
-      renderReactAlert("The layout was successfully saved.", "success");
-    });
-
-  // Reset layout button
-  d3.select(".reset-layout > input")
-    .on("click", function() {
-      // Disable checkbox if there is a saved layout for the current configuration
-      disableShowSavedLayout(dataChromosomes, dataChords);
-
-      const localDataChromosomes = cloneDeep(dataChromosomes);
-      const orderedDataChromosomes =
-        generateUpdatedDataChromosomesFromOrder(getDefaultChromosomeOrder().slice(), localDataChromosomes);
-
-      // To introduce start and end properties into dataChromosomes
-      myCircos.layout(localDataChromosomes, CIRCOS_CONF);
-      myCircos.layout(orderedDataChromosomes, CIRCOS_CONF);
-
-      console.log('OLD AND CURRENT: ', localDataChromosomes, orderedDataChromosomes);
-      console.log('ORDERED DATA CHR: ', orderedDataChromosomes);
-
-      callSwapPositionsAnimation({
-        dataChromosomes: localDataChromosomes,
-        bestSolution: orderedDataChromosomes,
-        bestFlippedChromosomes: [] // No flipped chromosomes in the default view
-      });
-    });
-
   // Change chromosome order
   d3.select("div.change-chromosome-positions p.apply-button > input")
     .on("click", function() {
@@ -844,9 +798,6 @@ function generatePathGenomeView({
         genome: genome,
         chromosomeOrder: toChromosomeOrder(localDataChromosomes).slice()
       });
-
-      // Disable checkbox if there is a saved layout for the current configuration
-      disableShowSavedLayout(dataChromosomes, dataChords);
 
       const updatedDataChromosomes =
         generateUpdatedDataChromosomesFromOrder(chromosomeOrder, localDataChromosomes);
@@ -891,7 +842,7 @@ export default function generateGenomeView({
     d3.select('.filter-connections-div #filter-block-size').property("value")) || 1;
 
   // To keep track of the value of the selected block color
-  const blockColor = d3.select("div.blocks-color select").property("value");
+  const blocksColor = d3.select("div.blocks-color select").property("value");
 
   // To keep track of the Show all input state
   const showAllChromosomes = d3.select("p.show-all input").property("checked");
@@ -986,11 +937,11 @@ export default function generateGenomeView({
         targetID: targetID
       });
 
-      let colorValue = CONNECTION_COLORS[blockColor];
-      if (blockColor === 'Source') colorValue = gffPositionDictionary[sourceID].color;
-      else if (blockColor === 'Target') colorValue = gffPositionDictionary[targetID].color;
+      let colorValue = CONNECTION_COLORS[blocksColor];
+      if (blocksColor === 'Source') colorValue = gffPositionDictionary[sourceID].color;
+      else if (blocksColor === 'Target') colorValue = gffPositionDictionary[targetID].color;
       // For flipped blocks, using deepskyblue and crimson colors (blue-ish and red-ish)
-      else if (blockColor === 'Flipped') colorValue = isFlipped ? '#dc143c' : '#00bfff';
+      else if (blocksColor === 'Flipped') colorValue = isFlipped ? '#dc143c' : '#00bfff';
 
       dataChords.push({
         source: {
@@ -1057,29 +1008,6 @@ export default function generateGenomeView({
     console.log('HERE RESETTING!!!!');
     setCurrentSelectedBlock("");
   }
-
-  d3.select(".best-guess > input")
-    .on("click", function() {
-      const totalTime = getCollisionCalculationTime();
-      const totalNumberOfIterations = getTotalNumberOfIterations();
-      const finalTime = roundFloatNumber(totalTime * totalNumberOfIterations, 2);
-
-      let confirming = true;
-      // Taking the calculated time string from the hint
-      const timeString = d3.select(".filter-sa-hint").text().split("-")[0].trim();
-      if (finalTime >= 120) {
-        confirming = confirm(`Are you willing to wait at least "${timeString}" for the calculation to finish?`);
-      }
-
-      if (confirming) {
-        d3.select(this)
-          .property("value", "Minimizing ...")
-          .attr("disabled", true);
-
-        // TODO: Workaround for this 50 timeout?
-        setTimeout(() => simulatedAnnealing(dataChromosomes, dataChords), 50);
-      }
-    });
 
   // Remove block view if user is filtering
   // and selected block is not present anymore

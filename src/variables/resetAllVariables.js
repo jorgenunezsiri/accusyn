@@ -8,7 +8,7 @@ import { setDataChords } from './dataChords';
 import { setDataChromosomes } from './dataChromosomes';
 import { setGeneDictionary } from './geneDictionary';
 import { setGffDictionary } from './gffDictionary';
-import { setSavedCollisionSolutionsDictionary } from './savedCollisionSolutionsDictionary';
+import { setSavedSolutions } from './savedSolutions';
 
 /**
  * Resets all variables
@@ -28,5 +28,5 @@ export default function resetAllVariables() {
   setDataChromosomes([]);
   setGeneDictionary({});
   setGffDictionary({});
-  setSavedCollisionSolutionsDictionary({});
+  setSavedSolutions([]);
 };

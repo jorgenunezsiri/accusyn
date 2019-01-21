@@ -1,0 +1,25 @@
+// _placeholders.scss partial file
+
+%svg-button {
+  background-color: white;
+  border: 1px solid #3b88fd;
+  border-radius: 10px;
+  fill: #3b88fd;
+  height: 35px;
+  padding: 2px 8px;
+  width: 37px;
+}
+
+%svg-button-hover {
+  background-color: #3b88fd;
+  fill: white;
+}
+
+%noWrapParagraphSelectSpan {
+  white-space: nowrap;
+
+  select,
+  span {
+    display: inline-block;
+  }
+}

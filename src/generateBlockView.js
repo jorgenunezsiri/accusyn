@@ -20,6 +20,7 @@ import isEqual from 'lodash/isEqual';
 import {
   getFlippedGenesPosition,
   movePageContainerScroll,
+  renderSvgButton,
   removeBlockView,
   resetInputsAndSelectsOnAnimation
 } from './helpers';
@@ -104,12 +105,12 @@ export default function generateBlockView(data) {
 
   const margin = {
     top: 35,
-    right: 80,
+    right: 90,
     bottom: 10,
-    left: 80
+    left: 90
   };
 
-  const widthBlock = 400 - margin.left - margin.right;
+  const widthBlock = 420 - margin.left - margin.right;
   const heightBlock = 600 - margin.top - margin.bottom;
 
   // Set the ranges for x and y
@@ -236,7 +237,7 @@ export default function generateBlockView(data) {
       .attr("stroke-width", "2px");
 
     d3.selectAll("svg.block-view g.tick text")
-      .attr("font-size", "9");
+      .attr("font-size", "10");
   };
 
   // Zoom behavior
@@ -244,7 +245,7 @@ export default function generateBlockView(data) {
     .scaleExtent([0.01, 10000])
     .on("start", function() {
       // Activate if SA is not running
-      if (d3.select(".best-guess > input").attr("disabled")) return;
+      if (d3.select(".best-guess > button").attr("disabled")) return;
 
       // Move scroll to start before zooming, if currently
       // doing mouseover on top of block group
@@ -257,7 +258,7 @@ export default function generateBlockView(data) {
     })
     .on("zoom", function() {
       // Activate if SA is not running and both group axis are defined
-      if (d3.select(".best-guess > input").attr("disabled") || !gY0 || !gY1) return;
+      if (d3.select(".best-guess > button").attr("disabled") || !gY0 || !gY1) return;
 
       const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
 
@@ -280,7 +281,7 @@ export default function generateBlockView(data) {
     })
     .on("end", function() {
       // Activate if SA is not running
-      if (d3.select(".best-guess > input").attr("disabled")) return;
+      if (d3.select(".best-guess > button").attr("disabled")) return;
 
       console.log('NOT ZOOMING');
       isZooming = false;
@@ -312,13 +313,16 @@ export default function generateBlockView(data) {
     .attr("class", "outer-content")
     .append("div")
     .attr("class", "outer-clickable-content")
-    .append("p")
+    .append("div")
     .attr("class", "reset-button")
-    .append("input")
-    .attr("type", "button")
-    .attr("value", "Reset")
-    .attr("title", "Resets the block view to its original scale.")
-    .on("click", function() {
+    .attr("title", "Resets the block view to its original scale.");
+
+  // Loading reset layout button inside its container
+  renderSvgButton({
+    buttonContainer: d3.select("#block-view-container .outer-clickable-content div.reset-button").node(),
+    svgClassName: 'reset-layout-svg',
+    svgHref: './images/icons.svg#reset-sprite_si-bootstrap-refresh',
+    onClickFunction: function() {
       // Changing zoom state and svg scale to default
       resetZoomBlockView(blockID);
       d3.select("svg.block-view g.clip-block-group")
@@ -326,7 +330,8 @@ export default function generateBlockView(data) {
 
       // Resetting by calling path block view
       generatePathBlockView();
-    });
+    }
+  });
 
   // Flip orientation checkbox
   d3.select("#block-view-container .outer-clickable-content")
@@ -698,7 +703,7 @@ export default function generateBlockView(data) {
           // Only activate if the user is not zooming, axis mouse down is not set,
           // and SA is not running
           if (isZooming || currentAxisMouseDown !== "" ||
-            d3.select(".best-guess > input").attr("disabled")) return;
+            d3.select(".best-guess > button").attr("disabled")) return;
 
           tooltipDiv.transition().style("opacity", 0.9);
 
@@ -815,7 +820,7 @@ export default function generateBlockView(data) {
         .on("start", function() {
           // If axis mouse down is not set, then return because I'm not selecting any axis
           // Activate only if SA is not running
-          if (currentAxisMouseDown === "" || d3.select(".best-guess > input").attr("disabled")) return;
+          if (currentAxisMouseDown === "" || d3.select(".best-guess > button").attr("disabled")) return;
 
           // Getting mouse position
           const positionY = d3.mouse(d3.select("div#block-view-container svg.block-view").node())[1];
@@ -829,7 +834,7 @@ export default function generateBlockView(data) {
         .on("drag", function() {
           // If axis mouse down is not set, then return because I'm not selecting any axis
           // Activate only if SA is not running
-          if (currentAxisMouseDown === "" || d3.select(".best-guess > input").attr("disabled")) return;
+          if (currentAxisMouseDown === "" || d3.select(".best-guess > button").attr("disabled")) return;
 
           // Getting mouse position
           const positionY = d3.mouse(d3.select("div#block-view-container svg.block-view").node())[1];
@@ -923,7 +928,7 @@ export default function generateBlockView(data) {
         .on("end", function() {
           // If axis mouse down is not set, then return because I'm not selecting any axis
           // Activate only if SA is not running
-          if (currentAxisMouseDown === "" || d3.select(".best-guess > input").attr("disabled")) return;
+          if (currentAxisMouseDown === "" || d3.select(".best-guess > button").attr("disabled")) return;
 
           // Remove stroke highlight from axis
           d3.select(`g.${currentAxisMouseDown}`)
@@ -972,7 +977,7 @@ export default function generateBlockView(data) {
     .attr("x", 0 - (heightBlock / 2))
     .attr("dy", "1em")
     .attr("fill", darkMode ? "#ffffff" : "#000000")
-    .attr("font-size", "11")
+    .attr("font-size", "12")
     .attr("text-anchor", "middle")
     .text(sourceChromosomeID);
 
@@ -984,7 +989,7 @@ export default function generateBlockView(data) {
     .attr("x", (heightBlock / 2))
     .attr("dy", "1em")
     .attr("fill", darkMode ? "#ffffff" : "#000000")
-    .attr("font-size", "11")
+    .attr("font-size", "12")
     .attr("text-anchor", "middle")
     .text(targetChromosomeID);
 
@@ -994,7 +999,7 @@ export default function generateBlockView(data) {
     .attr("x", (widthBlock / 2))
     .attr("y", 0 - (margin.top / 3))
     .attr("fill", darkMode ? "#ffffff" : "#000000")
-    .attr("font-size", "11")
+    .attr("font-size", "12")
     .attr("text-anchor", "middle")
     .text(`${sourceChromosomeID} vs. ${targetChromosomeID} - Block ${d3.format(",")(blockID)}`);
 }

@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 // React
 import React from 'react';
 import ReactDOM from 'react-dom';
+import Button from './reactComponents/Button';
 import AlertWithTimeout from './reactComponents/Alert';
 
 import UAParser from 'ua-parser-js';
@@ -20,8 +21,7 @@ import { getDefaultChromosomeOrder } from './variables/currentChromosomeOrder';
 import { getGffDictionary } from './variables/gffDictionary';
 import {
   isAdditionalTrackAdded,
-  getAdditionalTrackArray,
-  getAdditionalTrackNames
+  getAdditionalTrackArray
 } from './variables/additionalTrack';
 import {
   getCircosRotateValue,
@@ -140,6 +140,7 @@ export function showChromosomeConnectionInformation(connectionDictionary, select
 
 /**
  * Reset chromosome order checkboxes
+ * NOTE: This function does NOT uncheck the checkboxes
  *
  * @return {undefined} undefined
  */
@@ -159,7 +160,7 @@ export function resetChromosomeCheckboxes() {
  * @param {boolean} [value=null] Disabling value
  */
 export function resetInputsAndSelectsOnAnimation(value = null) {
-  d3.selectAll("input:not(.disabled)")
+  d3.selectAll("input:not(.disabled),button")
     .attr("disabled", value);
 
   d3.selectAll("select")
@@ -189,6 +190,36 @@ export function renderReactAlert(alertMessage = "", color = "danger", timeout = 
       message = {alertMessage}
     />,
     alertContainerElement
+  );
+};
+
+/**
+ * Renders SVG button using Button React component
+ *
+ * @param  {node} buttonContainer Container node
+ * @param  {Function} onClickFunction Function to be called in the onClick event
+ * @param  {string} svgClassName    Classname for the svg
+ * @param  {string} svgHref         Href for the svg
+ * @return {undefined}              undefined
+ */
+export function renderSvgButton({
+  buttonContainer,
+  onClickFunction,
+  svgClassName,
+  svgHref
+}) {
+  ReactDOM.unmountComponentAtNode(buttonContainer);
+  ReactDOM.render(
+    <Button
+      color="link"
+      onClick={() => onClickFunction()}>
+      <svg className={svgClassName} pointerEvents="none">
+        <use
+          href={svgHref}
+          xlinkHref={svgHref} />
+      </svg>
+    </Button>,
+    buttonContainer
   );
 };
 
@@ -340,28 +371,31 @@ export function getTransformValuesAdditionalTracks() {
 export function getInnerAndOuterRadiusAdditionalTracks() {
   let availableTracks = [];
 
-  const trackNames = getAdditionalTrackNames();
-  const trackNamesLength = trackNames.length;
   const additionalTrackArray = getAdditionalTrackArray();
+  const additionalTrackArrayLength = additionalTrackArray.length;
 
-  for (let i = 0; i < trackNamesLength; i++) {
-    const key = trackNames[i];
+  for (let i = 0; i < additionalTrackArrayLength; i++) {
+    const key = additionalTrackArray[i].name;
     // Resetting the text for the tab-link
     d3.select(`#form-config .additional-tracks-panel div.tabs button.tab-link.${key} span.text`).html(`${key}`);
 
+    const trackColor = !d3.select(`div.additional-track.${key} .track-color select`).empty() &&
+      d3.select(`div.additional-track.${key} .track-color select`).property("value");
     const trackType = !d3.select(`div.additional-track.${key} .track-type select`).empty() &&
       d3.select(`div.additional-track.${key} .track-type select`).property("value");
     const trackPlacement = !d3.select(`div.additional-track.${key} .track-placement select`).empty() &&
       d3.select(`div.additional-track.${key} .track-placement select`).property("value");
 
-    if (trackPlacement && trackType && trackType !== 'None') {
+    if (trackColor && trackPlacement && trackType && trackType !== 'None') {
       // Making the tab-link text bold for the visible tracks
       d3.select(`#form-config .additional-tracks-panel div.tabs button.tab-link.${key} span.text`)
         .html(`<strong>${key}</strong>`);
 
+      // All available tracks by returning the ones that are currently selected
       availableTracks.push({
+        color: trackColor,
         name: key,
-        order: additionalTrackArray[findIndex(additionalTrackArray, ['name', key])].order,
+        order: additionalTrackArray[i].order,
         placement: trackPlacement,
         type: trackType
       });
@@ -879,9 +913,11 @@ export function flipOrResetChromosomeOrder({
  *
  * @param  {number} nAngle    Current angle between 0 and 360
  * @param  {number} nDragging Current dragging angle between 0 and 360
+ * @param  {boolean} shouldUpdateLayout          True if Circos layout should be updated
+ *                                               (i.e. chromosome order changed)
  * @return {undefined}        undefined
  */
-export function updateAngle(nAngle = 0, nDragging = 0) {
+export function updateAngle(nAngle = 0, nDragging = 0, shouldUpdateLayout = true) {
   // Adjust the text on the rotating range slider
   d3.select("#nAngle-genome-view-value").text(nAngle + String.fromCharCode(176));
   d3.select("#nAngle-genome-view").property("value", nAngle);
@@ -892,11 +928,13 @@ export function updateAngle(nAngle = 0, nDragging = 0) {
   const rotateValue = ((-1) * (nAngle + nDragging));
   setCircosRotateValue(rotateValue);
 
-  // Rotate the genome view with current transforms
-  d3.select("g.all")
-    .attr("transform", `translate(${currentTranslate.width},${currentTranslate.height})
+  if (shouldUpdateLayout) {
+    // Rotate the genome view with current transforms
+    d3.select("g.all")
+      .attr("transform", `translate(${currentTranslate.width},${currentTranslate.height})
       scale(${currentScale})
       rotate(${rotateValue})`);
+  }
 };
 
 /**

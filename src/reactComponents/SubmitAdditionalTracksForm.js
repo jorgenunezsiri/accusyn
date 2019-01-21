@@ -116,6 +116,7 @@ class SubmitAdditionalTracksForm extends React.Component {
         </p>
         <p>
           <input
+            className="btn btn-outline-primary"
             id="submit-additional-track-file-upload"
             onClick={this.handleClick}
             title="Submits additional track files to be loaded with the application."

@@ -1,6 +1,8 @@
 import * as d3 from 'd3';
 import find from 'lodash/find';
 
+import undoManager, { updateUndoRedoButtons } from './../vendor/undoManager';
+
 import generateGenomeView  from './generateGenomeView';
 import {
   getChordsRadius,
@@ -9,7 +11,7 @@ import {
   updateAngle
 } from './../helpers';
 import {
-  disableShowSavedLayout,
+  callSwapPositionsAnimation,
   getChordAngles,
   updateWaitingBlockCollisionHeadline
 } from './blockCollisions';
@@ -21,9 +23,13 @@ import {
   getCurrentChromosomeOrder,
   setCurrentChromosomeOrder
 } from './../variables/currentChromosomeOrder';
+import { getCurrentFlippedChromosomes } from './../variables/currentFlippedChromosomes';
+import { getCircosObject } from './../variables/myCircos';
+import { generateUpdatedDataChromosomesFromOrder } from './../variables/dataChromosomes';
 
 // Constants
 import {
+  CIRCOS_CONF,
   DEGREES_TO_RADIANS,
   GAP_AMOUNT,
   GENOME_INNER_RADIUS,
@@ -156,7 +162,9 @@ export function updateChordsWhileDragging({
           if (d.source.id === chromosome) {
             sourceStartAngle += (extraAngle * DEGREES_TO_RADIANS);
             sourceEndAngle += (extraAngle * DEGREES_TO_RADIANS);
-          } else if (d.target.id === chromosome) {
+          }
+
+          if (d.target.id === chromosome) {
             targetStartAngle += (extraAngle * DEGREES_TO_RADIANS);
             targetEndAngle += (extraAngle * DEGREES_TO_RADIANS);
           }
@@ -309,7 +317,7 @@ function onStartDragging(dataChromosomes) {
   console.log('CURRENT MOUSE DOWN: ', currentChromosomeMouseDown);
 
   if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "" ||
-    d3.select(".best-guess > input").attr("disabled")) return;
+    d3.select(".best-guess > button").attr("disabled")) return;
 
   // Moving page to top if it is scrolled, to be able to calculate the correct angle
   movePageContainerScroll("start", "instant");
@@ -370,7 +378,7 @@ function onDragging(dataChromosomes) {
   console.log('CURRENT MOUSE DOWN: ', currentChromosomeMouseDown);
 
   if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "" ||
-    d3.select(".best-guess > input").attr("disabled")) return;
+    d3.select(".best-guess > button").attr("disabled")) return;
 
   updateWaitingBlockCollisionHeadline();
 
@@ -420,7 +428,7 @@ function onEndDragging(dataChromosomes, dataChords) {
   const dataChromosomesLength = dataChromosomes.length;
 
   if (dataChromosomesLength <= 1 || currentChromosomeMouseDown === "" ||
-    d3.select(".best-guess > input").attr("disabled")) return;
+    d3.select(".best-guess > button").attr("disabled")) return;
 
   let currentChromosomeOrder = getCurrentChromosomeOrder().slice();
 
@@ -491,9 +499,6 @@ function onEndDragging(dataChromosomes, dataChords) {
     currentChromosomeOrder.splice(currentIndexToInsert, 0, currentChromosomeMouseDown);
 
     setCurrentChromosomeOrder(currentChromosomeOrder);
-
-    // Disable checkbox if there is a saved layout for the current configuration
-    disableShowSavedLayout(currentChromosomeOrder, dataChords);
 
     for (let i = currentIndexToDelete; currentChromosomeOrder[i] !== currentChromosomeMouseDown; i--) {
       if (i === currentIndexToDelete && oldChrOrder[i + 1] === currentChromosomeOrder[i]) {
@@ -636,8 +641,33 @@ function onEndDragging(dataChromosomes, dataChords) {
       updateAngle(+chromosomeRotateAngle, 360 - draggedAngle);
     }
 
+    const myCircos = getCircosObject();
+    const updatedDataChromosomes =
+      generateUpdatedDataChromosomesFromOrder(currentChromosomeOrder, dataChromosomes);
+
+    // To introduce start and end properties into dataChromosomes
+    myCircos.layout(updatedDataChromosomes, CIRCOS_CONF);
+
+    undoManager.add({
+      undo: function() {
+        callSwapPositionsAnimation({
+          dataChromosomes: updatedDataChromosomes,
+          bestSolution: dataChromosomes,
+          bestFlippedChromosomes: getCurrentFlippedChromosomes()
+        });
+      },
+      redo: function() {
+        callSwapPositionsAnimation({
+          dataChromosomes: dataChromosomes,
+          bestSolution: updatedDataChromosomes,
+          bestFlippedChromosomes: getCurrentFlippedChromosomes()
+        });
+      }
+    });
+
     // Enabling inputs and selects after calling the animation
     resetInputsAndSelectsOnAnimation();
+    updateUndoRedoButtons();
 
     // Drawing genome view without removing block view
     // and updating block collisions
@@ -662,7 +692,11 @@ export function addSvgDragHandler(dataChromosomes, dataChords) {
   // Updating genome view rotating angle on input
   d3.select("#nAngle-genome-view")
     .on("input", function() {
-      updateAngle(+this.value, draggedAngle > 0 ? 360 - draggedAngle : 0);
+      let shouldUpdate = (d3.event.detail || {}).shouldUpdate;
+      // shoulUpdate = null or undefined is true, meaning true by default
+      shouldUpdate = shouldUpdate == null ? true : shouldUpdate;
+
+      updateAngle(+this.value, draggedAngle > 0 ? 360 - draggedAngle : 0, shouldUpdate);
     });
 
   const dragHandler = d3.drag()

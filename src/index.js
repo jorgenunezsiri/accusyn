@@ -27,6 +27,13 @@ if (process.env.NODE_ENV === 'production') {
 */
 
 (async function main() {
+  function requireAll(r) {
+    r.keys().forEach(r);
+  }
+
+  // Importing all SVG icons into the JS bundle
+  requireAll(require.context('./icons/', true, /\.svg$/));
+
   const deviceType = detectDeviceType(window.navigator.userAgent).type;
   const {
     chrome,

@@ -113,9 +113,12 @@ class DownloadFilesForm extends React.Component {
         <div className="options-container">
           <p className="plot-type">
             <span>View:</span>
-            <select defaultValue="genome" onChange={this.handlePlotTypeChange}>
-              <option value="genome">Genome</option>
-              {isBlockViewPresent && <option value="block">Block</option>}
+            <select
+              className="form-control"
+              defaultValue="genome"
+              onChange={this.handlePlotTypeChange}>
+                <option value="genome">Genome</option>
+                {isBlockViewPresent && <option value="block">Block</option>}
             </select>
           </p>
           {shouldIncludeHighlightedCheckbox && this.state.plotType === 'genome' &&
@@ -128,7 +131,7 @@ class DownloadFilesForm extends React.Component {
           }
           <p className="format-type">
             <span>Format:</span>
-            <select defaultValue="SVG">
+            <select className="form-control" defaultValue="SVG">
               <option value="SVG">SVG</option>
               <option value="JPEG">JPEG</option>
               <option value="PNG">PNG</option>
@@ -137,6 +140,7 @@ class DownloadFilesForm extends React.Component {
         </div>
         <p>
           <input
+            className="btn btn-outline-primary"
             onClick={this.handleClick}
             title="Downloads the selected view in the preferred format."
             type="button"

@@ -1,6 +1,7 @@
 import * as d3 from 'd3';
 
 import cloneDeep from 'lodash/cloneDeep';
+import forEach from 'lodash/forEach';
 import sortBy from 'lodash/sortBy';
 
 // Shopify sortable. Using ES5 bundle to make it work correctly with UglifyJS
@@ -22,9 +23,10 @@ import {
 } from './variables/additionalTrack';
 
 import { getGffDictionary } from './variables/gffDictionary';
-
+import { getSavedSolutions } from './variables/savedSolutions';
 import {
   calculateMiddleValue,
+  renderReactAlert,
   roundFloatNumber
 } from './helpers';
 
@@ -134,6 +136,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
     d3.select(`div.additional-track.${name} .track-type`)
       .append("p")
       .append("select")
+      .attr("class", "form-control")
       .html(() =>
         Object.keys(ADDITIONAL_TRACK_TYPES).map((current) =>
           `<option value="${ADDITIONAL_TRACK_TYPES[current]}">${current}</option>`
@@ -150,6 +153,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
     d3.select(`div.additional-track.${name} .track-color`)
       .append("p")
       .append("select")
+      .attr("class", "form-control")
       .html(colorOptions);
 
     // Track placement
@@ -162,6 +166,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
     d3.select(`div.additional-track.${name} .track-placement`)
       .append("p")
       .append("select")
+      .attr("class", "form-control")
       .html(`
         <option value="Outside" selected="selected">Outside</option>
         <option value="Inside">Inside</option>
@@ -267,6 +272,26 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
       d3.event.preventDefault();
 
       const name = d3.select(this.parentNode).select("span.text").text();
+
+      const savedSolutions = getSavedSolutions();
+      let foundSavedTrack = false;
+      let stampIndex = -1;
+      forEach(savedSolutions, ({ availableTracks }, index) => {
+        forEach(availableTracks, ({ name: trackName }) => {
+          if (name === trackName) {
+            foundSavedTrack = true;
+            stampIndex = index + 1;
+            return false; // equivalent of break inside forEach
+          }
+        });
+        if (foundSavedTrack) return false; // equivalent of break inside forEach
+      });
+
+      // Return because I cannot delete the track if there is a saved layout using it
+      if (foundSavedTrack) {
+        renderReactAlert(`The track can't be deleted because it is being used in the saved stamp #${stampIndex}.`);
+        return;
+      }
 
       const confirming = confirm(`Are you sure you want to delete the track "${name}"?`);
 

@@ -11,7 +11,7 @@ const loadFiles = (
   <div>
     <SubmitMainFilesForm />
 
-    <h5 className="disabled">──────────────────────────────────────────────────────</h5>
+    <h5 className="separator disabled">──────────────────────────────────────────────────────</h5>
 
     <p>These are other sample files that can be loaded with <strong>GSB</strong>:</p>
     <p>

@@ -9,7 +9,7 @@ select {
 }
 
 p, label, span, h6 {
-  font-size: 10px;
+  font-size: 11px;
   margin-bottom: 5px;
 }
 
@@ -29,10 +29,37 @@ p {
 
 input[type="button"] {
   padding: 0 10px;
+
+  &.btn.btn-outline-primary {
+    background-color: white;
+    border-color: #3b88fd;
+    color: #3b88fd;
+    font-size: 11px;
+    margin-left: 2px;
+
+    &:hover {
+      background-color: #3b88fd;
+      color: white;
+    }
+  }
+}
+
+select {
+  &.form-control {
+    color: black;
+    font-size: 11px;
+    height: 20px !important;
+    padding: 0;
+  }
 }
 
 .disabled {
   color: gainsboro;
+}
+
+.separator {
+  margin: 0;
+  overflow: hidden;
 }
 
 input:disabled,
@@ -96,6 +123,11 @@ label {
     margin-bottom: -5px;
   }
 
+  &.modal-dialog.bottom-modal {
+    top: calc(100% - 350px);
+    transform: translate(0, -25%);
+  }
+
   p, label, span {
     font-size: 11px;
   }
@@ -125,6 +157,10 @@ label {
       p {
         display: inline-block;
 
+        &.gff-type {
+          @extend %noWrapParagraphSelectSpan;
+        }
+
         &:first-child {
           margin-right: 10px;
         }
@@ -150,14 +186,74 @@ label {
 
   .download-files-form-container {
     .options-container {
+      p.plot-type,
+      p.format-type {
+        @extend %noWrapParagraphSelectSpan;
+
+        select {
+          width: 75px;
+        }
+      }
+
       p.keep-block-highlighted,
       p.plot-type {
         display: inline-block;
       }
 
-      p.keep-block-highlighted,
+      p.keep-block-highlighted {
+        margin-left: 10px;
+      }
+
       p.plot-type select {
         margin-left: 16px;
+      }
+    }
+  }
+
+  .saved-solutions-container {
+    .stamps-container {
+      margin-top: -15px;
+
+      .col-lg-2 {
+        max-width: 100%;
+        padding: 0;
+      }
+
+      .stamps-item {
+        margin: 15px 15px 0;
+        position: relative;
+
+        .item-close,
+        .item-index {
+          color: black;
+          font-size: 11px;
+          font-weight: bold;
+          position: absolute;
+
+          &.dark-mode {
+            color: #f3f3f3;
+          }
+        }
+
+        .item-close {
+          cursor: pointer;
+          right: 5px;
+          top: 0;
+        }
+
+        .item-index {
+          bottom: 0;
+          left: 5px;
+        }
+
+        img {
+          border-radius: 10px;
+          cursor: pointer;
+
+          &:hover {
+            border: 2px solid #3b88fd;
+          }
+        }
       }
     }
   }

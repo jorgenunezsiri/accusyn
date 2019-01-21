@@ -109,9 +109,9 @@ class SubmitMainFilesForm extends React.Component {
               <input type="file" name="gff-file-upload" id="gff-file-upload" />
             </label>
           </p>
-          <p>
+          <p className="gff-type">
             <span>Type:</span>
-            <select defaultValue="GFF">
+            <select className="form-control" defaultValue="GFF">
               <option value="GFF">GFF (Simplified)</option>
               <option value="GFF3">GFF3 (Complete)</option>
             </select>
@@ -125,6 +125,7 @@ class SubmitMainFilesForm extends React.Component {
         </p>
         <p>
           <input
+            className="btn btn-outline-primary"
             id="submit-file-upload"
             onClick={this.handleClick}
             title="Submits files to be loaded with the application."

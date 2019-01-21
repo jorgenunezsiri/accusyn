@@ -9,6 +9,10 @@ import {
 // ParallelJS
 import Parallel from 'paralleljs';
 
+import undoManager, { updateUndoRedoButtons } from '../vendor/undoManager';
+
+import { svgAsPngUri } from 'save-svg-as-png';
+
 // Lodash
 import cloneDeep from 'lodash/cloneDeep';
 import difference from 'lodash/difference';
@@ -23,12 +27,13 @@ import { updateAdditionalTracksWhileDragging } from './dragging';
 import {
   flipGenesPosition,
   getChordsRadius,
+  getInnerAndOuterRadiusAdditionalTracks,
+  getSelectedCheckboxes,
   movePageContainerScroll,
   removeNonLettersFromString,
   renderReactAlert,
   resetInputsAndSelectsOnAnimation,
   roundFloatNumber,
-  sortGffKeys,
   updateRatio,
   updateTemperature
 } from './../helpers';
@@ -53,19 +58,19 @@ import {
   setCurrentFlippedChromosomes,
   setPreviousFlippedChromosomes
 } from './../variables/currentFlippedChromosomes';
+import { getCurrentSelectedBlock } from './../variables/currentSelectedBlock';
 import {
   getDataChords,
-  setDataChords,
-  toChordsOrder
+  setDataChords
 } from './../variables/dataChords';
 import {
   getDataChromosomes,
   setDataChromosomes
 } from './../variables/dataChromosomes';
 import {
-  getSavedCollisionSolutionsDictionary,
-  setSavedCollisionSolutionsDictionary
-} from './../variables/savedCollisionSolutionsDictionary';
+  getSavedSolutions,
+  setSavedSolutions
+} from './../variables/savedSolutions';
 
 // Constants
 import {
@@ -532,103 +537,23 @@ export function calculateDeclutteringETA() {
 };
 
 /**
- * Shows saved layout if conditions are met and a layout is saved
- * NOTE: This is called after block collisions are calculated or checkbox is clicked
- *
- * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
- * @param  {Array<Object>} dataChords      Plotting information for each block chord
- * @param  {boolean} shouldUpdateLayout    True if Circos layout should be updated, otherwise false
- * @return {undefined}                     undefined
- */
-export function showSavedLayout(dataChromosomes, dataChords, shouldUpdateLayout) {
-  // Show best / saved layout checkbox
-  let showBestPossibleLayout =
-    d3Select("p.show-best-layout input").property("checked");
-
-  if (shouldUpdateLayout && showBestPossibleLayout) {
-    const { currentPosition, key } = lookUpPositionCollisionsDictionary(dataChromosomes, dataChords);
-    const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
-
-    showBestPossibleLayout = showBestPossibleLayout && currentPosition !== (-1);
-
-    if (showBestPossibleLayout) {
-      const { bestFlippedChromosomes, bestSolution } = savedCollisionSolutionsDictionary[key][currentPosition];
-
-      console.log('FOUND LAYOUT: ', bestFlippedChromosomes, bestSolution);
-
-      // Here I do not need to re-render if dataChromosomes and bestSolution are the same,
-      // because I didn't modify the layout
-      callSwapPositionsAnimation({
-        dataChromosomes: dataChromosomes,
-        bestSolution: bestSolution,
-        bestFlippedChromosomes: bestFlippedChromosomes,
-        updateWhenSame: false
-      });
-    }
-  }
-};
-
-/**
- * Disables show saved layout when operations lead to a worse solution
- * NOTE: This is called when resetting layout, flipping or dragging a chr,
- * and after running SA
- *
- * @param  {Array<Object>|Array<string>} dataChromosomes  Current chromosomes in the Circos plot
- * @param  {Array<Object>} dataChordsSA     Plotting information for each block chord
- * @param  {number} currentCollisionCount   Current collision count for the view
- * @return {undefined}                      undefined
- */
-export function disableShowSavedLayout(dataChromosomes, dataChords, currentCollisionCount) {
-  // Do not enter function if input is empty (not defined) or is already false
-  if (d3Select("p.show-best-layout input").empty() ||
-    !d3Select("p.show-best-layout input").property("checked")) return;
-
-  const { currentPosition, key } = lookUpPositionCollisionsDictionary(dataChromosomes, dataChords);
-  const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
-  if (currentPosition !== (-1)) {
-    if (currentCollisionCount == null) {
-      // Disable checkbox because operations might lead to a worse or better solution
-      d3Select("p.show-best-layout input").property("checked", false);
-      return;
-    }
-
-    const { collisionCount } = savedCollisionSolutionsDictionary[key][currentPosition];
-
-    // This extra check is only done after running SA
-    if (collisionCount > currentCollisionCount) {
-      console.log('COLLISION COUNT: ', collisionCount, currentCollisionCount);
-
-      // Disable checkbox because saved solution is worse than actual one
-      d3Select("p.show-best-layout input").property("checked", false);
-    }
-  }
-
-  return;
-};
-
-/**
  * Updating the label showing the number of block collisions
  * NOTE: Using paralleljs to do the calculation asynchronously
  *
  * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
  * @param  {Array<Object>} dataChords      Plotting information for each block chord
- * @param  {boolean} shouldUpdateLayout    True if Circos layout should be updated, otherwise false
  * @return {undefined}                     undefined
  */
-export function updateBlockCollisionHeadline(dataChromosomes, dataChords, shouldUpdateLayout) {
+export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
   console.log('Updating block collision headline !!!');
   updateWaitingBlockCollisionHeadline();
 
   // Disabling minimize collisions and save layout buttons until collision counts
   // are calculated
-  d3Select(".best-guess > input")
+  d3Select(".best-guess > button")
     .attr("disabled", true);
 
-  d3Select(".save-layout > input")
-    .attr("disabled", true);
-
-  // Disabling show saved layout because I need the chromosomes and chords data
-  d3Select("p.show-best-layout input")
+  d3Select(".save-layout > button")
     .attr("disabled", true);
 
   // I want to get the results from the last set of chromosomes that was called
@@ -671,13 +596,10 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords, should
 
       // Enabling minimize collisions, save layout, and show saved layout
       // after calculations are done
-      d3Select(".best-guess > input")
+      d3Select(".best-guess > button")
         .attr("disabled", null);
 
-      d3Select(".save-layout > input")
-        .attr("disabled", null);
-
-      d3Select("p.show-best-layout input")
+      d3Select(".save-layout > button")
         .attr("disabled", null);
 
       // Update block-collisions-headline with current collision count
@@ -703,9 +625,6 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords, should
 
       // ETA info
       calculateDeclutteringETA();
-
-      // Show updated layout if it is saved
-      showSavedLayout(currentDataChromosomes, currentDataChords, shouldUpdateLayout);
     }
   });
 };
@@ -765,7 +684,7 @@ function minSwapsToSort(arr) {
     answer: ans,
     swapPositions: swapPositions
   };
-}
+};
 
 /**
  * Minimum number of swaps to make array B same as array A
@@ -776,7 +695,7 @@ function minSwapsToSort(arr) {
  *
  * Source: https://www.geeksforgeeks.org/minimum-swaps-to-make-two-array-identical/
  */
-export function minSwapToMakeArraySame(a, b) {
+function minSwapToMakeArraySame(a, b) {
   if (a.length !== b.length) return [];
 
   const n = a.length;
@@ -805,7 +724,7 @@ export function minSwapToMakeArraySame(a, b) {
   });
 
   return swapPositions;
-}
+};
 
 /**
  * Calculates the angle for doing the swapping transition
@@ -834,7 +753,7 @@ function calculateAngleTransitionSwap(dataChromosomes, bestSolution, currentChr)
   // else angle is 0 by default
 
   return angle;
-}
+};
 
 /**
  * Generates the transition from old chromosome data to new one
@@ -942,42 +861,10 @@ function transitionSwapOldToNew({
         });
       });
   }
-}
-
-/**
- * Looks up position in collisions dictionary
- * TODO: Move this to variable folder
- *
- * @param  {Array<Object>|Array<string>} bestSolution Data for best solution chromosomes
- * @param  {Array<Object>} dataChords   Plotting information for each block chord
- * @return {Object}                     Position and key in collisions dictionary
- */
-export function lookUpPositionCollisionsDictionary(bestSolution, dataChords) {
-  let bestSolutionChromosomeOrder = bestSolution;
-  // If object inside has id, then generate chromosome order
-  // If not, it means that it's already in chromosome order format (array of strings)
-  // NOTE: This is needed for the function disableShowSavedLayout
-  if (bestSolution[0] && bestSolution[0].id) {
-    bestSolutionChromosomeOrder = toChromosomeOrder(bestSolution);
-  }
-
-  // Look for current savedCollisionSolutionsDictionary
-  const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
-  const key = sortGffKeys(bestSolutionChromosomeOrder).slice().toString();
-
-  // Finding positions for the chromosomes in key with current dataChords
-  const currentPosition = findIndex(savedCollisionSolutionsDictionary[key], function(d) {
-    return isEqual(toChordsOrder(d.dataChords), toChordsOrder(dataChords));
-  });
-
-  return {
-    currentPosition: currentPosition,
-    key: key
-  };
 };
 
 /**
- * Save configuration to collisions dictionary
+ * Save configuration to saved solutions dictionary
  *
  * @param  {Array<string>} bestFlippedChromosomes Data for best flipped chromosomes
  * @param  {Array<Object>} bestSolution   Data for best solution chromosomes
@@ -985,34 +872,58 @@ export function lookUpPositionCollisionsDictionary(bestSolution, dataChords) {
  * @param  {Array<Object>} dataChords     Plotting information for each block chord
  * @return {undefined}                    undefined
  */
-export function saveToCollisionsDictionary({
+export function saveToSolutionsDictionary({
   bestFlippedChromosomes,
   bestSolution,
   collisionCount,
   dataChords
 }) {
-  const { currentPosition, key } = lookUpPositionCollisionsDictionary(bestSolution, dataChords);
-  const savedCollisionSolutionsDictionary = getSavedCollisionSolutionsDictionary();
+  const darkMode = d3Select("p.dark-mode input").property("checked");
+  const backgroundColor = darkMode ? '#222222' : '#ffffff';
+  const genomeView = document.getElementById('main-container');
 
-  if (!(key in savedCollisionSolutionsDictionary)) {
-    savedCollisionSolutionsDictionary[key] = [];
-  }
+  // Saving current genome view as PNG uri
+  svgAsPngUri(genomeView, {
+    backgroundColor: backgroundColor,
+    encoderOptions: 1, // 1 means top image quality
+    encoderType: 'image/png'
+  }, function(uri) {
+    // Entering the callback function
+    const currentObject = {
+      availableTracks: getInnerAndOuterRadiusAdditionalTracks().availableTracks,
+      bestFlippedChromosomes: cloneDeep(bestFlippedChromosomes),
+      bestSolution: cloneDeep(bestSolution),
+      blocksColor: d3Select("div.blocks-color select").property("value"),
+      collisionCount: collisionCount,
+      dataChords: cloneDeep(dataChords),
+      darkMode: darkMode,
+      drawingOrder: d3Select('div.draw-blocks-order select').property("value"),
+      filter: {
+        blockSize: d3Select('.filter-connections-div #filter-block-size').property("value"),
+        connections: d3Select('.filter-connections-div select').property("value")
+      },
+      genomePalette: d3Select("div.chromosomes-palette select").property("value"),
+      highlightFlippedBlocks: d3Select("p.highlight-flipped-blocks input").property("checked"),
+      highlightFlippedChromosomes: d3Select("p.highlight-flipped-chromosomes input").property("checked"),
+      imageSrc: uri,
+      rotateValue: d3Select("#nAngle-genome-view").property("value"),
+      selectedBlock: getCurrentSelectedBlock(),
+      selectedCheckboxes: cloneDeep(getSelectedCheckboxes().selectedCheckboxes),
+      showAllChromosomes: d3Select("p.show-all input").property("checked"),
+      showSelfConnections: {
+        chr: d3Select("p.show-self-connections-chr input").property("checked"),
+        genome: !d3Select("p.show-self-connections-genome input").empty() &&
+          d3Select("p.show-self-connections-genome input").property("checked")
+      }
+    };
 
-  const currentObject = {
-    bestFlippedChromosomes: cloneDeep(bestFlippedChromosomes),
-    bestSolution: cloneDeep(bestSolution),
-    collisionCount: collisionCount,
-    dataChords: cloneDeep(dataChords)
-  };
+    const savedSolutions = getSavedSolutions();
+    savedSolutions.push(currentObject);
+    setSavedSolutions(savedSolutions);
 
-  if (currentPosition !== (-1)) {
-    // For this configuration, I want to save another combination (could be better or not)
-    savedCollisionSolutionsDictionary[key][currentPosition] = currentObject;
-  } else {
-    savedCollisionSolutionsDictionary[key].push(currentObject);
-  }
-
-  setSavedCollisionSolutionsDictionary(savedCollisionSolutionsDictionary);
+    // Showing alert using react
+    renderReactAlert(`The layout was successfully saved as the stamp #${savedSolutions.length}.`, "success");
+  });
 };
 
 /**
@@ -1401,6 +1312,7 @@ export function swapPositionsAnimation({
     setTimeout(() => {
       // Enabling inputs and selects after calling the animation
       resetInputsAndSelectsOnAnimation();
+      updateUndoRedoButtons();
 
       generateGenomeView({
         transition: { shouldDo: false },
@@ -1442,6 +1354,25 @@ export function callSwapPositionsAnimation({
     !isEqual(allFlippedChromosomes, bestFlippedChromosomes)) {
     const swapPositions = minSwapToMakeArraySame(currentChromosomeOrder,
       oldChromosomeOrder);
+
+    // NOTE: If undo or redo functions are executing,
+    // the same commands won't be added again to the stack
+    undoManager.add({
+      undo: function() {
+        callSwapPositionsAnimation({
+          dataChromosomes: bestSolution,
+          bestSolution: dataChromosomes,
+          bestFlippedChromosomes: allFlippedChromosomes
+        });
+      },
+      redo: function() {
+        callSwapPositionsAnimation({
+          dataChromosomes: dataChromosomes,
+          bestSolution: bestSolution,
+          bestFlippedChromosomes: bestFlippedChromosomes
+        });
+      }
+    });
 
     // Disabling inputs and selects before calling the animation
     resetInputsAndSelectsOnAnimation(true);
@@ -1534,6 +1465,7 @@ function acceptanceProbability(currentEnergy, neighborEnergy, temperature) {
 /**
  * Running Simulated Annealing algorithm with the current chords and chromosome data
  * to minimize the number of block collisions
+ * NOTE: When running SA, the result can never be worse, it will be better or the same
  *
  * @param  {Array<Object>} dataChromosomes   Current chromosomes in the Circos plot
  * @param  {Array<Object>} dataChordsSA      Plotting information for each block chord
@@ -1567,12 +1499,10 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
     }
 
     // Showing alert using react
-    renderReactAlert(messageToShow);
+    renderReactAlert(`${messageToShow} Please, try again!`);
 
     // Re-activating button
-    d3Select(".best-guess > input")
-      .property("value", "Minimize collisions")
-      .attr("disabled", null);
+    d3Select(".best-guess > button").attr("disabled", null);
 
     return;
   }
@@ -1830,29 +1760,18 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
       }
 
       setTimeout(() => {
-        // Autosave functionality
-        // saveToCollisionsDictionary(bestSolution, bestEnergy, dataChords);
-
         if (excludeFlippedChromosomes.length > 0) {
           console.log('EXCLUDE: ', excludeFlippedChromosomes);
           // Excluding chrs that make the final solution worse
           bestFlippedChromosomes = difference(bestFlippedChromosomes, excludeFlippedChromosomes);
         }
 
-        // Checking if saved solution is worse than actual one, to disable saved input
-        // NOTE: After running SA, the saved solution will never be better than the actual one,
-        // because when running SA, the result can never be worse,
-        // it will be better or the same
-        disableShowSavedLayout(bestSolution, dataChords, bestEnergy);
-
         // Getting rid of the blurred view
         d3SelectAll("svg#genome-view,#block-view-container")
           .classed("blur-view", false);
 
         setTimeout(() => {
-          d3Select(".best-guess > input")
-            .property("value", "Minimize collisions")
-            .attr("disabled", null);
+          d3Select(".best-guess > button").attr("disabled", null);
 
           callSwapPositionsAnimation({
             dataChromosomes: dataChromosomes,
