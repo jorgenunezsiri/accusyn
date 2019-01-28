@@ -1,13 +1,15 @@
 // _blockView.scss partial file
 
 #block-view-container {
-  padding-right: 0;
+  max-width: 31.3333%;
+  padding-left: 10px;
 
   svg.block-view {
-    margin-top: 110px;
+    margin-top: 90px;
   }
 
   div.block-view-content {
+    position: -webkit-sticky;
     position: sticky;
     top: 0;
   }

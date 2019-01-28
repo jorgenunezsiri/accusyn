@@ -58,6 +58,10 @@ class DownloadFilesForm extends React.Component {
     } else if (plotType === 'block') {
       downloadFileName = 'block-view';
       downloadView = d3Select("#block-view-container svg.block-view").node();
+    } else if (plotType === 'legend') {
+      const trackName = d3Select("svg#track-legend > g").attr("class");
+      downloadFileName = `${trackName}-legend`;
+      downloadView = d3Select("svg#track-legend").node();
     }
 
     if (downloadView && downloadView.hasChildNodes()) {
@@ -105,6 +109,7 @@ class DownloadFilesForm extends React.Component {
 
   render() {
     const isBlockViewPresent = !d3Select("#block-view-container svg.block-view").empty();
+    const isLegendPresent = !d3SelectAll("svg#track-legend > *").empty();
     const currentSelectedBlock = getCurrentSelectedBlock();
     const shouldIncludeHighlightedCheckbox = !d3Select("#genome-view g.chords > g").empty() && !isEmpty(currentSelectedBlock);
 
@@ -119,6 +124,7 @@ class DownloadFilesForm extends React.Component {
               onChange={this.handlePlotTypeChange}>
                 <option value="genome">Genome</option>
                 {isBlockViewPresent && <option value="block">Block</option>}
+                {isLegendPresent && <option value="legend">Legend</option>}
             </select>
           </p>
           {shouldIncludeHighlightedCheckbox && this.state.plotType === 'genome' &&

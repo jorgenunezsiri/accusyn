@@ -2,11 +2,13 @@
 
 <!--
 University of Saskatchewan
-GSB: A Web-based Genome Synteny Browser
 Course: CMPT994 - Research
 
+AccuSyn: An Accurate Web-based Genome Synteny Browser
+https://accusyn.usask.ca/
+
 Name: Jorge Nunez Siri
-E-mail: jdn766@mail.usask.ca
+E-mail: jorge.nunez@usask.ca
 
 Main file: index.html
 
@@ -17,19 +19,28 @@ Main file: index.html
 
 <head>
   <meta charset="utf-8">
-  <title>GSB: A Web-based Genome Synteny Browser</title>
+  <title>AccuSyn: An Accurate Web-based Genome Synteny Browser</title>
 
   <!-- Global site tag (gtag.js) - Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-131211042-1"></script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-131211042-3"></script>
   <script type="text/javascript">
-    if (document.location.hostname === 'usask-gsb.netlify.com') {
+    const hostName = document.location.hostname;
+    const listOfHostNames = ['accusyn.usask.ca', 'accusyn.netlify.com', 'usask-gsb.netlify.com'];
+    const hashConfigID = {
+      'accusyn.usask.ca': 'UA-131211042-3',
+      'accusyn.netlify.com': 'UA-131211042-2',
+      'usask-gsb.netlify.com': 'UA-131211042-1'
+    };
+
+    if (listOfHostNames.includes(hostName)) {
       window.dataLayer = window.dataLayer || [];
       function gtag() {
         dataLayer.push(arguments);
       }
 
       gtag('js', new Date());
-      gtag('config', 'UA-131211042-1');
+      // Adding the pageview hit for the correct tracking ID
+      gtag('config', hashConfigID[hostName]);
     }
   </script>
 
@@ -47,6 +58,9 @@ Main file: index.html
     <div class="row">
       <div id="config" class="col-lg-2" style="display: none;">
         <form id="form-config" class="border border-secondary rounded"></form>
+      </div>
+      <div id="logo-container">
+        <img alt="AccuSyn Logo" src="./images/AccuSyn-logo.png" height="50px" width="170px" />
       </div>
       <div id="load-files-container"></div>
       <div id="download-svg-container"></div>

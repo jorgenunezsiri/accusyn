@@ -17,9 +17,13 @@ import generateGenomeView from '../genomeView/generateGenomeView';
 import { getAdditionalTrackNames } from './../variables/additionalTrack';
 import {
   getDataChords,
+  setDataChords,
   toChordsOrder
 } from './../variables/dataChords';
-import { getDataChromosomes } from './../variables/dataChromosomes';
+import {
+  getDataChromosomes,
+  setDataChromosomes
+} from './../variables/dataChromosomes';
 import { toChromosomeOrder } from './../variables/currentChromosomeOrder';
 import { setCurrentSelectedBlock } from './../variables/currentSelectedBlock';
 import {
@@ -51,6 +55,7 @@ class SavedStamps extends React.Component {
 
     this.handleItemClick = this.handleItemClick.bind(this);
     this.handleItemRemove = this.handleItemRemove.bind(this);
+    this.handleBottomModalClass = this.handleBottomModalClass.bind(this);
     this.renderItem = this.renderItem.bind(this);
   }
 
@@ -73,15 +78,20 @@ class SavedStamps extends React.Component {
     const savedDataChromosomes = item.bestSolution;
     const savedDataChords = item.dataChords;
     const selectedCheckboxes = item.selectedCheckboxes;
-    const savedChromosomeOrder = sortGffKeys(toChromosomeOrder(savedDataChromosomes)).slice();
-    const savedChordsOrder = toChordsOrder(savedDataChords);
 
-    const equalConfiguration = isEqual(toChordsOrder(dataChords), savedChordsOrder) &&
-      isEqual(sortGffKeys(toChromosomeOrder(dataChromosomes)).slice().toString(),
-        savedChromosomeOrder.toString());
+    const sortChrOrder = (chrOrder) => sortGffKeys(chrOrder).slice().toString();
+    const equalConfiguration = isEqual(toChordsOrder(dataChords), toChordsOrder(savedDataChords)) &&
+      isEqual(sortChrOrder(toChromosomeOrder(dataChromosomes)),
+        sortChrOrder(toChromosomeOrder(savedDataChromosomes)));
 
     // Selected block
     setCurrentSelectedBlock(item.selectedBlock);
+
+    // Data chromosomes
+    setDataChromosomes(savedDataChromosomes);
+
+    // Data chords
+    setDataChords(savedDataChords);
 
     // Show all chromosomes
     d3Select("p.show-all input").property("checked", item.showAllChromosomes);
@@ -91,9 +101,6 @@ class SavedStamps extends React.Component {
     if (!d3Select("p.show-self-connections-genome input").empty()) {
       d3Select("p.show-self-connections-genome input").property("checked", item.showSelfConnections.genome);
     }
-
-    // Dark mode
-    d3Select("p.dark-mode input").property("checked", item.darkMode);
 
     // Highlight flipped blocks and chromosomes
     d3Select("p.highlight-flipped-blocks input").property("checked", item.highlightFlippedBlocks);
@@ -119,16 +126,24 @@ class SavedStamps extends React.Component {
 
     // Resetting all the tracks
     const additionalTracksNames = getAdditionalTrackNames();
-    forEach(additionalTracksNames, (name) =>
-      d3Select(`div.additional-track.${name} .track-type select`).property("value", "None")
-    );
+    forEach(additionalTracksNames, (name) => {
+      d3Select(`div.additional-track.${name} .track-type select`).property("value", "None");
+      d3Select(`div.additional-track.${name} .track-color select`).property("value", "Blues");
+      d3Select(`div.additional-track.${name} .track-placement select`).property("value", "Outside");
+    });
 
     // Including only available tracks
     forEach(item.availableTracks, ({ name, placement, type, color }) => {
-      d3Select(`div.additional-track.${name} .track-color select`).property("value", color);
       d3Select(`div.additional-track.${name} .track-type select`).property("value", type);
+      d3Select(`div.additional-track.${name} .track-color select`).property("value", color);
       d3Select(`div.additional-track.${name} .track-placement select`).property("value", placement);
     });
+
+    // Dark mode
+    d3Select("p.dark-mode input").property("checked", item.darkMode);
+    // NOTE: This needs to be called after the available tracks, in order to have
+    // the correct options selected in the tracks dropdown
+    d3Select("p.dark-mode input").dispatch('change', { detail: { shouldUpdate: false } });
 
     // Dismissing modal
     d3Select(".modal-reactstrap button.close").node().click();
@@ -168,12 +183,23 @@ class SavedStamps extends React.Component {
     }, 200);
   }
 
-  componentDidMount() {
+  handleBottomModalClass() {
     const savedSolutionsState = this.state.savedSolutions;
     if (savedSolutionsState.length <= 5) {
       // Add bottom-modal class to modal-reactstrap
       d3Select(".modal-reactstrap").node().classList.add('bottom-modal');
+    } else {
+      // Delete bottom-modal class
+      d3Select(".modal-reactstrap").node().classList.remove('bottom-modal');
     }
+  }
+
+  componentDidMount() {
+    this.handleBottomModalClass();
+  }
+
+  componentDidUpdate() {
+    this.handleBottomModalClass();
   }
 
   renderItem(item, index) {

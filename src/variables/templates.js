@@ -13,7 +13,7 @@ const loadFiles = (
 
     <h5 className="separator disabled">──────────────────────────────────────────────────────</h5>
 
-    <p>These are other sample files that can be loaded with <strong>GSB</strong>:</p>
+    <p>These are other sample files that can be loaded with <strong>AccuSyn</strong>:</p>
     <p>
       <a href={`${getCurrentHost()}?gff=at&collinearity=at`}>
       At</a> - <em>Arabidopsis thaliana</em> (Thale cress)

@@ -1,5 +1,23 @@
 import { zoomIdentity as d3ZoomIdentity } from 'd3';
 import {
+  interpolateBlues,
+  interpolateGreens,
+  interpolateGreys,
+  interpolateOranges,
+  interpolatePurples,
+  interpolateReds,
+  interpolateBuGn,
+  interpolateBuPu,
+  interpolateGnBu,
+  interpolateOrRd,
+  interpolatePuBu,
+  interpolatePuBuGn,
+  interpolatePuRd,
+  interpolateRdPu,
+  interpolateYlGn,
+  interpolateYlGnBu,
+  interpolateYlOrBr,
+  interpolateYlOrRd,
   schemeAccent,
   schemeDark2,
   schemePastel2,
@@ -7,6 +25,7 @@ import {
 } from 'd3-scale-chromatic';
 
 const CONNECTION_COLORS = {
+  Combined: 'Combined',
   Source: 'Source',
   Target: 'Target',
   Flipped: 'Flipped',
@@ -69,14 +88,22 @@ const ADDITIONAL_TRACK_TYPES = {
 
 // Categorical color scales - palettes
 // Each scale is using 8 colors
+// Colors are taken using the Color Brewer specification:
+// https://www.cgl.ucsf.edu/chimerax/docs/user/commands/palettes.html
+// Color advice article: https://medium.com/@Elijah_Meeks/color-advice-for-data-visualization-with-d3-js-33b5adc41c90
 const CATEGORICAL_COLOR_SCALES = {
-  Normal: schemeSet2,
-  Accent: schemeAccent,
-  Dark: schemeDark2,
-  Pastel: schemePastel2,
+  'Light 1': schemeSet2,
+  'Light 2': ['#8dd3c7','#ffea81','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5'],
+  'Dark 1': schemeDark2,
+  'Dark 2': ["#53b7b3", "#d47234", "#8a74ce", "#9eb33b", "#ca5f9d", "#63a65d", "#d25c64", "#ae8851"],
+  'Accent 1': schemeAccent,
+  'Accent 2': ['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf'],
+  'Pastel 1': ['#fbb4ae','#b3cde3','#ccebc5','#decbe4','#fed9a6','#ffffcc','#e5d8bd','#fddaec'],
+  'Pastel 2': schemePastel2,
   Disabled: 'Disabled',
   Flipped: ['#00bfff', '#dc143c'], // deepskyblue and crimson colors (blue-ish and red-ish)
-  Multiple: schemeSet2
+  'Multiple Light': schemeSet2,
+  'Multiple Dark': ["#53b7b3", "#d47234", "#8a74ce", "#9eb33b", "#ca5f9d", "#63a65d", "#d25c64", "#ae8851"],
 };
 
 // Sequential color scales - palettes
@@ -100,6 +127,28 @@ const SEQUENTIAL_COLOR_SCALES = {
   YlGnBu: 'Yellow-Green-Blue',
   YlOrBr: 'Yellow-Orange-Brown',
   YlOrRd: 'Yellow-Orange-Red'
+};
+
+// Sequential color scales interpolators
+const SEQUENTIAL_SCALES_INTERPOLATORS = {
+  Blues: interpolateBlues,
+  Greens: interpolateGreens,
+  Greys: interpolateGreys,
+  Oranges: interpolateOranges,
+  Purples: interpolatePurples,
+  Reds: interpolateReds,
+  BuGn: interpolateBuGn,
+  BuPu: interpolateBuPu,
+  GnBu: interpolateGnBu,
+  OrRd: interpolateOrRd,
+  PuBu: interpolatePuBu,
+  PuBuGn: interpolatePuBuGn,
+  PuRd: interpolatePuRd,
+  RdPu: interpolateRdPu,
+  YlGn: interpolateYlGn,
+  YlGnBu: interpolateYlGnBu,
+  YlOrBr: interpolateYlOrBr,
+  YlOrRd: interpolateYlOrRd
 };
 
 // Genome view transitions
@@ -145,6 +194,7 @@ export {
   TRACK_SEPARATION_GENOME,
   CATEGORICAL_COLOR_SCALES,
   SEQUENTIAL_COLOR_SCALES,
+  SEQUENTIAL_SCALES_INTERPOLATORS,
   SCALE_DECREASE,
   SCALE_INCREASE,
   // Genome view transitions

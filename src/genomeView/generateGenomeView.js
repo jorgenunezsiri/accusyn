@@ -1,10 +1,12 @@
 /*
 University of Saskatchewan
-GSB: A Web-based Genome Synteny Browser
 Course: CMPT994 - Research
 
+AccuSyn: An Accurate Web-based Genome Synteny Browser
+https://accusyn.usask.ca/
+
 Name: Jorge Nunez Siri
-E-mail: jdn766@mail.usask.ca
+E-mail: jorge.nunez@usask.ca
 
 Function file: generateGenomeView.js
 
@@ -50,6 +52,7 @@ import {
 
 import {
   callSwapPositionsAnimation,
+  getChordAngles,
   transitionFlipChromosomeStroke,
   transitionFlipping,
   updateBlockCollisionHeadline
@@ -112,10 +115,8 @@ let foundCurrentSelectedBlock = false; // To keep track of whether the selected 
  * @return {undefined}             undefined
  */
 function transitionRemoveBlockView(condition, callback) {
-  // TODO: Send this function as callback to Circos library instead of boolean
-  // To maintain things on this side
-
-  let removingBlockView = false; // To keep track of when the block view is being removed
+  // To keep track of when the block view is being removed
+  let removingBlockView = false;
 
   if (condition) {
     removingBlockView = true;
@@ -147,8 +148,7 @@ function getDataChromosomes() {
     setGffDictionary(assignFlippedChromosomeColors({
       colorScale: d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES['Flipped']).domain([0, 1]),
       currentFlippedChromosomes: getCurrentFlippedChromosomes().slice(),
-      gffKeys: getDefaultChromosomeOrder().slice(),
-      gffPositionDictionary: cloneDeep(getGffDictionary())
+      gffKeys: getDefaultChromosomeOrder().slice()
     }));
   }
 
@@ -190,7 +190,7 @@ function getDataChromosomes() {
  * @param  {string} selectedTrack Selected track name
  * @return {Object} Current track array and position
  */
-function getCurrentTrack(selectedTrack) {
+export function getCurrentTrack(selectedTrack) {
   const additionalTrackArray = getAdditionalTrackArray();
   console.log('ADDITIONAL TRACK ARRAY: ', additionalTrackArray);
 
@@ -247,7 +247,7 @@ function getCurrentTrack(selectedTrack) {
     minValue,
     maxValue
   };
-}
+};
 
 /**
  * Generates additional track from additional track array
@@ -264,7 +264,7 @@ function generateAdditionalTrack(trackName, trackRadius, trackType, trackColor) 
   // Inner and outer radius
   const { inner: innerRadius, outer: outerRadius } = trackRadius;
 
-  // Current track array and position
+  // Current track array and min/max values
   const { currentTrack, minValue, maxValue } = getCurrentTrack(trackName);
 
   const configuration = {
@@ -430,13 +430,11 @@ function generateCircosLayout() {
   d3.select("svg#genome-view")
     .classed("border border-light rounded-circle dark-mode", darkMode);
 
-  if (d3.select("#block-view-container")) {
-    d3.select("#block-view-container")
-      .classed("dark-mode", darkMode);
+  if (!d3.select("#block-view-container").empty()) {
+    d3.select("#block-view-container").classed("dark-mode", darkMode);
   }
 
-  d3.select(".circos-tooltip")
-    .classed("dark-mode", darkMode);
+  d3.select(".circos-tooltip").classed("dark-mode", darkMode);
 
   if (darkMode) {
     extraLayoutConfiguration.labels = {
@@ -464,7 +462,7 @@ function generateCircosLayout() {
   }
 
   // Adding the dragHandler to the svg after populating the dataChromosomes object
-  addSvgDragHandler(cloneDeep(dataChromosomes), cloneDeep(dataChords));
+  addSvgDragHandler(cloneDeep(dataChromosomes));
 
   // Generating dragging angles dictionary for each chromosome
   generateDraggingAnglesDictionary(cloneDeep(dataChromosomes));
@@ -498,13 +496,46 @@ function unhighlightCurrentSelectedBlock() {
 }
 
 /**
+ * Creates the unique id for each chord gradient
+ * @param  {Object} d Current chord
+ * @return {string}   Unique id
+ */
+function getGradID(d) {
+  return `linkGrad-${d.source.id}-${d.target.id}-${d.source.value.id}`;
+}
+
+/**
+ * Gets block color based on dropdown option
+ *
+ * @param  {string}  sourceID  Block source
+ * @param  {string}  targetID  Block target
+ * @param  {boolean} isFlipped Whether or not the block is flipped
+ * @return {string}            Color value
+ */
+export function getBlockColor({
+  sourceID,
+  targetID,
+  isFlipped
+}) {
+  // To keep track of the value of the selected block color
+  const blocksColor = d3.select("div.blocks-color select").property("value");
+  const gffPositionDictionary = getGffDictionary();
+
+  let colorValue = CONNECTION_COLORS[blocksColor];
+  if (blocksColor === 'Source') colorValue = gffPositionDictionary[sourceID].color;
+  else if (blocksColor === 'Target') colorValue = gffPositionDictionary[targetID].color;
+  // For flipped blocks, using deepskyblue and crimson colors (blue-ish and red-ish)
+  else if (blocksColor === 'Flipped') colorValue = isFlipped ? '#dc143c' : '#00bfff';
+
+  return colorValue;
+};
+
+/**
  * Generates all the chords and renders the Circos plot with the
  * current configuration
  *
  * @param  {boolean} shouldUpdateBlockCollisions True if should update block collisions
  *                                               in genome view, false otherwise
- * @param  {boolean} shouldUpdateLayout          True if Circos layout should be updated
- *                                               (i.e. chromosome order changed)
  * @param  {Object}  transition                  Current transition configuration
  * @param  {boolean} transitionRemove            True if Circos layout should be removed
  *                                               with transition
@@ -512,15 +543,14 @@ function unhighlightCurrentSelectedBlock() {
  */
 function generatePathGenomeView({
   shouldUpdateBlockCollisions,
-  shouldUpdateLayout,
   transition,
   transitionRemove
 }) {
+  // To keep track of the value of the selected block color
+  const blocksColor = d3.select("div.blocks-color select").property("value");
+
   // To keep track of the value of highlight flipped blocks checkbox
   const highlightFlippedBlocks = d3.select("p.highlight-flipped-blocks input").property("checked");
-
-  // To keep track of the value of highlight flipped chromosomes checkbox
-  const highlightFlippedChromosomes = d3.select("p.highlight-flipped-chromosomes input").property("checked");
 
   const myCircos = getCircosObject();
 
@@ -528,7 +558,8 @@ function generatePathGenomeView({
 
   // Setting transition to default object if not defined at this point
   // NOTE: Default object is used each time that the genome view is rendered
-  if (transition == null) {
+  // Combined block color does not support transitions because of gradients
+  if (transition == null && blocksColor !== 'Combined') {
     transition = {
       shouldDo: true,
       from: darkMode ? '#222222' : '#ffffff',
@@ -545,7 +576,8 @@ function generatePathGenomeView({
   // It should also happen when transitions are true and flag is not defined
   // (it won't update if shouldDo is explicitly false)
   if (shouldUpdateBlockCollisions ||
-    shouldUpdateBlockCollisions == null && (transition && transition.shouldDo)) {
+    shouldUpdateBlockCollisions == null &&
+      ((transition && transition.shouldDo) || blocksColor === 'Combined')) {
     updateBlockCollisionHeadline(dataChromosomes, dataChords);
   }
 
@@ -569,7 +601,14 @@ function generatePathGenomeView({
       }
     },
     color: function(d) {
-      return d.source.value.color;
+      let colorValue = getBlockColor({
+        sourceID: d.source.id,
+        targetID: d.target.id,
+        isFlipped: d.source.value.isFlipped
+      });
+
+      if (colorValue === 'Combined') return `url(#${getGradID(d)})`;
+      return colorValue;
     },
     tooltipContent: function(d) {
       // Activate if SA is not running
@@ -665,55 +704,71 @@ function generatePathGenomeView({
     }
   });
 
-  // Updating block view using current selected block if block id is not empty
-  if (!isEmpty(currentSelectedBlock)) {
-    const currentPosition = findIndex(dataChords, ['source.value.id', currentSelectedBlock]);
-    if (currentPosition !== (-1)) {
-      const currentChord = dataChords[currentPosition];
-      const gffPositionDictionary = getGffDictionary();
+  // Adding a small delay to prevent blockView renders twice when
+  // being called from dark mode input change function
+  setTimeout(function() {
+    // Updating block view using current selected block if block id is not empty
+    if (!isEmpty(currentSelectedBlock)) {
+      const currentPosition = findIndex(dataChords, ['source.value.id', currentSelectedBlock]);
+      if (currentPosition !== (-1)) {
+        const currentChord = dataChords[currentPosition];
+        const gffPositionDictionary = getGffDictionary();
 
-      // Checking if block view is empty (not present)
-      // To avoid updating the block view when not necessary
-      // i.e. when changing to multi-chr view and the currentSelectedBlock is still there
-      let shouldUpdateBlockView = d3.select("#block-view-container").empty();
-      if (!shouldUpdateBlockView) {
-        const {
-          source: { id: sourceID, value: { color } },
-          target: { id: targetID }
-        } = currentChord;
+        // Checking if block view is empty (not present)
+        // To avoid updating the block view when not necessary
+        // i.e. when changing to multi-chr view and the currentSelectedBlock is still there
+        let shouldUpdateBlockView = d3.select("#block-view-container").empty();
+        if (!shouldUpdateBlockView) {
+          const {
+            source: { id: sourceID, value: { isFlipped } },
+            target: { id: targetID }
+          } = currentChord;
 
-        // If it is present, then checking if the block color is different from block view line color
-        const currentBlockViewLineColor =
-          d3.color(d3.select("#block-view-container g.clip-block-group .line").attr("fill")).hex();
-        const currentGenomeViewChordColor = d3.color(color).hex();
+          const blockColor = getBlockColor({
+            sourceID, targetID, isFlipped
+          });
 
-        // Checking if axis color are different from chromosomes color
-        const currentAxisSourceColor =
-          d3.color(d3.select("#block-view-container g.axisY0 path.domain").attr("fill")).hex();
-        const currentAxisTargetColor =
-          d3.color(d3.select("#block-view-container g.axisY1 path.domain").attr("fill")).hex();
+          console.log('BLOCK COLOR: ', blockColor);
 
-        // Note: Previous flipped chromosomes includes all the affected chromosomes
-        // in the last flip animation (manual or SA). If this list includes the source or
-        // target chromosome from current selected block, then I need to update the
-        // block view because they are being affected
-        const previousFlippedChr = getPreviousFlippedChromosomes();
-        if (previousFlippedChr.includes(sourceID) || previousFlippedChr.includes(targetID)) {
-          shouldUpdateBlockView = true;
-          // Resetting previous flipped chromosomes after updating block view,
-          // so in case nothing changes, it does not update again unnecessarily
-          setPreviousFlippedChromosomes([]);
+          // If it is present, then checking if the block color is different from block view line color
+          let currentBlockViewLineColor = d3.select("#block-view-container g.clip-block-group .line").attr("fill");
+          console.log('currentBlockViewLineColor: ', currentBlockViewLineColor);
+          let currentGenomeViewChordColor = blockColor;
+          // If one of the colors is in gradient, then assume they are different and update the block view
+          // NOTE: Gradient format is: url(#id)
+          if (!currentBlockViewLineColor.startsWith('url') && currentGenomeViewChordColor !== 'Combined') {
+            currentBlockViewLineColor = d3.color(currentBlockViewLineColor).hex();
+            currentGenomeViewChordColor = d3.color(currentGenomeViewChordColor).hex();
+          }
+
+          // Checking if axis color are different from chromosomes color
+          const currentAxisSourceColor =
+            d3.color(d3.select("#block-view-container g.axisY0 path.domain").attr("fill")).hex();
+          const currentAxisTargetColor =
+            d3.color(d3.select("#block-view-container g.axisY1 path.domain").attr("fill")).hex();
+
+          // Note: Previous flipped chromosomes includes all the affected chromosomes
+          // in the last flip animation (manual or SA). If this list includes the source or
+          // target chromosome from current selected block, then I need to update the
+          // block view because they are being affected
+          const previousFlippedChr = getPreviousFlippedChromosomes();
+          if (previousFlippedChr.includes(sourceID) || previousFlippedChr.includes(targetID)) {
+            shouldUpdateBlockView = true;
+            // Resetting previous flipped chromosomes after updating block view,
+            // so in case nothing changes, it does not update again unnecessarily
+            setPreviousFlippedChromosomes([]);
+          }
+
+          shouldUpdateBlockView = shouldUpdateBlockView ||
+            currentBlockViewLineColor !== currentGenomeViewChordColor ||
+            d3.color(gffPositionDictionary[sourceID].color).hex() !== currentAxisSourceColor ||
+            d3.color(gffPositionDictionary[targetID].color).hex() !== currentAxisTargetColor;
         }
 
-        shouldUpdateBlockView = shouldUpdateBlockView ||
-          currentBlockViewLineColor !== currentGenomeViewChordColor ||
-          d3.color(gffPositionDictionary[sourceID].color).hex() !== currentAxisSourceColor ||
-          d3.color(gffPositionDictionary[targetID].color).hex() !== currentAxisTargetColor;
+        if (shouldUpdateBlockView) generateBlockView(currentChord);
       }
-
-      if (shouldUpdateBlockView) generateBlockView(currentChord);
     }
-  }
+  }, 350);
 
   // Rendering Circos plot with current configuration
   if (transition && transition.shouldDo) {
@@ -722,6 +777,9 @@ function generatePathGenomeView({
     if (transitionRemove) {
       // Removing the nodes inside genome view main-container if the view is being removed
       d3.select("#genome-view g.all").remove();
+      // Turning off dark mode classes for the genome view
+      d3.select("svg#genome-view")
+        .classed("border border-light rounded-circle dark-mode", false);
     }
   } else {
     myCircos.render();
@@ -731,7 +789,7 @@ function generatePathGenomeView({
   const { rotate: currentRotate, scale: currentScale, translate: currentTranslate } =
     getTransformValuesAdditionalTracks();
 
-  d3.select("g.all")
+  d3.select("svg#main-container g.all")
     .transition()
     .duration(200)
     .ease(d3.easeLinear)
@@ -764,7 +822,7 @@ function generatePathGenomeView({
   // Changing flipped chromosomes highlighting based on checkbox
   const currentFlippedChromosomes = getCurrentFlippedChromosomes();
   for (let i = currentFlippedChromosomes.length - 1; i >= 0; i--) {
-    transitionFlipChromosomeStroke(currentFlippedChromosomes[i], highlightFlippedChromosomes);
+    transitionFlipChromosomeStroke(currentFlippedChromosomes[i]);
   }
 
   // Change chromosome order
@@ -861,8 +919,18 @@ export default function generateGenomeView({
   // Array that includes the keys from the blockDictionary
   const blockKeys = Object.keys(blockDictionary);
 
-  const gffPositionDictionary = getGffDictionary();
   const { selectedCheckboxes } = getSelectedCheckboxes();
+
+  if (shouldUpdateLayout) {
+    generateCircosLayout();
+  }
+
+  const gffPositionDictionary = getGffDictionary();
+  if (!d3.select("svg#main-container g.all defs").empty()) {
+    d3.select("svg#main-container g.all defs").remove();
+  }
+
+  d3.select("svg#main-container g.all").append("defs");
 
   dataChords = []; // Emptying data chords array
 
@@ -937,20 +1005,13 @@ export default function generateGenomeView({
         targetID: targetID
       });
 
-      let colorValue = CONNECTION_COLORS[blocksColor];
-      if (blocksColor === 'Source') colorValue = gffPositionDictionary[sourceID].color;
-      else if (blocksColor === 'Target') colorValue = gffPositionDictionary[targetID].color;
-      // For flipped blocks, using deepskyblue and crimson colors (blue-ish and red-ish)
-      else if (blocksColor === 'Flipped') colorValue = isFlipped ? '#dc143c' : '#00bfff';
-
-      dataChords.push({
+      const chordObject = {
         source: {
           id: sourceID,
           start: sourcePositions.start,
           end: sourcePositions.end,
           value: {
             id: currentBlock,
-            color: colorValue,
             length: blockLength,
             score: blockScore,
             eValue: blockEValue,
@@ -962,11 +1023,49 @@ export default function generateGenomeView({
           start: targetPositions.start,
           end: targetPositions.end
         }
-      });
+      };
+
+      chordObject.source.angle = getChordAngles(dataChromosomes, chordObject, 'source');
+      chordObject.target.angle = getChordAngles(dataChromosomes, chordObject, 'target');
+
+      if (blocksColor === 'Combined') {
+        // More info: https://www.visualcinnamon.com/2016/06/orientation-gradient-d3-chord-diagram
+        // https://bl.ocks.org/nbremer/a23f7f85f30f5cd9e1e8602a5a4e6d75
+        const gradient = d3.select("svg#main-container g.all defs")
+          .append("linearGradient")
+          .attr("id", getGradID(chordObject))
+          .attr("gradientUnits", "userSpaceOnUse")
+          .attr("x1", function() {
+            return GENOME_INNER_RADIUS * Math.cos(chordObject.source.angle.middle - Math.PI/2);
+          })
+          .attr("y1", function() {
+            return GENOME_INNER_RADIUS * Math.sin(chordObject.source.angle.middle - Math.PI/2);
+          })
+          .attr("x2", function() {
+            return GENOME_INNER_RADIUS * Math.cos(chordObject.target.angle.middle - Math.PI/2);
+          })
+          .attr("y2", function() {
+            return GENOME_INNER_RADIUS * Math.sin(chordObject.target.angle.middle - Math.PI/2);
+          });
+
+        gradient.append("stop")
+          .attr("offset", "5%")
+          .attr("stop-color", function() {
+            return gffPositionDictionary[chordObject.source.id].color;
+          });
+
+        gradient.append("stop")
+          .attr("offset", "95%")
+          .attr("stop-color", function() {
+            return gffPositionDictionary[chordObject.target.id].color;
+          });
+      }
+
+      dataChords.push(chordObject);
 
       // Only checking when variable is still false
       if (!foundCurrentSelectedBlock &&
-          isEqual(dataChords[dataChords.length - 1].source.value.id, currentSelectedBlock)) {
+          isEqual(chordObject.source.value.id, currentSelectedBlock)) {
         foundCurrentSelectedBlock = true;
       }
     }
@@ -1019,16 +1118,9 @@ export default function generateGenomeView({
 
   const transitionRemove = (selectedCheckboxes.length === 0 && !showAllChromosomes);
 
-  transitionRemoveBlockView(condition, function callBackAfterRemovingBlockView() {
-    if (shouldUpdateLayout) {
-      generateCircosLayout();
-    }
-
-    generatePathGenomeView({
-      shouldUpdateBlockCollisions: shouldUpdateBlockCollisions,
-      shouldUpdateLayout: shouldUpdateLayout,
-      transition: transition,
-      transitionRemove: transitionRemove
-    });
-  });
+  transitionRemoveBlockView(condition, () => generatePathGenomeView({
+    shouldUpdateBlockCollisions: shouldUpdateBlockCollisions,
+    transition: transition,
+    transitionRemove: transitionRemove
+  }));
 };

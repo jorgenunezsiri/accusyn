@@ -94,6 +94,11 @@ label {
 
 .container {
   max-width: 100%;
+
+  .col-lg-2, .col-lg-4, .col-lg-6 {
+    max-width: 100%;
+    padding: 0;
+  }
 }
 
 // Container for bootstrap alert
@@ -124,8 +129,8 @@ label {
   }
 
   &.modal-dialog.bottom-modal {
-    top: calc(100% - 350px);
-    transform: translate(0, -25%);
+    top: calc(100% - 20%);
+    transform: translate(0, -50%);
   }
 
   p, label, span {
@@ -213,11 +218,6 @@ label {
   .saved-solutions-container {
     .stamps-container {
       margin-top: -15px;
-
-      .col-lg-2 {
-        max-width: 100%;
-        padding: 0;
-      }
 
       .stamps-item {
         margin: 15px 15px 0;

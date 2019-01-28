@@ -1,10 +1,12 @@
 /*
 University of Saskatchewan
-GSB: A Web-based Genome Synteny Browser
 Course: CMPT994 - Research
 
+AccuSyn: An Accurate Web-based Genome Synteny Browser
+https://accusyn.usask.ca/
+
 Name: Jorge Nunez Siri
-E-mail: jdn766@mail.usask.ca
+E-mail: jorge.nunez@usask.ca
 
 Function file: generateBlockView.js
 
@@ -17,9 +19,9 @@ import defaultsDeep from 'lodash/defaultsDeep';
 import isEmpty from 'lodash/isEmpty';
 import isEqual from 'lodash/isEqual';
 
+import { getBlockColor } from './genomeView/generateGenomeView';
+
 import {
-  getFlippedGenesPosition,
-  movePageContainerScroll,
   renderSvgButton,
   removeBlockView,
   resetInputsAndSelectsOnAnimation
@@ -33,7 +35,6 @@ import {
 } from './variables/blockViewZoomStateDictionary';
 import { getGeneDictionary } from './variables/geneDictionary';
 import { getGffDictionary } from './variables/gffDictionary';
-import { getCurrentFlippedChromosomes } from './variables/currentFlippedChromosomes';
 
 // Contants
 import {
@@ -86,9 +87,18 @@ export default function generateBlockView(data) {
   const darkMode = d3.select("p.dark-mode input").property("checked");
 
   const {
-    source: { id: sourceChromosomeID, value: { id: blockID, color: blockColor } },
+    source: { id: sourceChromosomeID, value: { id: blockID, isFlipped } },
     target: { id: targetChromosomeID }
   } = data;
+
+  let blockColor = getBlockColor({
+    sourceID: sourceChromosomeID,
+    targetID: targetChromosomeID,
+    isFlipped
+  });
+
+  const sourceChromosomeColor = gffPositionDictionary[sourceChromosomeID].color;
+  const targetChromosomeColor = gffPositionDictionary[targetChromosomeID].color;
 
   const blockZoomStateDictionary = getBlockViewZoomStateDictionary();
   if (!(blockID in blockZoomStateDictionary)) {
@@ -138,8 +148,6 @@ export default function generateBlockView(data) {
       thirdPair = [x(1), y[1](currentData.target.end)].join(','),
       fourthPair = [x(1), y[1](currentData.target.start)].join(',');
 
-    // console.log('PATH: ', [firstPair, secondPair, fourthPair, thirdPair].join(' '));
-
     if (flipped) return [firstPair, secondPair, fourthPair, thirdPair].join(' ');
 
     return [firstPair, secondPair, thirdPair, fourthPair].join(' ');
@@ -150,8 +158,7 @@ export default function generateBlockView(data) {
     removeBlockView();
   }
 
-  let gY0, gY1, y0axis, y1axis, onInputChange = false,
-    isZooming = false, mouseOverBlockGroup = false;
+  let gY0, gY1, y0axis, y1axis, onInputChange = false, isZooming = false;
   let dataBlock = [];
 
   /**
@@ -170,9 +177,6 @@ export default function generateBlockView(data) {
       console.log('RETURNING EARLIER !!!\n');
       console.log('Y[0]: ', y[0].domain(), dictionary.defaultY0Domain);
       console.log('Y[1]: ', y[1].domain(), dictionary.defaultY1Domain);
-      // if (isEmpty(dictionary.defaultY0Domain) || isEmpty(dictionary.defaultY1Domain)) {
-      //   return isDefault;
-      // }
 
       return isDefault && isEqual(y[0].domain(), dictionary.defaultY0Domain) &&
         isEqual(y[1].domain(), dictionary.defaultY1Domain);;
@@ -228,10 +232,10 @@ export default function generateBlockView(data) {
     const darkMode = d3.select("p.dark-mode input").property("checked");
 
     d3.selectAll("svg.block-view .axisY0 g.tick text,svg.block-view .axisY1 g.tick text")
-      .attr("fill", darkMode ? "#ffffff" : "#000000");
+      .attr("fill", darkMode ? "#f3f3f3" : "#000000");
 
     d3.selectAll("svg.block-view .axisY0 g.tick line,svg.block-view .axisY1 g.tick line")
-      .attr("stroke", darkMode ? "#ffffff" : "#000000");
+      .attr("stroke", darkMode ? "#f3f3f3" : "#000000");
 
     d3.selectAll("svg.block-view .axisY0 g.tick line,svg.block-view .axisY1 g.tick line")
       .attr("stroke-width", "2px");
@@ -246,12 +250,6 @@ export default function generateBlockView(data) {
     .on("start", function() {
       // Activate if SA is not running
       if (d3.select(".best-guess > button").attr("disabled")) return;
-
-      // Move scroll to start before zooming, if currently
-      // doing mouseover on top of block group
-      if (mouseOverBlockGroup) {
-        movePageContainerScroll("start", "instant");
-      }
 
       console.log('ZOOMING');
       isZooming = true;
@@ -299,11 +297,25 @@ export default function generateBlockView(data) {
     .append("div")
     .attr("class", "block-view-content");
 
-  const svgBlock = d3.select("#block-view-container .block-view-content")
+  d3.select("#block-view-container .block-view-content")
     .append("svg")
     .attr("class", "block-view")
     .attr("width", widthBlock + margin.left + margin.right)
-    .attr("height", heightBlock + margin.top + margin.bottom)
+    .attr("height", heightBlock + margin.top + margin.bottom);
+
+  if (blockColor === 'Combined') {
+    d3.select("#block-view-container .block-view-content svg")
+      .append("defs")
+      .append("linearGradient")
+      .attr("id", 'block-view-gradient')
+      .html(`
+        <stop offset="5%" stop-color="${sourceChromosomeColor}" />
+        <stop offset="95%" stop-color="${targetChromosomeColor}" />
+      `);
+    blockColor = 'url(#block-view-gradient)';
+  }
+
+  const svgBlock = d3.select("#block-view-container .block-view-content svg")
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
@@ -355,7 +367,7 @@ export default function generateBlockView(data) {
     .attr("class", "zoom-state-hint")
     .style("opacity", 0)
     .html(function() {
-      return '<em>Hint: The scales in this block were changed before.</em>';
+      return '<em>Note: The scales in this block were changed before.</em>';
     });
 
   d3.select("#block-view-container")
@@ -385,16 +397,6 @@ export default function generateBlockView(data) {
   const blockArray = blockDictionary[blockID];
   const blockArrayLength = blockArray.length;
 
-  // Assuming source and target chromosomes are the same in all blocks
-  // Thus, only need to check for the first one
-  const { sourceChromosome, targetChromosome } = blockArray[0];
-  const currentFlippedChromosomes = getCurrentFlippedChromosomes();
-  const isFlippedSource = currentFlippedChromosomes.indexOf(sourceChromosome) !== (-1);
-  const isFlippedTarget = currentFlippedChromosomes.indexOf(targetChromosome) !== (-1);
-
-  const defaultDomainSourceValues = { min: Number.MAX_SAFE_INTEGER, max: 0 };
-  const defaultDomainTargetValues = { min: Number.MAX_SAFE_INTEGER, max: 0 };
-
   const domainSourceValues = { min: Number.MAX_SAFE_INTEGER, max: 0 };
   const domainTargetValues = { min: Number.MAX_SAFE_INTEGER, max: 0 };
 
@@ -405,32 +407,6 @@ export default function generateBlockView(data) {
     let { start: sourceStart, end: sourceEnd } = geneDictionary[blockSource];
     let { start: targetStart, end: targetEnd } = geneDictionary[blockTarget];
     const eValueConnection = blockArray[i].eValueConnection;
-
-    defaultDomainSourceValues.min = Math.min(defaultDomainSourceValues.min, sourceStart, sourceEnd);
-    defaultDomainSourceValues.max = Math.max(defaultDomainSourceValues.max, sourceStart, sourceEnd);
-
-    defaultDomainTargetValues.min = Math.min(defaultDomainTargetValues.min, targetStart, targetEnd);
-    defaultDomainTargetValues.max = Math.max(defaultDomainTargetValues.max, targetStart, targetEnd);
-
-    if (isFlippedSource) {
-      // Flipping the connections and changing the scales of the source axis
-      const { start, end } = getFlippedGenesPosition(gffPositionDictionary[sourceChromosome].end, {
-        start: sourceStart,
-        end: sourceEnd
-      });
-      sourceStart = start;
-      sourceEnd = end;
-    }
-
-    if (isFlippedTarget) {
-      // Flipping the connections and changing the scales of the target axis
-      const { start, end } = getFlippedGenesPosition(gffPositionDictionary[targetChromosome].end, {
-        start: targetStart,
-        end: targetEnd
-      });
-      targetStart = start;
-      targetEnd = end;
-    }
 
     domainSourceValues.min = Math.min(domainSourceValues.min, sourceStart, sourceEnd);
     domainSourceValues.max = Math.max(domainSourceValues.max, sourceStart, sourceEnd);
@@ -468,11 +444,6 @@ export default function generateBlockView(data) {
     });
   }
 
-  defaultDomainSourceValues.min -= OFFSET_DOMAIN;
-  defaultDomainSourceValues.max += OFFSET_DOMAIN;
-  defaultDomainTargetValues.min -= OFFSET_DOMAIN;
-  defaultDomainTargetValues.max += OFFSET_DOMAIN;
-
   domainSourceValues.min -= OFFSET_DOMAIN;
   domainSourceValues.max += OFFSET_DOMAIN;
   domainTargetValues.min -= OFFSET_DOMAIN;
@@ -483,6 +454,7 @@ export default function generateBlockView(data) {
    * block in the genomeView
    *
    * @return {undefined} undefined
+   * @private
    */
   function generatePathBlockView() {
     const domainY0 = {
@@ -594,8 +566,6 @@ export default function generateBlockView(data) {
               });
 
             if (indexTransition === 6) {
-              //dataBlock = flipTargetDataBlock(dataBlock);
-
               // Assigning flipped state to true if checkbox is selected, otherwise false
               // Updating flipped state to draw updated paths from now on
               blockZoomStateDictionary[blockID].flipped = d3.select("p.flip-orientation input").property("checked");
@@ -621,6 +591,7 @@ export default function generateBlockView(data) {
      * Draws all the paths for the block view
      *
      * @return {undefined} undefined
+     * @private
      */
     function drawPathBlockView() {
 
@@ -644,13 +615,12 @@ export default function generateBlockView(data) {
         // Assigning default scales
         if (isEmpty(blockZoomStateDictionary[blockID].defaultY0Domain) &&
           isEmpty(blockZoomStateDictionary[blockID].defaultY1Domain)) {
-          console.log('ASSIGNING !!!!');
-          // It does not matter if chromosomes are flipped, default domain will always be
-          // correct here
+          // Domain values will always be correct, since by default the block view
+          // is not flipping when chromosomes are flipped
           blockZoomStateDictionary[blockID].defaultY0Domain =
-            cloneDeep([defaultDomainSourceValues.min, defaultDomainSourceValues.max]);
+            cloneDeep([domainSourceValues.min, domainSourceValues.max]);
           blockZoomStateDictionary[blockID].defaultY1Domain =
-            cloneDeep([defaultDomainTargetValues.min, defaultDomainTargetValues.max]);
+            cloneDeep([domainTargetValues.min, domainTargetValues.max]);
           setBlockViewZoomStateDictionary(blockZoomStateDictionary);
         }
       }
@@ -771,7 +741,7 @@ export default function generateBlockView(data) {
 
       gY0.select("path.domain")
         .attr("fill", function() {
-          return gffPositionDictionary[sourceChromosomeID].color;
+          return sourceChromosomeColor;
         });
 
       // Add the Y1 Axis
@@ -789,7 +759,7 @@ export default function generateBlockView(data) {
 
       gY1.select("path.domain")
         .attr("fill", function() {
-          return gffPositionDictionary[targetChromosomeID].color;
+          return targetChromosomeColor;
         });
 
       applyStyleToAxes();
@@ -951,11 +921,6 @@ export default function generateBlockView(data) {
       d3.select("svg.block-view g.clip-block-group")
         .call(zoom)
         .call(zoom.transform, getBlockViewZoomStateDictionary()[blockID].zoom);
-
-      // Adding mouseover/mouseout event listener to know when they happen
-      d3.select("svg.block-view g.clip-block-group")
-        .on("mouseover", function() { mouseOverBlockGroup = true; })
-        .on("mouseout", function() { mouseOverBlockGroup = false; });
     };
 
     console.log('TOTAL TIME: ', COLOR_CHANGE_TIME + (TRANSITION_NORMAL_TIME * MAX_INDEX_TRANSITION) + TRANSITION_FLIPPING_TIME);
@@ -976,7 +941,7 @@ export default function generateBlockView(data) {
     .attr("y", 0 - margin.left)
     .attr("x", 0 - (heightBlock / 2))
     .attr("dy", "1em")
-    .attr("fill", darkMode ? "#ffffff" : "#000000")
+    .attr("fill", darkMode ? "#f3f3f3" : "#000000")
     .attr("font-size", "12")
     .attr("text-anchor", "middle")
     .text(sourceChromosomeID);
@@ -988,7 +953,7 @@ export default function generateBlockView(data) {
     .attr("y", 0 - widthBlock - margin.right)
     .attr("x", (heightBlock / 2))
     .attr("dy", "1em")
-    .attr("fill", darkMode ? "#ffffff" : "#000000")
+    .attr("fill", darkMode ? "#f3f3f3" : "#000000")
     .attr("font-size", "12")
     .attr("text-anchor", "middle")
     .text(targetChromosomeID);
@@ -998,7 +963,7 @@ export default function generateBlockView(data) {
     .attr("class", "axis-label")
     .attr("x", (widthBlock / 2))
     .attr("y", 0 - (margin.top / 3))
-    .attr("fill", darkMode ? "#ffffff" : "#000000")
+    .attr("fill", darkMode ? "#f3f3f3" : "#000000")
     .attr("font-size", "12")
     .attr("text-anchor", "middle")
     .text(`${sourceChromosomeID} vs. ${targetChromosomeID} - Block ${d3.format(",")(blockID)}`);

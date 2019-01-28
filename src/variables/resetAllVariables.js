@@ -9,6 +9,7 @@ import { setDataChromosomes } from './dataChromosomes';
 import { setGeneDictionary } from './geneDictionary';
 import { setGffDictionary } from './gffDictionary';
 import { setSavedSolutions } from './savedSolutions';
+import { resetUndoRedoButtons } from './../vendor/undoManager';
 
 /**
  * Resets all variables
@@ -29,4 +30,5 @@ export default function resetAllVariables() {
   setGeneDictionary({});
   setGffDictionary({});
   setSavedSolutions([]);
+  resetUndoRedoButtons();
 };

@@ -1,21 +1,34 @@
 // _configurationPanel.scss partial file
 
 #config {
-  margin: 10px 0 0 10px;
+  margin: 10px 0 0 15px;
   min-width: 230px; // width = 800 / 2.5 - 10px
   max-width: 230px; // width = 800 / 2.5 - 10px
   padding: 0;
 }
 
+#page-container #logo-container {
+  position: fixed;
+  right: 15px;
+  top: 10px;
+
+  img {
+    border: 1px solid #3b88fd;
+    border-radius: 20px;
+    padding: 5px;
+  }
+}
+
 #page-container #load-files-container {
+  position: fixed;
+  right: 15px;
+  top: 60px;
+  z-index: 10;
+
   button {
     color: #3b88fd;
     font-size: 12px;
-    position: fixed;
-    right: 10px;
     text-decoration: none;
-    top: 10px;
-    z-index: 10;
 
     &:hover {
       color: #0056b3;
@@ -24,15 +37,15 @@
 }
 
 #page-container #download-svg-container {
+  bottom: 20px;
+  position: fixed;
+  right: 15px;
   z-index: 10;
 
   button.btn.download-files {
     border: none;
-    bottom: 20px;
     cursor: pointer;
     padding: 0;
-    position: fixed;
-    right: 20px;
 
     &:hover {
       svg.download-files-svg {
@@ -236,12 +249,12 @@
     }
   }
 
-
   div.chr-options {
     padding: 0;
   }
 
   .chr-boxes {
+    max-width: 50%;
     padding: 0 0 5px;
 
     .chr-box-inner-content {

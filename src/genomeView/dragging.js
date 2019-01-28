@@ -6,13 +6,11 @@ import undoManager, { updateUndoRedoButtons } from './../vendor/undoManager';
 import generateGenomeView  from './generateGenomeView';
 import {
   getChordsRadius,
-  movePageContainerScroll,
   resetInputsAndSelectsOnAnimation,
   updateAngle
 } from './../helpers';
 import {
   callSwapPositionsAnimation,
-  getChordAngles,
   updateWaitingBlockCollisionHeadline
 } from './blockCollisions';
 import {
@@ -117,7 +115,7 @@ export function updateAdditionalTracksWhileDragging({
  * @param  {number} transitionDuration         Time for transitioning
  * @return {undefined}                         undefined
  */
-export function updateChordsWhileDragging({
+function updateChordsWhileDragging({
   angleValue,
   angleFromChromosome,
   chromosome,
@@ -149,12 +147,12 @@ export function updateChordsWhileDragging({
       .attr("d", function(d) {
 
         // For source
-        const sourceObject = getChordAngles(dataChromosomes, d, 'source');
+        const sourceObject = d.source.angle;
         let sourceStartAngle = sourceObject.start;
         let sourceEndAngle = sourceObject.end;
 
         // For target
-        const targetObject = getChordAngles(dataChromosomes, d, 'target');
+        const targetObject = d.target.angle;
         let targetStartAngle = targetObject.start;
         let targetEndAngle = targetObject.end;
 
@@ -282,24 +280,24 @@ export function updateChordsWhileDragging({
  * Generates the angle from (x, y) coordinates. Using the main container as
  * reference
  *
- * @param  {number} lastAngle Last angle that was captured in the drag event
+ * @param  {boolean} calculatingOffset Whether or not the angle is the offset angle
  * @return {number} Angle in degrees from current coordinates
  */
-function getAngleFromCoordinates(lastAngle) {
+function getAngleFromCoordinates(calculatingOffset = false) {
   const containerNode = d3.select("svg#main-container").node();
 
   // Points are equal to current mouse coordinate minus 550
-  // width / 2 = 550 and height / 2 = 550
+  // Assuming the following: width / 2 = 550 and height / 2 = 550
   // but svg object inside is 850,850
   // which means that center is in coordinate 425,425
   const x = d3.mouse(containerNode)[0] - (WIDTH / 2);
   let y = d3.mouse(containerNode)[1] - (HEIGHT / 2);
 
-  const currentScroll = window.scrollY;
-  if (currentScroll > 0 && lastAngle === 0) {
-    // Decreasing scroll from y if this is the first angle calculated in the
-    // onDragging function
-    y -= currentScroll;
+  // Decreasing scrollY from y if not calculating offset angle
+  // NOTE: This is to avoid jumping on Google Chrome
+  const { chrome, scrollY } = window;
+  if (chrome && scrollY > 0 && !calculatingOffset) {
+    y -= scrollY;
   }
 
   // 1 rad = 180 / Math.PI = 57.2957795;
@@ -318,9 +316,6 @@ function onStartDragging(dataChromosomes) {
 
   if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "" ||
     d3.select(".best-guess > button").attr("disabled")) return;
-
-  // Moving page to top if it is scrolled, to be able to calculate the correct angle
-  movePageContainerScroll("start", "instant");
 
   // Removing clones if they exists
   d3.selectAll(`g.${currentChromosomeMouseDown}-clone`).remove();
@@ -341,7 +336,8 @@ function onStartDragging(dataChromosomes) {
   }
 
   // Offset angle for correct rotation
-  offsetAngle = getAngleFromCoordinates();
+  offsetAngle = getAngleFromCoordinates(true);
+
   // Initializing lastAngle variable
   lastAngle = 0;
   trueLastAngle = 0;
@@ -384,7 +380,7 @@ function onDragging(dataChromosomes) {
 
   // Selecting current mouse down chromosome
   const current = d3.select(`g.${currentChromosomeMouseDown}`);
-  const currentAngle = (getAngleFromCoordinates(lastAngle) - offsetAngle);
+  const currentAngle = (getAngleFromCoordinates() - offsetAngle);
 
   current
     .raise()
@@ -419,10 +415,9 @@ function onDragging(dataChromosomes) {
  * End dragging function
  *
  * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
- * @param  {Array<Object>} dataChords      Plotting information for each block chord
  * @return {undefined}                     undefined
  */
-function onEndDragging(dataChromosomes, dataChords) {
+function onEndDragging(dataChromosomes) {
   const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
   console.log('CURRENT MOUSE DOWN: ', currentChromosomeMouseDown);
   const dataChromosomesLength = dataChromosomes.length;
@@ -685,10 +680,9 @@ function onEndDragging(dataChromosomes, dataChords) {
  * Adding drag handler to SVG main container
  *
  * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
- * @param  {Array<Object>} dataChords      Plotting information for each block chord
  * @return {undefined}                     undefined
  */
-export function addSvgDragHandler(dataChromosomes, dataChords) {
+export function addSvgDragHandler(dataChromosomes) {
   // Updating genome view rotating angle on input
   d3.select("#nAngle-genome-view")
     .on("input", function() {
@@ -702,7 +696,7 @@ export function addSvgDragHandler(dataChromosomes, dataChords) {
   const dragHandler = d3.drag()
     .on("start", () => onStartDragging(dataChromosomes))
     .on("drag", () => onDragging(dataChromosomes))
-    .on("end", () => onEndDragging(dataChromosomes, dataChords));
+    .on("end", () => onEndDragging(dataChromosomes));
 
   d3.select("svg#main-container").call(dragHandler);
 };

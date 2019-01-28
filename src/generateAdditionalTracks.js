@@ -14,11 +14,13 @@ import ReactDOM from 'react-dom';
 import Modal from './reactComponents/Modal';
 import SubmitAdditionalTracksForm from './reactComponents/SubmitAdditionalTracksForm';
 
-import generateGenomeView from './genomeView/generateGenomeView';
+import generateGenomeView, { getCurrentTrack } from './genomeView/generateGenomeView';
 
 import {
+  convertToMinimumWindowSize,
   getAdditionalTrackArray,
   getAdditionalTrackNames,
+  getGenomeWindowSize,
   setAdditionalTrackArray
 } from './variables/additionalTrack';
 
@@ -30,12 +32,14 @@ import {
   roundFloatNumber
 } from './helpers';
 
+// Contants
 import {
   ADDITIONAL_TRACK_TYPES,
   CONNECTION_COLORS,
-  SEQUENTIAL_COLOR_SCALES
+  SEQUENTIAL_COLOR_SCALES,
+  SEQUENTIAL_SCALES_INTERPOLATORS,
+  WIDTH
 } from './variables/constants';
-
 
 /**
  * Generates and parses additional tracks
@@ -48,6 +52,7 @@ export default function generateAdditionalTracks(additionalTracks) {
   const additionalTrackLength = additionalTracks.length;
   const gffPositionDictionary = getGffDictionary();
   const additionalTrackArray = []; // Array with all the tracks formatted (data, name, and order)
+  const recommendedWindowSize = getGenomeWindowSize();
   for (let i = 0; i < additionalTrackLength; i++) {
     const additionalTrackDataArray = []; // Array that includes the data from the additional tracks BedGraph file
     const { data: currentData, name } = additionalTracks[i];
@@ -77,6 +82,17 @@ export default function generateAdditionalTracks(additionalTracks) {
       additionalTrackDataArray.push(additionalTrackObject);
     }
 
+    const currentWindowSize = additionalTrackDataArray[0].end - additionalTrackDataArray[0].start + 1;
+    if (currentWindowSize < (recommendedWindowSize - currentWindowSize)) {
+      console.log('CALCULATION: ', currentWindowSize, (recommendedWindowSize - currentWindowSize));
+      const formattedCurrentWindowSize = convertToMinimumWindowSize(currentWindowSize, 1, true);
+      const formattedRecommendedWindowSize = convertToMinimumWindowSize(recommendedWindowSize, 1, true);
+      renderReactAlert(`Warning: The additional track "${name}" is using a window size of ${formattedCurrentWindowSize} bases.
+        For this genome, we recommend using a window size of minimum ${formattedRecommendedWindowSize} bases for the best app experience.`,
+        'warning',
+        10000);
+    }
+
     additionalTrackArray.push({
       data: additionalTrackDataArray,
       name: name,
@@ -85,6 +101,106 @@ export default function generateAdditionalTracks(additionalTracks) {
   }
 
   return additionalTrackArray;
+};
+
+/**
+ * Shows legend for the track that has the active tab
+ * More info: https://beta.observablehq.com/@tmcw/d3-scalesequential-continuous-color-legend-example
+ * @return {undefined} undefined
+ */
+function showLegendActiveAdditionalTrack(trackName) {
+  const trackLegend = d3.select("svg#track-legend");
+  // Removing everything inside trackLegend
+  trackLegend.selectAll("*").remove();
+  trackLegend.classed("dark-mode", false); // Resetting dark-mode class
+
+  const trackType = !d3.select(`div.additional-track.${trackName} .track-type select`).empty() &&
+    d3.select(`div.additional-track.${trackName} .track-type select`).property("value");
+  const trackColor = !d3.select(`div.additional-track.${trackName} .track-color select`).empty() &&
+    d3.select(`div.additional-track.${trackName} .track-color select`).property("value");
+  const colorInterpolator = SEQUENTIAL_SCALES_INTERPOLATORS[trackColor];
+
+  console.log('\n\n\nTRACK NAME: ', trackName);
+  console.log('trackType', trackType);
+  console.log('TRACK COLOR: ', trackColor);
+
+  // Only show legend if Type !== 'None' and it is not Type 'Line'
+  // Also, return if the interpolator is not defined
+  // Or if track type or color are not defined (the track has been deleted)
+  if (!trackType || trackType === 'None' || trackType === 'line' ||
+    !trackColor || colorInterpolator == null) return;
+
+  const width = WIDTH * 0.75;
+  const height = 50;
+  const barHeight = 15;
+
+  const margin = {
+    right: 40,
+    bottom: 20,
+    left: 40
+  };
+
+  // Current track min and max values
+  const { minValue, maxValue } = getCurrentTrack(trackName);
+  console.log('MIN AND MAX: ', minValue, maxValue);
+
+  const colorScale = d3.scaleSequential(colorInterpolator)
+    .domain([minValue, maxValue]);
+
+  const axisScale = d3.scaleLinear()
+    .domain(colorScale.domain())
+    .range([margin.left, width - margin.right]);
+
+  const axisBottom = g => g
+    .attr("class", "x-axis")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(axisScale)
+      .ticks(width / 70)
+      .tickSize(-barHeight));
+
+  const defs = trackLegend.append("defs");
+
+  const linearGradient = defs.append("linearGradient")
+      .attr("id", "linear-gradient-legend");
+
+  linearGradient.selectAll("stop")
+    .data(colorScale.ticks().map((t, i, n) => ({ offset: `${100*i/n.length}%`, color: colorScale(t) })))
+    .enter().append("stop")
+    .attr("offset", d => d.offset)
+    .attr("stop-color", d => d.color);
+
+  trackLegend.append('g')
+    .attr("class", `${trackName}`)
+    .attr("transform", `translate(0,${height - margin.bottom - barHeight})`)
+    .append("rect")
+    .attr('transform', `translate(${margin.left}, 0)`)
+  	.attr("width", width - margin.right - margin.left)
+  	.attr("height", barHeight)
+  	.style("fill", "url(#linear-gradient-legend)");
+
+  trackLegend.append('g')
+    .call(axisBottom);
+
+  trackLegend.selectAll(".x-axis path")
+    .attr("stroke", "#ffffff");
+
+  trackLegend.selectAll(".x-axis line")
+    .attr("stroke-width", "2px");
+
+  trackLegend.selectAll(".x-axis text")
+    .attr("font-size", "11");
+
+  const darkMode = d3.select("p.dark-mode input").property("checked");
+  trackLegend.classed("dark-mode", darkMode);
+
+  if (darkMode) {
+    trackLegend.selectAll(".x-axis line")
+      .attr("stroke", "#f3f3f3");
+    trackLegend.selectAll(".x-axis path")
+      .attr("stroke", "#222222");
+    trackLegend.selectAll(".x-axis text")
+      .attr("fill", "#f3f3f3");
+  }
 };
 
 /**
@@ -129,6 +245,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
       .attr("class", `tab-content additional-track ${name}`)
     // Track type select
       .append("div")
+    // NOTE: ${name} class below is being used in the select on change for any track
       .attr("class", `track-type additional-track-block ${name}`)
       .append("p")
       .text("Type: ");
@@ -146,7 +263,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
     // Track color scale
     d3.select(`div.additional-track.${name}`)
       .append("div")
-      .attr("class", "track-color additional-track-block")
+      .attr("class", `track-color additional-track-block ${name}`)
       .append("p")
       .text("Palette: ");
 
@@ -371,6 +488,9 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
       // Update panel scrollHeight
       const panel = d3.select("#form-config .additional-tracks-panel").node();
       panel.style.maxHeight = `${panel.scrollHeight.toString()}px`;
+
+      // Adding legend for the active (current) tab
+      showLegendActiveAdditionalTrack(nodeText);
     });
 
   // Select on change for any track block on any track
@@ -378,9 +498,12 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
     .on("change", function() {
       // The grandfather node will always be the additional-track-block
       const grandfatherNode = d3.select(this.parentNode.parentNode);
+      const includesType = (type) => grandfatherNode.node().classList.contains(type);
+      const getTrackName = () => grandfatherNode.attr("class").split(' ')[2];
+
       // Update track type for the special case of line type
-      if (grandfatherNode.node().classList.contains('track-type')) {
-        const trackClass = grandfatherNode.attr("class").split(' ')[2];
+      if (includesType('track-type')) {
+        const trackClass = getTrackName();
 
         // Adding options based on type
         if (d3.select(this).property("value") === 'line') {
@@ -389,18 +512,24 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
             .text("Color: ");
           d3.select(`div.additional-track.${trackClass} .track-color select`)
             .html(() =>
-              // slice(4) because I only want to use the SOLID colors
-              Object.keys(CONNECTION_COLORS).slice(4).map((current) =>
+              // slice(5) because I only want to use the SOLID colors
+              Object.keys(CONNECTION_COLORS).slice(5).map((current) =>
                 `<option value="${CONNECTION_COLORS[current]}">${current}</option>`
               ).join(' ')
             );
         } else {
-          // Add color palette
+          // Add default color palette
           d3.select(`div.additional-track.${trackClass} .track-color p`)
             .text("Palette: ");
           d3.select(`div.additional-track.${trackClass} .track-color select`)
             .html(colorOptions);
         }
+      }
+
+      // Adding legend when modifying type or color
+      // NOTE: This is being done after modifying the color palette above
+      if (includesType('track-type') || includesType('track-color')) {
+        showLegendActiveAdditionalTrack(getTrackName());
       }
 
       // Calling genome view for updates with no transition

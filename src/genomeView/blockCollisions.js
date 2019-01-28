@@ -29,7 +29,6 @@ import {
   getChordsRadius,
   getInnerAndOuterRadiusAdditionalTracks,
   getSelectedCheckboxes,
-  movePageContainerScroll,
   removeNonLettersFromString,
   renderReactAlert,
   resetInputsAndSelectsOnAnimation,
@@ -101,7 +100,8 @@ export function getChordAngles(dataChromosomes, chord, reference) {
 
   return {
     start: startAngle,
-    middle: (startAngle + endAngle) / 2,
+    // The following is the same as (startAngle + endAngle) / 2.0
+    middle: startAngle + (endAngle - startAngle) / 2.0,
     end: endAngle
   }
 };
@@ -114,13 +114,15 @@ export function getChordAngles(dataChromosomes, chord, reference) {
  * @return {undefined}               undefined
  */
 export function transitionFlipChromosomeStroke(currentChr, flipping = true) {
+  // To keep track of the value of highlight flipped chromosomes checkbox
+  const highlightFlippedChromosomes = d3Select("p.highlight-flipped-chromosomes input").property("checked");
   const flippedPalette = d3Select("div.chromosomes-palette select").property("value") === 'Flipped';
   const stroke = flippedPalette ? 'gold' : '#ea4848';
 
   d3Select(`g.${currentChr} path#arc-label${currentChr}`)
     .transition()
     .duration(FLIPPING_CHROMOSOME_TIME - 25)
-    .attr("stroke", flipping ? stroke : "none")
+    .attr("stroke", (highlightFlippedChromosomes && flipping) ? stroke : "none")
     .attr("stroke-width", flipping ? "2px" : "0");
 };
 
@@ -305,10 +307,10 @@ export function getBlockCollisions(dataChromosomes, dataChords, shouldReturnProm
   const dataChordsLength = dataChords.length;
   for (let i = 0; i < dataChordsLength; i++) {
     for (let j = i + 1; j < dataChordsLength; j++) {
-      const R1 = getChordAngles(dataChromosomes, dataChords[i], 'source');
-      const R2 = getChordAngles(dataChromosomes, dataChords[i], 'target');
-      const R3 = getChordAngles(dataChromosomes, dataChords[j], 'source');
-      const R4 = getChordAngles(dataChromosomes, dataChords[j], 'target');
+      const R1 = dataChords[i].source.angle;
+      const R2 = dataChords[i].target.angle;
+      const R3 = dataChords[j].source.angle;
+      const R4 = dataChords[j].target.angle;
 
       if (
         // Determining if same position lines are colliding
@@ -370,6 +372,23 @@ export function getBlockCollisions(dataChromosomes, dataChords, shouldReturnProm
     });
   });
 };
+
+
+/**
+ * Assigns chord angles to dataChords before calling getBlockCollisions
+ *
+ * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
+ * @param  {Array<Object>} dataChords      Plotting information for each block chord
+ * @return {undefined}                     undefined
+ */
+function assignChordAngles(dataChromosomes, dataChords) {
+  const dataChordsLength = dataChords.length;
+
+  for (let i = 0; i < dataChordsLength; i++) {
+    dataChords[i].source.angle = getChordAngles(dataChromosomes, dataChords[i], 'source');
+    dataChords[i].target.angle = getChordAngles(dataChromosomes, dataChords[i], 'target');
+  }
+}
 
 /**
  * Updating the label of block collisions headline, so the user knows that
@@ -804,12 +823,12 @@ function transitionSwapOldToNew({
         } = d;
 
         // For source
-        const sourceObject = getChordAngles(dataChromosomes, d, 'source');
+        const sourceObject = d.source.angle;
         let sourceStartAngle = sourceObject.start;
         let sourceEndAngle = sourceObject.end;
 
         // For target
-        const targetObject = getChordAngles(dataChromosomes, d, 'target');
+        const targetObject = d.target.angle;
         let targetStartAngle = targetObject.start;
         let targetEndAngle = targetObject.end;
 
@@ -952,10 +971,6 @@ export function swapPositionsAnimation({
 
     // Showing alert using react
     renderReactAlert("The layout was successfully updated.", "success");
-
-    // Move scroll to start when successfully running SA, resetting the layout, or
-    // showing a saved layout
-    movePageContainerScroll("start");
 
     const chromosomeOrder = toChromosomeOrder(dataChromosomes);
     const chromosomeOrderLength = chromosomeOrder.length;
@@ -1410,12 +1425,10 @@ export function callSwapPositionsAnimation({
  *
  * @param  {Array<Object>} dataChords  Plotting information for each block chord
  * @param  {Array<string>} flippedChromosomes Current flipped chromosomes
- * @return {Array<string>}             Final plotting information with blocks flipped
+ * @return {undefined}                 undefined
  */
 function applyFlippingDataChords(dataChords, flippedChromosomes) {
   const blockDictionary = getBlockDictionary();
-  const tempDataChords = cloneDeep(dataChords);
-  const tempFlippedChromosomes = cloneDeep(flippedChromosomes);
 
   // Need to always go through all the chords, to reset the ones
   // that are not flipped anymore. For example: If it is the second
@@ -1424,24 +1437,23 @@ function applyFlippingDataChords(dataChords, flippedChromosomes) {
   // in this case bn2 will never be unflipped.
   //
   // Another way, is to just reset dataChords each time
-  for (let i = 0, length = tempDataChords.length; i < length; i++) {
-    const blockID = tempDataChords[i].source.value.id;
+  for (let i = 0, length = dataChords.length; i < length; i++) {
+    const blockID = dataChords[i].source.value.id;
 
     const { sourcePositions, targetPositions } = flipGenesPosition({
       blockPositions: blockDictionary[blockID].blockPositions,
-      currentFlippedChromosomes: tempFlippedChromosomes,
-      sourceID: tempDataChords[i].source.id,
-      targetID: tempDataChords[i].target.id
+      currentFlippedChromosomes: flippedChromosomes,
+      sourceID: dataChords[i].source.id,
+      targetID: dataChords[i].target.id
     });
 
-    tempDataChords[i].source.start = sourcePositions.start;
-    tempDataChords[i].source.end = sourcePositions.end;
+    // Assigning flipped positions
+    dataChords[i].source.start = sourcePositions.start;
+    dataChords[i].source.end = sourcePositions.end;
 
-    tempDataChords[i].target.start = targetPositions.start;
-    tempDataChords[i].target.end = targetPositions.end;
+    dataChords[i].target.start = targetPositions.start;
+    dataChords[i].target.end = targetPositions.end;
   }
-
-  return tempDataChords;
 };
 
 /**
@@ -1608,7 +1620,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
               flippedChromosomesSimulatedAnnealing.push(currentID);
             }
 
-            dataChords = cloneDeep(applyFlippingDataChords(dataChords, flippedChromosomesSimulatedAnnealing));
+            applyFlippingDataChords(dataChords, flippedChromosomesSimulatedAnnealing);
           } else {
             let currentID = null;
 
@@ -1666,6 +1678,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
           }
 
           myCircos.layout(newSolution, CIRCOS_CONF);
+          assignChordAngles(newSolution, dataChords);
           const { collisionCount: neighborEnergy } = await getBlockCollisions(newSolution, dataChords);
           const probability = acceptanceProbability(currentEnergy, neighborEnergy, temperature);
 
@@ -1740,7 +1753,8 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
                   }
 
                   // Applying flipping again with the excluded flipped chromosome
-                  dataChords = cloneDeep(applyFlippingDataChords(dataChords, afterCheckFlippedChromosomes));
+                  applyFlippingDataChords(dataChords, afterCheckFlippedChromosomes);
+                  assignChordAngles(bestSolution, dataChords);
                   const { collisionCount: neighborEnergy } = await getBlockCollisions(bestSolution, dataChords);
 
                   console.log('CURRENT CHR AND ENERGY: ', bestFlippedChromosomes[i], neighborEnergy);

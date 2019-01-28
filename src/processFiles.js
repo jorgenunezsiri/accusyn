@@ -35,6 +35,34 @@ function shouldAddChromosomeID(chromosomeID) {
   return true;
 };
 
+
+/**
+ * Checks for additional track file name format
+ *
+ * @param  {string} fileName Current file name
+ * @return {boolean}         True if file name is in wrong format, false otherwise
+ */
+function checkAdditionalTrackNameFormat(fileName) {
+  const lowerCaseFileName = fileName.toLowerCase();
+  const firstPosition = lowerCaseFileName.charAt(0);
+
+  // The fileName cannot start with hyphen or underscore
+  if (firstPosition === '-' || firstPosition === '_') return true;
+
+  for (let i = 0; i < lowerCaseFileName.length; i++) {
+    const currentPosition = lowerCaseFileName[i];
+
+    // Checking for letters, hyphens, and underscores
+    // NOTE: It is in wrong format if file name does not include those
+    if (!(currentPosition >= 'a' && currentPosition <= 'z') &&
+      currentPosition !== '-' && currentPosition !== '_') {
+        return true;
+    }
+  }
+
+  return false;
+};
+
 /**
  * Process BedGraph file (e.g. feature_count, feature_density)
  *
@@ -70,10 +98,12 @@ export function processBedGraph(files, fileNames, reader = d3Text) {
         );
       }
 
-      // Checking for spaces in file name
-      if (currentFileName.includes(' ')) {
+      // Checking for file name additional track format
+      if (checkAdditionalTrackNameFormat(currentFileName)) {
         return new Promise((resolve, reject) =>
-          reject(`The additional track "${currentFileName}" is using spaces on its name. Please, remove the spaces and try again!`)
+          reject(`The additional track "${currentFileName}" is using the wrong format on its name.
+            The valid characters are letters, hyphens, and underscores.
+            Please, try again!`)
         );
       }
 

@@ -1,7 +1,7 @@
 {
   "name": "synteny-browser",
   "version": "1.0.0",
-  "description": "University of Saskatchewan - GSB: A Web-based Genome Synteny Browser",
+  "description": "University of Saskatchewan - AccuSyn: An Accurate Web-based Genome Synteny Browser",
   "main": "src/index.js",
   "scripts": {
     "start": "webpack-dev-server --config webpack.config.js --watch-poll",
@@ -9,12 +9,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://bitbucket.org/jnunez17/synteny-browser.git"
+    "url": "git+https://bitbucket.org/jorgenunezsiri/synteny-browser.git"
   },
-  "author": "jnunez17",
+  "author": "jorgenunezsiri",
   "license": "UNLICENSED",
   "private": true,
-  "homepage": "https://bitbucket.org/jnunez17/synteny-browser/",
+  "homepage": "https://bitbucket.org/jorgenunezsiri/synteny-browser/",
   "devDependencies": {
     "@shopify/draggable": "1.0.0-beta.8",
     "babel-core": "6.26.3",
@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "bootstrap": "4.1.2",
-    "d3": "5.7.0",
+    "d3": "5.8.0",
     "react": "16.4.1",
     "react-dom": "16.4.1",
     "reactstrap": "6.3.0"

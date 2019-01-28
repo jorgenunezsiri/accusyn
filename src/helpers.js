@@ -417,8 +417,6 @@ export function getInnerAndOuterRadiusAdditionalTracks() {
   tracksInside = sortBy(tracksInside, ['order']);
   tracksOutside = sortBy(tracksOutside, ['order']);
 
-  console.log('TRACKS OUTSIDE AND INSIDE: ', tracksOutside, tracksInside);
-
   /**
    * Generates the radius for the tracks
    *
@@ -466,8 +464,6 @@ export function getInnerAndOuterRadiusAdditionalTracks() {
 
   // Concatenating the inside and outside tracks
   availableTracks = [...tracksInside, ...tracksOutside];
-
-  console.log('AVAILABLE TRACKS: ', availableTracks);
 
   return {
     availableTracks,
@@ -563,25 +559,6 @@ export function isInViewport(elem) {
       bounding.bottom <= (window.innerHeight || html.clientHeight) &&
       bounding.right <= (window.innerWidth || html.clientWidth)
   );
-};
-
-/**
- * Moves the scroll of the page
- *
- * @param  {string} position  Start or end position
- * @param  {string} animation Animation type: smooth or instant
- * @return {undefined}        undefined
- */
-export function movePageContainerScroll(position, animation = "smooth") {
-  // Returning early if going to top but already in top
-  if (position === "start" && window.scrollY === 0) return;
-
-  // More info: https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView
-  d3.select("#page-container").node().scrollIntoView({
-    behavior: animation,
-    block: position,
-    inline: "nearest"
-  });
 };
 
 /**
@@ -687,16 +664,14 @@ export function removeBlockView(transitionTime = 0) {
  * @param  {Function} colorScale                     Current flipped color scale (1 for flipped, 0 otherwise)
  * @param  {Array<string>} currentFlippedChromosomes Array of flipped chromosomes
  * @param  {Array<string} gffKeys                    Array of all the chromosomes
- * @param  {Array<Object>} gffPositionDictionary     Array of positions and colors for the chromosomes
  * @return {undefined}                               undefined
  */
 export function assignFlippedChromosomeColors({
   colorScale,
   currentFlippedChromosomes,
-  gffKeys,
-  gffPositionDictionary
+  gffKeys
 }) {
-  const tmpGffDictionary = cloneDeep(gffPositionDictionary);
+  const tmpGffDictionary = cloneDeep(getGffDictionary());
 
   const gffKeysLength = gffKeys.length;
   for (let i = 0; i < gffKeysLength; i++) {

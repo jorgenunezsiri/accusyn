@@ -1,10 +1,12 @@
 /*
 University of Saskatchewan
-GSB: A Web-based Genome Synteny Browser
 Course: CMPT994 - Research
 
+AccuSyn: An Accurate Web-based Genome Synteny Browser
+https://accusyn.usask.ca/
+
 Name: Jorge Nunez Siri
-E-mail: jdn766@mail.usask.ca
+E-mail: jorge.nunez@usask.ca
 
 Function file: generateData.js
 
@@ -47,7 +49,6 @@ import {
   getSelectedCheckboxes,
   isInViewport,
   lookForBlocksPositions,
-  movePageContainerScroll,
   partitionGffKeys,
   removeNonLettersFromString,
   renderReactAlert,
@@ -85,8 +86,10 @@ import {
 import { setGeneDictionary } from './variables/geneDictionary';
 import { setGffDictionary } from './variables/gffDictionary';
 import {
+  convertToMinimumWindowSize,
   getAdditionalTrackArray,
-  setAdditionalTrackArray
+  setAdditionalTrackArray,
+  setGenomeWindowSize
 } from './variables/additionalTrack';
 import {
   getCircosObject,
@@ -121,7 +124,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   console.log("DATA LOADED !!!");
 
-  const colors = d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES['Normal']); // Default color scheme
+  const colors = d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES['Light 1']); // Default color scheme
   const geneDictionary = {}; // Dictionary that includes the start and end position data for each gene
   let gffKeys = []; // Array that includes the sorted keys from the gff dictionary
   const gffPositionDictionary = {}; // Dictionary that includes the colors, start and end position data for each chromosome
@@ -196,8 +199,8 @@ export default function generateData(gff, collinearity, additionalTrack) {
     gffPositionDictionary[gffKeys[i]].color = colors(i);
   }
 
-  console.log('TOTAL CHR END: ', totalChrEnd);
-  console.log('MAXIMUM WINDOW SIZE: ', Math.ceil(totalChrEnd / 2000) + 3000);
+  // Setting genome window size using the total bases amount
+  setGenomeWindowSize(convertToMinimumWindowSize(totalChrEnd));
 
   // Setting gff dictionary with the start and end position for each chr
   setGffDictionary(gffPositionDictionary);
@@ -300,11 +303,26 @@ export default function generateData(gff, collinearity, additionalTrack) {
   // 2306 connections with top 5 BLAST hits
   // Also, adding all the minimum and maximum positions for each block
   let maxBlockSize = 0;
-  for (let i = 0, blockKeysLength = blockKeys.length; i < blockKeysLength; i++) {
-    const currentBlock = blockKeys[i];
-    maxBlockSize = Math.max(maxBlockSize, blockDictionary[currentBlock].length);
-    blockDictionary[currentBlock].blockPositions =
-      lookForBlocksPositions(blockDictionary, geneDictionary, currentBlock);
+  try {
+    for (let i = 0, blockKeysLength = blockKeys.length; i < blockKeysLength; i++) {
+      const currentBlock = blockKeys[i];
+      maxBlockSize = Math.max(maxBlockSize, blockDictionary[currentBlock].length);
+      blockDictionary[currentBlock].blockPositions =
+        lookForBlocksPositions(blockDictionary, geneDictionary, currentBlock);
+    }
+  } catch (error) {
+    console.log('ERROR: ', error);
+
+    // Showing error alert using react if there is an error inside lookForBlocksPositions,
+    // which means that geneDictionary (from gff) is not compatible with
+    // blockDictionary (from collinearity file).
+    renderReactAlert(
+      'The GFF file is not compatible with the MCScanX collinearity file. Please, try again!',
+      'danger',
+      15000
+    );
+
+    return;
   }
 
   // Setting blockDictionary with all the connections and the blockPositions
@@ -396,23 +414,33 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   d3.select("p.dark-mode input")
     .on("change", function() {
-      const isDarkMode = d3.select(this).property("checked");
+      const activeAdditionalTrackTab = d3.select(".tab-link.active");
+      if (!activeAdditionalTrackTab.empty()) {
+        // Clicking the active tab to toggle dark mode in the legend
+        activeAdditionalTrackTab.node().click();
+      }
+
+      // Calling block view if block is found
       const currentSelectedBlock = getCurrentSelectedBlock();
       const dataChords = getDataChords();
       if (!isEmpty(currentSelectedBlock)) {
         const currentPosition = findIndex(dataChords, ['source.value.id', currentSelectedBlock]);
         if (currentPosition !== (-1)) {
           const currentChord = dataChords[currentPosition];
-          // Calling block view if block is found
+          console.log('CURRENT CHORD: ', currentChord);
           generateBlockView(currentChord);
         }
       }
 
-      // Calling genome view for updates
-      generateGenomeView({
-        // Transitioning only when entering dark mode
-        shouldUpdateBlockCollisions: false
-      });
+      let shouldUpdate = (d3.event.detail || {}).shouldUpdate;
+      // shoulUpdate = null or undefined is true, meaning true by default
+      shouldUpdate = shouldUpdate == null ? true : shouldUpdate;
+      if (shouldUpdate) {
+        // Calling genome view for updates
+        generateGenomeView({
+          shouldUpdateBlockCollisions: false
+        });
+      }
     });
 
   // Highlight flipped blocks checkbox
@@ -536,7 +564,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
       Object.keys(CATEGORICAL_COLOR_SCALES).map(function(current) {
         if (current === 'Disabled') return '<option disabled>─────</option>';
         // Only adding Multiple key when visualizing multiple genomes
-        else if (current === 'Multiple' && partitionedGffKeysLength === 1) return '';
+        else if (current.includes('Multiple') && partitionedGffKeysLength === 1) return '';
         return `<option value="${current}">${current}</option>`;
       }).join(' ')
     );
@@ -551,10 +579,9 @@ export default function generateData(gff, collinearity, additionalTrack) {
         setGffDictionary(assignFlippedChromosomeColors({
           colorScale: colors.domain([0, 1]),
           currentFlippedChromosomes: getCurrentFlippedChromosomes(),
-          gffKeys: gffKeys,
-          gffPositionDictionary: gffPositionDictionary
+          gffKeys: gffKeys
         }));
-      } else if( selected === 'Multiple') {
+      } else if(selected.includes('Multiple')) {
         const uniqueDomain = [...partitionedGffKeys.keys()]; // Unique domain for multiple chromosomes
         const gffKeysHashDictionary = {}; // Hash dictionary between the identifiers and color domain
 
@@ -1240,6 +1267,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("width", WIDTH)
     .attr("height", HEIGHT);
 
+  // Genome view progress bar
   d3.select("div.genome-view-container")
     .append("div")
     .attr("class", "progress")
@@ -1253,6 +1281,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
         </div>
       `;
     });
+
+  // Additional track legend
+  d3.select("div.genome-view-container")
+    .append("svg")
+    .attr("id", "track-legend")
+    .attr("width", WIDTH * 0.75)
+    .attr("height", 50);
 
   // svg
   //   .call(d3.zoom().on("zoom", function() {
@@ -1293,7 +1328,12 @@ export default function generateData(gff, collinearity, additionalTrack) {
       if (panel.style.maxHeight) {
         setTimeout(() => {
           if (!isInViewport(panel)) {
-            movePageContainerScroll("end");
+            // More info: https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView
+            d3.select("#page-container").node().scrollIntoView({
+              behavior: 'smooth',
+              block: 'end',
+              inline: 'nearest'
+            });
           }
         }, 200);
 
@@ -1421,10 +1461,31 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("#config")
     .style("display", "block");
 
+  // To alert the user of the old GSB domain
+  // d3.select('html')
+  //   .style('background-color', 'black');
+  // d3.select('body')
+  //   .style('opacity', 0.5);
+
   setTimeout(() => {
     // Clicking informational and connections panel by default
     // after the loader spinner animation is done
     d3.select(".information-panel-title").node().click();
     d3.select(".connections-panel-title").node().click();
-  }, 300);
+
+    // Alerting the user of the old GSB domain
+    // NOTE: This is being manually added into the old website domain: https://usask-gsb.netlify.com
+    // setTimeout(() => {
+    //   const message = `This website domain is now discontinued. For the latest updates, please go to https://accusyn.usask.ca. Click "OK" to be redirected automatically.`;
+    //   const confirming = confirm(message);
+    //   if (confirming) {
+    //     window.location.href = 'https://accusyn.usask.ca';
+    //   } else {
+    //     d3.select('html')
+    //       .style('background-color', 'white');
+    //     d3.select('body')
+    //       .style('opacity', 1);
+    //   }
+    // }, 500);
+  }, 350);
 };
