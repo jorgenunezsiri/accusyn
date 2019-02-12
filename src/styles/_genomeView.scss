@@ -66,6 +66,10 @@ div.genome-view-container {
       border-radius: 20px;
       margin-top: 10px;
     }
+
+    &.blur-view {
+      filter: blur(4px);
+    }
   }
 }
 

@@ -1553,8 +1553,8 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
   console.log('SHOULD KEEP TOGETHER: ', shouldKeepChromosomesTogether);
 
 
-  // Making both views look blurry
-  d3SelectAll("svg#genome-view,#block-view-container")
+  // Making both views look blurry, along with the track legend
+  d3SelectAll("svg#genome-view,#block-view-container,#track-legend")
     .classed("blur-view", true);
 
   // Initializing the progress bar
@@ -1781,7 +1781,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
         }
 
         // Getting rid of the blurred view
-        d3SelectAll("svg#genome-view,#block-view-container")
+        d3SelectAll("svg#genome-view,#block-view-container,#track-legend")
           .classed("blur-view", false);
 
         setTimeout(() => {
