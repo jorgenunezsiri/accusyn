@@ -17,6 +17,7 @@ import { svgAsPngUri } from 'save-svg-as-png';
 import cloneDeep from 'lodash/cloneDeep';
 import difference from 'lodash/difference';
 import findIndex from 'lodash/findIndex';
+import flattenDeep from 'lodash/flattenDeep';
 import isEmpty from 'lodash/isEmpty';
 import isEqual from 'lodash/isEqual';
 import union from 'lodash/union';
@@ -29,6 +30,7 @@ import {
   getChordsRadius,
   getInnerAndOuterRadiusAdditionalTracks,
   getSelectedCheckboxes,
+  partitionGffKeys,
   removeNonLettersFromString,
   renderReactAlert,
   resetInputsAndSelectsOnAnimation,
@@ -292,14 +294,13 @@ function isSuperimposed(R1, R2) {
 };
 
 /**
- * Get the number of block collisions with the current chords and chromosome data
+ * Get the number of block collisions using the source and target angles from current chords
  *
- * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
  * @param  {Array<Object>} dataChords      Plotting information for each block chord
  * @param  {boolean} shouldReturnPromise   True if should return JS Promise, false otherwise
  * @return {number} Number of collisions and superimposed collisions
  */
-export function getBlockCollisions(dataChromosomes, dataChords, shouldReturnPromise = true) {
+export function getBlockCollisions(dataChords, shouldReturnPromise = true) {
   const t0 = performance.now();
   let collisionCount = 0;
   let superimposedCollisionCount = 0;
@@ -420,42 +421,46 @@ export function calculateDeclutteringETA() {
 
   if (d3Select("p.calculate-temperature-ratio input").property("checked")) {
     // Update temperature and ratio based on block collisions
-    // Default temperature/ratio is 5,000/0.05
-    // Entering loop around 150 times
-    let updatedTemperature = 5000, updatedRatio = 0.05;
-
-    // TODO: Create a hash table for this?
-
-    // Update temperature/ratio to 10,000/0.003 if less than 100 collisions available
-    // Entering loop around 3000 times
-    if (collisionCount <= 100) {
-      updatedTemperature = 10000;
-      updatedRatio = 0.003;
-    }
+    // Default temperature/ratio is 40,000/0.02
+    // Entering loop around 500 times
+    let updatedTemperature = 111000, updatedRatio = 0.023;
 
     // Entering loop around 4000 times
-    if (collisionCount <= 10) {
-      updatedTemperature = 200000;
+    if (collisionCount <= 50) {
+      updatedTemperature = 165500;
       updatedRatio = 0.003;
     }
 
-    // Update temperature/ratio to 5,000/0.006 if collision count is between 100 and 500
-    // Entering loop around 1500 times
-    if (collisionCount > 100 && collisionCount <= 500) {
-      updatedTemperature = 6000;
-      updatedRatio = 0.006;
+    // Update temperature/ratio to 166,500/0.004 if collision count is between 50 and 100
+    // Entering loop around 3000 times
+    if (collisionCount > 50 && collisionCount <= 100) {
+      updatedTemperature = 166500;
+      updatedRatio = 0.004;
     }
 
-    // Entering loop around 500 times
-    if (collisionCount > 500 && collisionCount <= 1500) {
-      updatedTemperature = 40000;
-      updatedRatio = 0.02;
+    // Update temperature/ratio to 170,000/0.008 if collision count is between 100 and 500
+    // Entering loop around 1500 times
+    if (collisionCount > 100 && collisionCount <= 500) {
+      updatedTemperature = 170000;
+      updatedRatio = 0.008;
+    }
+
+    // Entering loop around 1000 times
+    if (collisionCount > 500 && collisionCount <= 1000) {
+      updatedTemperature = 174000;
+      updatedRatio = 0.012;
+    }
+
+    // Entering loop around 150 times
+    if (collisionCount >= 10000) {
+      updatedTemperature = 119000;
+      updatedRatio = 0.075;
     }
 
     // Entering loop around 100 times
-    if (collisionCount >= 75000) {
-      updatedTemperature = 10000;
-      updatedRatio = 0.08;
+    if (collisionCount >= 100000) {
+      updatedTemperature = 105000;
+      updatedRatio = 0.11;
     }
 
     updateTemperature(updatedTemperature, false);
@@ -580,7 +585,6 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
   setDataChords(dataChords);
 
   const p = new Parallel({
-      dataChromosomes: dataChromosomes,
       dataChords: dataChords
     })
     .require(getBlockCollisions)
@@ -589,7 +593,7 @@ export function updateBlockCollisionHeadline(dataChromosomes, dataChords) {
     .require(isSuperimposed);
 
   p.spawn(function(data) {
-    return getBlockCollisions(data.dataChromosomes, data.dataChords, false);
+    return getBlockCollisions(data.dataChords, false);
   }).then(function(data) {
     const {
       collisionCount,
@@ -1457,6 +1461,106 @@ function applyFlippingDataChords(dataChords, flippedChromosomes) {
 };
 
 /**
+ * Gives a head start to the current layout by shuffling the chromosome positions randomly
+ * NOTE: After running the iterations, the best solution can still be the initial solution
+ * This helps in improving the outcome of highly cluttered layouts
+ * This function is meant to run under 10 seconds
+ *
+ * @param  {Array<Object>} dataChromosomes Current chromosomes in the Circos plot
+ * @param  {Array<Object>} dataChords  Plotting information for each block chord
+ * @return {Object} Chromosomes solution and collision count after running the random restart process
+ */
+async function randomRestartHillClimbing(dataChromosomes, dataChords) {
+  /**
+   * Shuffles the given array in-place using Durstenfeld shuffle algorithm.
+   * More info: https://stackoverflow.com/a/12646864
+   *
+   * @param  {Array<Object>} array Array of chromosome objects
+   * @return {undefined} undefined
+   * @private
+   */
+  function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  };
+
+  const myCircos = getCircosObject();
+  let bestEnergy = getCollisionCount();
+  let currentSolution = cloneDeep(dataChromosomes);
+  let bestSolution = cloneDeep(dataChromosomes);
+  let savedCurrentSolution; // Used to return to the array of divided genomes
+  let maxIterations = 100;
+  if (bestEnergy <= 100) maxIterations = 500;
+  else if (bestEnergy > 100 && bestEnergy <= 500) maxIterations = 200;
+  else if (bestEnergy > 10000 && bestEnergy <= 50000) maxIterations = 50;
+  else if (bestEnergy > 50000) maxIterations = 25;
+
+  const shouldKeepChromosomesTogether = !d3Select("p.keep-chr-together").empty() &&
+    d3Select("p.keep-chr-together input").property("checked");
+
+  // If visualizing multiple genomes and the checkbox is checked
+  // then I need to divide them, to shuffle the genomes separately
+  if (shouldKeepChromosomesTogether) {
+    const { gffPartitionedDictionary, partitionedGffKeys } =
+      partitionGffKeys(toChromosomeOrder(dataChromosomes));
+
+    currentSolution = [];
+    for (let i = 0; i < partitionedGffKeys.length; i++) {
+      currentSolution = currentSolution.concat(cloneDeep([gffPartitionedDictionary[partitionedGffKeys[i]]]));
+    }
+
+    // Assigning the whole chromosome object for each key inside currentSolution
+    for (let i = 0; i < currentSolution.length; i++) {
+      for (let j = 0; j < currentSolution[i].length; j++) {
+        currentSolution[i][j] = dataChromosomes.find((element) => {
+          return element.id === currentSolution[i][j];
+        });
+      }
+    }
+
+    savedCurrentSolution = cloneDeep(currentSolution);
+  }
+
+  let iterations = 1;
+  while (iterations <= maxIterations) {
+    if (shouldKeepChromosomesTogether) {
+      // Returning to saved state, i.e. [[A1,A2],[B1,B2]]
+      currentSolution = cloneDeep(savedCurrentSolution);
+
+      // Need to shuffle each array inside currentSolution separately
+      for (let i = 0; i < currentSolution.length; i++) {
+        shuffleArray(currentSolution[i]);
+      }
+
+      // Going from [[A1,A2],[B1,B2]] to [A1,A2,B1,B2]
+      currentSolution = flattenDeep(currentSolution);
+    } else {
+      shuffleArray(currentSolution);
+    }
+
+    // To introduce start and end properties into currentSolution
+    myCircos.layout(currentSolution, CIRCOS_CONF);
+    assignChordAngles(currentSolution, dataChords);
+    const { collisionCount: neighborEnergy } = await getBlockCollisions(dataChords);
+
+    // Saving the best solution if having less collisions
+    if (neighborEnergy < bestEnergy) {
+      bestSolution = cloneDeep(currentSolution);
+      bestEnergy = neighborEnergy;
+    }
+
+    iterations++;
+  }
+
+  return {
+    solution: bestSolution,
+    energy: bestEnergy
+  }
+};
+
+/**
  * Calculates the probability of accepting a neighbor solution for Simulated Annealing
  *
  * @param  {number} currentEnergy  Current number of collisions
@@ -1552,7 +1656,6 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
 
   console.log('SHOULD KEEP TOGETHER: ', shouldKeepChromosomesTogether);
 
-
   // Making both views look blurry, along with the track legend
   d3SelectAll("svg#genome-view,#block-view-container,#track-legend")
     .classed("blur-view", true);
@@ -1572,7 +1675,18 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
   console.log('TOTAL TIME: ', totalTime);
 
   setTimeout(async function simulatedAnnealingLoop() {
-    // TODO: Create a new function
+    // Looking for a head start when the algorithm is not doing only flipping
+    if (flippingFrequency !== 100) {
+      console.log('\nrandomRestartHillClimbing BEFORE: \n', bestSolution.slice(), bestEnergy);
+
+      // Running the Random-Restart phase of Stochastic Hill Climbing to give a head start
+      const randomRestartResult = await randomRestartHillClimbing(bestSolution, dataChords);
+      bestSolution = randomRestartResult.solution;
+      bestEnergy = randomRestartResult.energy;
+
+      console.log('\nrandomRestartHillClimbing AFTER: \n', bestSolution.slice(), bestEnergy);
+    }
+
     while (temperature > 1.0) {
       howMany++;
 
@@ -1651,8 +1765,6 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
                   }
                 }
               }
-
-              console.log('MULTIPLE CHR IDENTIFIER: ', multipleChrFirstIdentifier, currentID);
             }
 
             pos2 = pos1; // Initializing second position as the first one
@@ -1666,7 +1778,6 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
 
               if (shouldKeepChromosomesTogether && multipleChrFirstIdentifier) {
                 const secondIdentifier = removeNonLettersFromString(currentID);
-                console.log('ENTERING IDENTIFIER HERE\n\n', currentID, secondIdentifier);
 
                 identifierChecking = firstIdentifier !== secondIdentifier;
               }
@@ -1677,9 +1788,10 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
             [newSolution[pos1], newSolution[pos2]] = [newSolution[pos2], newSolution[pos1]];
           }
 
+          // To introduce start and end properties into newSolution
           myCircos.layout(newSolution, CIRCOS_CONF);
           assignChordAngles(newSolution, dataChords);
-          const { collisionCount: neighborEnergy } = await getBlockCollisions(newSolution, dataChords);
+          const { collisionCount: neighborEnergy } = await getBlockCollisions(dataChords);
           const probability = acceptanceProbability(currentEnergy, neighborEnergy, temperature);
 
           // Accept as current if probability equals one (meaning that I got a better solution)
@@ -1726,6 +1838,8 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
             .text("100%");
           afterCheckTime += totalTime;
         } else {
+          // To introduce start and end properties into bestSolution
+          myCircos.layout(bestSolution, CIRCOS_CONF);
           // Omitting flipped chromosomes that make the final solution worse
           for (let i = 0; i < bestFlippedChromosomesLength; i++) {
             (function(afterCheckTime, howMany) {
@@ -1755,10 +1869,12 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
                   // Applying flipping again with the excluded flipped chromosome
                   applyFlippingDataChords(dataChords, afterCheckFlippedChromosomes);
                   assignChordAngles(bestSolution, dataChords);
-                  const { collisionCount: neighborEnergy } = await getBlockCollisions(bestSolution, dataChords);
+                  const { collisionCount: neighborEnergy } = await getBlockCollisions(dataChords);
 
                   console.log('CURRENT CHR AND ENERGY: ', bestFlippedChromosomes[i], neighborEnergy);
 
+                  // Using <= because if the solution is the same, then exclude it
+                  // since there is no point in having it flipped
                   if (neighborEnergy <= bestEnergy) {
                     // Only keeping the flipped chromosomes that make my layout better
                     console.log('EXCLUDING CHR: ', bestFlippedChromosomes[i], neighborEnergy);

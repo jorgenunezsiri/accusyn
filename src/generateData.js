@@ -899,7 +899,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
         <span id="filter-sa-temperature-value">…</span>
       </label>
       <p>
-        <input type="range" min="100" max="200000" step="100" id="filter-sa-temperature" disabled>
+        <input type="range" min="100" max="300000" step="100" id="filter-sa-temperature" disabled>
       </p>
     `);
 
@@ -913,7 +913,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
         <span id="filter-sa-ratio-value">…</span>
       </label>
       <p>
-        <input type="range" min="0.001" max="0.2" step="0.001" id="filter-sa-ratio" disabled>
+        <input type="range" min="0.001" max="0.3" step="0.001" id="filter-sa-ratio" disabled>
       </p>
     `);
 
@@ -980,7 +980,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     svgHref: './images/icons.svg#undo-sprite_si-open-action-undo',
     onClickFunction: function() {
       if (!undoManager.hasUndo()) {
-        renderReactAlert(`There are no layout interactions to undo. Only flipping, dragging, and minimizing are supported.
+        renderReactAlert(`There are no layout interactions to undo. Only minimizing collisions, flipping, dragging, or resetting chromosomes are supported.
           Please, try again!`, 'danger', 10000);
         return;
       }
@@ -1003,7 +1003,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     svgHref: './images/icons.svg#redo-sprite_si-open-action-redo',
     onClickFunction: function() {
       if (!undoManager.hasRedo()) {
-        renderReactAlert(`There are no layout interactions to redo. Only dragging, flipping, and minimizing are supported.
+        renderReactAlert(`There are no layout interactions to redo. Only minimizing collisions, flipping, dragging, or resetting chromosomes are supported.
           Please, try again!`, 'danger', 10000);
         return;
       }
