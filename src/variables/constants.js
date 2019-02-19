@@ -161,8 +161,8 @@ const TRANSITION_SWAPPING_TIME = 200;
 const OFFSET_DOMAIN = 50000; // Offset to be used for the scales domain
 const REMOVE_BLOCK_VIEW_TRANSITION_TIME = 250;
 
-// Default block view zoom state
-const DEFAULT_BLOCK_VIEW_ZOOM_STATE = {
+// Default block view state
+const DEFAULT_BLOCK_VIEW_STATE = {
   defaultY0Domain: [],
   defaultY1Domain: [],
   flipped: false,
@@ -202,7 +202,7 @@ export {
   TRANSITION_DRAG_TIME,
   TRANSITION_SWAPPING_TIME,
   // Block view
-  DEFAULT_BLOCK_VIEW_ZOOM_STATE,
+  DEFAULT_BLOCK_VIEW_STATE,
   OFFSET_DOMAIN,
   REMOVE_BLOCK_VIEW_TRANSITION_TIME,
   // Block view transition constants

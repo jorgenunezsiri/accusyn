@@ -1007,8 +1007,6 @@ export function updateBlockNumberHeadline(dataChromosomes, dataChords) {
  *
  * @param  {boolean} shouldUpdateBlockCollisions True if should update block collisions
  *                                               in genome view, false otherwise
- * @param  {boolean} shouldUpdateLayout          True if Circos layout should be updated
- *                                               (i.e. chromosome order changed)
  * @param  {boolean} shouldUpdatePath            True if should update paths in genome
  *                                               view, false otherwise
  * @param  {number}  value                       Filtering value for connection block size
@@ -1016,7 +1014,6 @@ export function updateBlockNumberHeadline(dataChromosomes, dataChords) {
  */
 export function updateFilter({
   shouldUpdateBlockCollisions = false,
-  shouldUpdateLayout = false,
   shouldUpdatePath = false,
   value = 1
 }) {
@@ -1029,8 +1026,7 @@ export function updateFilter({
     generateGenomeView({
       transition: { shouldDo: false },
       shouldUpdateBlockCollisions: shouldUpdateBlockCollisions,
-      // This is needed to be able to change layout if another one is saved
-      shouldUpdateLayout: shouldUpdateLayout
+      shouldUpdateLayout: false
     });
   }
 };

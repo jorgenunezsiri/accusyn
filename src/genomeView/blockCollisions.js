@@ -23,7 +23,6 @@ import isEqual from 'lodash/isEqual';
 import union from 'lodash/union';
 
 import generateGenomeView from './generateGenomeView';
-import { resetZoomBlockView } from './../generateBlockView';
 import { updateAdditionalTracksWhileDragging } from './dragging';
 import {
   flipGenesPosition,
@@ -56,8 +55,7 @@ import {
 } from './../variables/currentChromosomeOrder';
 import {
   getCurrentFlippedChromosomes,
-  setCurrentFlippedChromosomes,
-  setPreviousFlippedChromosomes
+  setCurrentFlippedChromosomes
 } from './../variables/currentFlippedChromosomes';
 import { getCurrentSelectedBlock } from './../variables/currentSelectedBlock';
 import {
@@ -421,7 +419,7 @@ export function calculateDeclutteringETA() {
 
   if (d3Select("p.calculate-temperature-ratio input").property("checked")) {
     // Update temperature and ratio based on block collisions
-    // Default temperature/ratio is 40,000/0.02
+    // Default temperature/ratio is 111,000/0.023
     // Entering loop around 500 times
     let updatedTemperature = 111000, updatedRatio = 0.023;
 
@@ -452,13 +450,13 @@ export function calculateDeclutteringETA() {
     }
 
     // Entering loop around 150 times
-    if (collisionCount >= 10000) {
+    if (collisionCount > 10000 && collisionCount <= 50000) {
       updatedTemperature = 119000;
       updatedRatio = 0.075;
     }
 
     // Entering loop around 100 times
-    if (collisionCount >= 100000) {
+    if (collisionCount > 50000) {
       updatedTemperature = 105000;
       updatedRatio = 0.11;
     }
@@ -469,11 +467,11 @@ export function calculateDeclutteringETA() {
 
   // Filtering value for temperature
   const filterTemperatureValue = Number(!d3Select('.filter-sa-temperature-div #filter-sa-temperature').empty() &&
-    d3Select('.filter-sa-temperature-div #filter-sa-temperature').property("value")) || 5000;
+    d3Select('.filter-sa-temperature-div #filter-sa-temperature').property("value")) || 111000;
 
   // Filtering value for ratio
   const filterRatioValue = Number(!d3Select('.filter-sa-ratio-div #filter-sa-ratio').empty() &&
-    d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.05;
+    d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.023;
 
   console.log('FILTER TEMP AND RATIO: ', filterTemperatureValue, filterRatioValue);
 
@@ -1103,9 +1101,6 @@ export function swapPositionsAnimation({
       const unionFlippedChromosomes = union(allFlippedChromosomes, bestFlippedChromosomes);
       const unionFlippedChromosomesLength = unionFlippedChromosomes.length;
 
-      // Setting affected chromosomes
-      setPreviousFlippedChromosomes(unionFlippedChromosomes);
-
       const chrBlockDictionary = {};
       const blockChrDictionary = {};
       const visitedChrForFlipping = [];
@@ -1280,8 +1275,8 @@ export function swapPositionsAnimation({
       while ((flippedTransitionTime - positionsNotSwappedTransitionTime) <
         ((FLIPPING_CHROMOSOME_TIME + 25) * unionFlippedChromosomesLength) &&
         index < unionFlippedChromosomesLength) {
-        // If all the blocks are not visited for the current chromosome or
-        // current chromosome has blocks visible i.e. is present in dictionary
+        // If all the blocks are not visited for the current chromosome and
+        // current chromosome has blocks visible i.e. it is present in dictionary
         if (!visitedChrForFlipping[unionFlippedChromosomes[index]] &&
           (unionFlippedChromosomes[index] in chrBlockDictionary)) {
           (function(flippedTransitionTime, index) {
@@ -1298,10 +1293,8 @@ export function swapPositionsAnimation({
               console.log('affectedBlocks: ', affectedBlocks);
               const affectedBlocksLength = affectedBlocks.length;
               for (let j = 0; j < affectedBlocksLength; j++) {
-                // Resetting zoom state object for all affected chords
-                // Only resetting the chords that WERE present in the flipping animation
                 const blockID = affectedBlocks[j];
-                resetZoomBlockView(blockID);
+
                 // Marking block as visited
                 visitedBlockForFlipping[blockID] = true;
               }
@@ -1628,11 +1621,11 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
 
   // Filtering value for temperature
   let temperature = Number(!d3Select('.filter-sa-temperature-div #filter-sa-temperature').empty() &&
-    d3Select('.filter-sa-temperature-div #filter-sa-temperature').property("value")) || 5000;
+    d3Select('.filter-sa-temperature-div #filter-sa-temperature').property("value")) || 111000;
 
   // Filtering value for ratio
   const ratio = Number(!d3Select('.filter-sa-ratio-div #filter-sa-ratio').empty() &&
-    d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.05;
+    d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.023;
 
   // Filtering value for flipping frequency
   const flippingFrequency = Number(!d3Select('.filter-sa-flipping-frequency-div #filter-sa-flipping-frequency').empty() &&

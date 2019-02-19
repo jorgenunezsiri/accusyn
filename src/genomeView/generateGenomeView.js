@@ -25,7 +25,7 @@ import findIndex from 'lodash/findIndex';
 
 import { addActionToUndoManager, updateUndoRedoButtons } from './../vendor/undoManager';
 
-import generateBlockView, { resetZoomBlockView } from './../generateBlockView';
+import generateBlockView from './../generateBlockView';
 
 import {
   assignFlippedChromosomeColors,
@@ -71,9 +71,7 @@ import {
 } from './../variables/currentChromosomeOrder';
 import {
   getCurrentFlippedChromosomes,
-  getPreviousFlippedChromosomes,
-  setCurrentFlippedChromosomes,
-  setPreviousFlippedChromosomes
+  setCurrentFlippedChromosomes
 } from './../variables/currentFlippedChromosomes';
 import {
   getCurrentSelectedBlock,
@@ -364,9 +362,6 @@ function generateCircosLayout() {
         let currentFlippedChromosomes = getCurrentFlippedChromosomes().slice();
 
         const currentID = d.id; // Current chromosome ID
-        // Setting affected chromosome
-        setPreviousFlippedChromosomes([currentID]);
-
         const currentPosition = currentFlippedChromosomes.indexOf(currentID);
 
         // If chromosome id is present, then remove it
@@ -381,17 +376,11 @@ function generateCircosLayout() {
         setCurrentFlippedChromosomes(currentFlippedChromosomes);
 
         // Call flipping function emphasizing the flipped blocks only
-        const affectedBlocks = transitionFlipping({
+        transitionFlipping({
           currentChr: currentID,
           currentFlippedChromosomes: currentFlippedChromosomes,
           dataChromosomes: dataChromosomes
         });
-
-        const affectedBlocksLength = affectedBlocks.length;
-        // Resetting zoom state object for all affected chords
-        for (let j = 0; j < affectedBlocksLength; j++) {
-          resetZoomBlockView(affectedBlocks[j]);
-        }
 
         let shouldUpdateLayout = false;
         if (isAdditionalTrackAdded() ||
@@ -746,18 +735,6 @@ function generatePathGenomeView({
             d3.color(d3.select("#block-view-container g.axisY0 path.domain").attr("fill")).hex();
           const currentAxisTargetColor =
             d3.color(d3.select("#block-view-container g.axisY1 path.domain").attr("fill")).hex();
-
-          // Note: Previous flipped chromosomes includes all the affected chromosomes
-          // in the last flip animation (manual or SA). If this list includes the source or
-          // target chromosome from current selected block, then I need to update the
-          // block view because they are being affected
-          const previousFlippedChr = getPreviousFlippedChromosomes();
-          if (previousFlippedChr.includes(sourceID) || previousFlippedChr.includes(targetID)) {
-            shouldUpdateBlockView = true;
-            // Resetting previous flipped chromosomes after updating block view,
-            // so in case nothing changes, it does not update again unnecessarily
-            setPreviousFlippedChromosomes([]);
-          }
 
           shouldUpdateBlockView = shouldUpdateBlockView ||
             currentBlockViewLineColor !== currentGenomeViewChordColor ||

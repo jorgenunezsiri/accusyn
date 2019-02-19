@@ -1,6 +1,6 @@
 import { setAdditionalTrackArray } from './additionalTrack';
 import { setBlockDictionary } from './blockDictionary';
-import { setBlockViewZoomStateDictionary } from './blockViewZoomStateDictionary';
+import { setBlockViewStateDictionary } from './blockViewStateDictionary';
 import { setCurrentChromosomeMouseDown } from './currentChromosomeMouseDown';
 import { setCurrentChromosomeOrder, setDefaultChromosomeOrder } from './currentChromosomeOrder';
 import { setCurrentFlippedChromosomes } from './currentFlippedChromosomes';
@@ -20,7 +20,7 @@ import { resetUndoRedoButtons } from './../vendor/undoManager';
 export default function resetAllVariables() {
   setAdditionalTrackArray([]);
   setBlockDictionary({});
-  setBlockViewZoomStateDictionary({});
+  setBlockViewStateDictionary({});
   setCurrentChromosomeMouseDown("");
   setCurrentChromosomeOrder([]);
   setDefaultChromosomeOrder([]);

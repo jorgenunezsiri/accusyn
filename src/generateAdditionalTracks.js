@@ -406,7 +406,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
 
       // Return because I cannot delete the track if there is a saved layout using it
       if (foundSavedTrack) {
-        renderReactAlert(`The track can't be deleted because it is being used in the saved stamp #${stampIndex}.`);
+        renderReactAlert(`The track "${name}" can't be deleted because it is being used in the saved stamp #${stampIndex}.`);
         return;
       }
 

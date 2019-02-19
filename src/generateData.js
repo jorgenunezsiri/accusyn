@@ -1360,17 +1360,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
   // Initial starting angle of the genome view (0 degrees for default and dragging angle)
   updateAngle(0, 0);
 
-  // Initial temperature and input event
-  updateTemperature(5000);
-
+  // Temperature input event
   d3.select("#filter-sa-temperature")
     .on("input", function() {
       updateTemperature(+this.value);
     });
 
-  // Initial ratio and input event
-  updateRatio(0.05);
-
+  // Ratio input event
   d3.select("#filter-sa-ratio")
     .on("input", function() {
       updateRatio(+this.value);
@@ -1392,7 +1388,6 @@ export default function generateData(gff, collinearity, additionalTrack) {
    */
   const callFullUpdateFilter = (value) => updateFilter({
     shouldUpdateBlockCollisions: true,
-    shouldUpdateLayout: true,
     shouldUpdatePath: true,
     value: value
   });
@@ -1406,7 +1401,6 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
       updateFilter({
         shouldUpdateBlockCollisions: false,
-        shouldUpdateLayout: false,
         shouldUpdatePath: true,
         value: +this.value
       });
