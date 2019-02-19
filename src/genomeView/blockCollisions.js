@@ -1360,15 +1360,18 @@ export function callSwapPositionsAnimation({
   bestFlippedChromosomes,
   updateWhenSame = true
 }) {
-  // bestSolution will always have same or less collisions than dataChromosomes
-  // hence, only enter this condition if it has less (i.e. they are different in order)
-  // OR
-  // Enter condition if best flipped chromosomes is different from actual
-  const allFlippedChromosomes = getCurrentFlippedChromosomes();
+  // Using slice() because I don't want to get a reference to the same array,
+  // since I am modifying it when flipping a chromosome
+  // More info: https://stackoverflow.com/a/6612405
+  const allFlippedChromosomes = getCurrentFlippedChromosomes().slice();
   // The two chromosome order will always have the same amount of chromosomes, just in different order
   const currentChromosomeOrder = toChromosomeOrder(bestSolution);
   const oldChromosomeOrder = toChromosomeOrder(dataChromosomes);
 
+  // bestSolution will always have same or less collisions than dataChromosomes
+  // hence, only enter this condition if it has less (i.e. they are different in order)
+  // OR
+  // Enter condition if best flipped chromosomes is different from actual
   if (!isEqual(oldChromosomeOrder, currentChromosomeOrder) ||
     !isEqual(allFlippedChromosomes, bestFlippedChromosomes)) {
     const swapPositions = minSwapToMakeArraySame(currentChromosomeOrder,

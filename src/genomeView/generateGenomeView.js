@@ -361,7 +361,7 @@ function generateCircosLayout() {
         // Before flipping, set all chords with the same opacity
         d3.selectAll("path.chord").attr("opacity", 0.7);
 
-        let currentFlippedChromosomes = getCurrentFlippedChromosomes();
+        let currentFlippedChromosomes = getCurrentFlippedChromosomes().slice();
 
         const currentID = d.id; // Current chromosome ID
         // Setting affected chromosome
