@@ -895,7 +895,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("class", "filter-sa-temperature-div")
     .html(`
       <label for="filter-sa-temperature">
-        <span>Temperature = </span>
+        <span>Initial temperature = </span>
         <span id="filter-sa-temperature-value">…</span>
       </label>
       <p>
@@ -909,11 +909,11 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("class", "filter-sa-ratio-div")
     .html(`
       <label for="filter-sa-ratio">
-        <span>Ratio = </span>
+        <span>Cooling ratio = </span>
         <span id="filter-sa-ratio-value">…</span>
       </label>
       <p>
-        <input type="range" min="0.001" max="0.3" step="0.001" id="filter-sa-ratio" disabled>
+        <input type="range" min="0.7" max="0.999" step="0.001" id="filter-sa-ratio" disabled>
       </p>
     `);
 

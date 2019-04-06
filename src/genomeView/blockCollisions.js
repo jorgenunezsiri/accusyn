@@ -419,46 +419,46 @@ export function calculateDeclutteringETA() {
 
   if (d3Select("p.calculate-temperature-ratio input").property("checked")) {
     // Update temperature and ratio based on block collisions
-    // Default temperature/ratio is 111,000/0.023
+    // Default temperature/ratio is 111,000/0.977
     // Entering loop around 500 times
-    let updatedTemperature = 111000, updatedRatio = 0.023;
+    let updatedTemperature = 111000, updatedRatio = 0.977;
 
     // Entering loop around 4000 times
     if (collisionCount <= 50) {
       updatedTemperature = 165500;
-      updatedRatio = 0.003;
+      updatedRatio = 0.997;
     }
 
-    // Update temperature/ratio to 166,500/0.004 if collision count is between 50 and 100
+    // Update temperature/ratio to 166,500/0.996 if collision count is between 50 and 100
     // Entering loop around 3000 times
     if (collisionCount > 50 && collisionCount <= 100) {
       updatedTemperature = 166500;
-      updatedRatio = 0.004;
+      updatedRatio = 0.996;
     }
 
-    // Update temperature/ratio to 170,000/0.008 if collision count is between 100 and 500
+    // Update temperature/ratio to 170,000/0.992 if collision count is between 100 and 500
     // Entering loop around 1500 times
     if (collisionCount > 100 && collisionCount <= 500) {
       updatedTemperature = 170000;
-      updatedRatio = 0.008;
+      updatedRatio = 0.992;
     }
 
     // Entering loop around 1000 times
     if (collisionCount > 500 && collisionCount <= 1000) {
       updatedTemperature = 174000;
-      updatedRatio = 0.012;
+      updatedRatio = 0.988;
     }
 
     // Entering loop around 150 times
     if (collisionCount > 10000 && collisionCount <= 50000) {
       updatedTemperature = 119000;
-      updatedRatio = 0.075;
+      updatedRatio = 0.925;
     }
 
     // Entering loop around 100 times
     if (collisionCount > 50000) {
       updatedTemperature = 105000;
-      updatedRatio = 0.11;
+      updatedRatio = 0.89;
     }
 
     updateTemperature(updatedTemperature, false);
@@ -471,20 +471,18 @@ export function calculateDeclutteringETA() {
 
   // Filtering value for ratio
   const filterRatioValue = Number(!d3Select('.filter-sa-ratio-div #filter-sa-ratio').empty() &&
-    d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.023;
+    d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.977;
 
   console.log('FILTER TEMP AND RATIO: ', filterTemperatureValue, filterRatioValue);
 
   let temperature = filterTemperatureValue;
-  let ratio = filterRatioValue;
 
   let howMany = 0;
-  const complementRatio = (1 - ratio);
 
   while (temperature > 1.0) {
     howMany++;
 
-    temperature *= complementRatio;
+    temperature *= filterRatioValue;
   }
 
   // This is the final time in seconds
@@ -1565,12 +1563,13 @@ async function randomRestartHillClimbing(dataChromosomes, dataChords) {
  * @return {number}                Acceptance probability
  */
 function acceptanceProbability(currentEnergy, neighborEnergy, temperature) {
-  if (neighborEnergy < currentEnergy) return 1.0;
+  // When neighborEnergy === currentEnergy, Math.exp(0) = 1.0
+  if (neighborEnergy <= currentEnergy) return 1.0;
 
   /*
-    The smaller the change in energy (the quality of the solution),
-    and the higher the temperature, the more likely it is for the algorithm to accept the solution.
-  */
+   * The smaller the change in energy (the quality of the solution),
+   * and the higher the temperature, the more likely it is for the algorithm to accept the solution.
+   */
   return Math.exp((currentEnergy - neighborEnergy) / temperature);
 };
 
@@ -1625,7 +1624,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
 
   // Filtering value for ratio
   const ratio = Number(!d3Select('.filter-sa-ratio-div #filter-sa-ratio').empty() &&
-    d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.023;
+    d3Select('.filter-sa-ratio-div #filter-sa-ratio').property("value")) || 0.977;
 
   // Filtering value for flipping frequency
   const flippingFrequency = Number(!d3Select('.filter-sa-flipping-frequency-div #filter-sa-flipping-frequency').empty() &&
@@ -1633,7 +1632,6 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
 
   console.log('FLIPPING FREQ: ', flippingFrequency);
 
-  const complementRatio = (1 - ratio);
   const myCircos = getCircosObject();
 
   let howMany = 0;
@@ -1807,7 +1805,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
         }, timeTransition);
       })(timeTransition, temperature, howMany);
 
-      temperature *= complementRatio;
+      temperature *= ratio;
     }
 
     setTimeout(function afterSimulatedAnnealingLoop() {

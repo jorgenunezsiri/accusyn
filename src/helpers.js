@@ -915,7 +915,7 @@ export function updateAngle(nAngle = 0, nDragging = 0, shouldUpdateLayout = true
 /**
  * Updates the temperature for the Simulated Annealing algorithm in the genome view
  *
- * @param  {number} temperature Current temperature between 100 and 200,000
+ * @param  {number} temperature Current temperature between 100 and 300,000
  * @param  {boolean} updateETA Whether or not the decluttering ETA should be updated
  * @return {undefined}          undefined
  */
@@ -930,13 +930,14 @@ export function updateTemperature(temperature, updateETA = true) {
 /**
  * Updates the ratio for the Simulated Annealing algorithm in the genome view
  *
- * @param  {number}  ratio     Current ratio between 0.001 and 0.2
+ * @param  {number}  ratio     Current ratio between 0.7 and 0.999
  * @param  {boolean} updateETA Whether or not the decluttering ETA should be updated
  * @return {undefined}    undefined
  */
 export function updateRatio(ratio, updateETA = true) {
   // Adjust the text on the ratio range slider
-  d3.select("#filter-sa-ratio-value").text(ratio);
+  // Need maximum one decimal place e.g. in case of 99.5
+  d3.select("#filter-sa-ratio-value").text(`${roundFloatNumber((ratio * 100), 1)}%`);
   d3.select("#filter-sa-ratio").property("value", ratio);
 
   if (updateETA) calculateDeclutteringETA();
