@@ -50,22 +50,10 @@ Main file: index.html
 </head>
 
 <body>
-  <div id="loader"></div>
+  <div id="loader" style="display:none;"></div>
+  <div id="alert-container" className="text-center"></div>
 
-  <div id="alert-container" class="text-center"></div>
-
-  <div style="display:none;" id="page-container" class="container animate-bottom">
-    <div class="row">
-      <div id="config" class="col-lg-2" style="display: none;">
-        <form id="form-config" class="border border-secondary rounded"></form>
-      </div>
-      <div id="logo-container">
-        <img alt="AccuSyn Logo" src="./images/AccuSyn-logo.png" height="50px" width="170px" />
-      </div>
-      <div id="load-files-container"></div>
-      <div id="download-svg-container"></div>
-    </div>
-  </div>
+  <div id="root"></div>
 
   <!-- Loading local script -->
   <script type="text/javascript" src="./bundle.js"></script>

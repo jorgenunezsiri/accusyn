@@ -23,6 +23,7 @@ import isEmpty from 'lodash/isEmpty';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import DownloadFilesForm from './reactComponents/DownloadFilesForm';
+import Files from './reactComponents/Files';
 import Modal from './reactComponents/Modal';
 import SavedStamps from './reactComponents/SavedStamps';
 
@@ -98,7 +99,6 @@ import {
 import resetAllVariables from './variables/resetAllVariables';
 
 // Constants
-import { loadFiles } from './variables/templates';
 import {
   CATEGORICAL_COLOR_SCALES,
   CIRCOS_CONF,
@@ -1259,16 +1259,16 @@ export default function generateData(gff, collinearity, additionalTrack) {
   // SVG element that will include the Circos plot
   const svg = d3.select("#page-container .row")
     .append("div")
-    .attr("class", "col-lg-6 text-center")
+    .attr("class", "genome-view-container col-lg-6 text-center")
     .append("div")
-    .attr("class", "genome-view-container")
+    .attr("class", "genome-view-content")
     .append("svg")
     .attr("id", "genome-view")
     .attr("width", WIDTH)
     .attr("height", HEIGHT);
 
   // Genome view progress bar
-  d3.select("div.genome-view-container")
+  d3.select("div.genome-view-content")
     .append("div")
     .attr("class", "progress")
     .html(function() {
@@ -1283,7 +1283,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     });
 
   // Additional track legend
-  d3.select("div.genome-view-container")
+  d3.select("div.genome-view-content")
     .append("svg")
     .attr("id", "track-legend")
     .attr("width", WIDTH * 0.75)
@@ -1419,7 +1419,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     <Modal
       buttonLabel="Load files"
       modalHeader="Load files">
-      {loadFiles}
+      {<Files />}
     </Modal>,
     document.getElementById('load-files-container')
   );

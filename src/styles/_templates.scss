@@ -1,0 +1,112 @@
+// _placeholders.scss partial file
+
+#home-page-container {
+  .container {
+    background-color: #3b88fd;
+    min-width: 100%;
+    min-height: 100vh;
+  }
+
+  .btn.btn-primary {
+    background-color: #3b88fd;
+    border-color: #3b88fd;
+    color: white;
+    font-size: 18px;
+
+    &:hover {
+      background-color: #025de8;
+      border-color: #025de8;
+    }
+  }
+
+  .row,
+  .before-after-content > div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .before-after-content {
+    img {
+      border-radius: 50%;
+      min-width: 500px;
+      min-height: 500px;
+    }
+
+    .right-arrow-svg {
+      height: 60px;
+      width: 60px;
+      fill: #3b88fd;
+    }
+  }
+
+  .jumbotron {
+    padding: 32px;
+    margin: 0;
+
+    .home-page-logo {
+      display: inline-block;
+    }
+
+    .lead {
+      font-size: 18px;
+    }
+  }
+}
+
+#page-container {
+  max-width: 100%;
+
+  .app-logo-container {
+    position: fixed;
+    right: 15px;
+    top: 10px;
+    z-index: 10;
+
+    img {
+      border: 1px solid #3b88fd;
+      border-radius: 20px;
+      padding: 5px;
+    }
+  }
+
+  #load-files-container {
+    position: fixed;
+    right: 15px;
+    top: 65px;
+    z-index: 10;
+
+    button {
+      color: #3b88fd;
+      font-size: 12px;
+      text-decoration: none;
+
+      &:hover {
+        color: #025de8;
+      }
+    }
+  }
+
+  #download-svg-container {
+    bottom: 20px;
+    position: fixed;
+    right: 15px;
+    z-index: 10;
+
+    button.btn.download-files {
+      border: none;
+      cursor: pointer;
+      padding: 0;
+
+      &:hover {
+        svg.download-files-svg {
+          @extend %svg-button-hover;
+        }
+      }
+
+      svg.download-files-svg {
+        @extend %svg-button;
+      }
+    }
+  }
+}

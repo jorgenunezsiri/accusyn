@@ -230,7 +230,7 @@ class SavedStamps extends React.Component {
           {portion.map((item, index) => {
             cumulativeIndex++;
             return (
-              <div className="col-lg-2" key={`${index}`}>
+              <div className="stamps-item-container col-lg-2" key={`${index}`}>
                 {this.renderItem(item, cumulativeIndex)}
               </div>
             );

@@ -69,7 +69,9 @@ class SubmitAdditionalTracksForm extends React.Component {
       }
 
       // Dismissing modal
-      d3Select(".modal-reactstrap button.close").node().click();
+      if (!d3Select(".modal-reactstrap button.close").empty()) {
+        d3Select(".modal-reactstrap button.close").node().click();
+      }
 
       // Adding a delay so the modal can get closed
       setTimeout(function() {
@@ -110,8 +112,7 @@ class SubmitAdditionalTracksForm extends React.Component {
               id="name-additional-track"
               title="Custom name to be assigned to the additional track."
               type="text"
-              placeholder="Optional track name"
-            />
+              placeholder="Optional track name" />
           </label>
         </p>
         <p>
@@ -121,8 +122,7 @@ class SubmitAdditionalTracksForm extends React.Component {
             onClick={this.handleClick}
             title="Submits additional track files to be loaded with the application."
             type="button"
-            value="Submit"
-          />
+            value="Submit" />
         </p>
       </div>
     );

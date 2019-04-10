@@ -956,12 +956,14 @@ export default function generateGenomeView({
     }
 
     if (showingMultipleChromosomes && !showSelfConnectionsGenome) {
-      // If no self connections for chromosomes are allowed, only add current connection if source
+      // If no self connections for genomes are allowed, only add current connection if source
       // and target are chromosomes from different genomes
       const sourceIdentifier = removeNonLettersFromString(sourceID.slice(0));
       const targetIdentifier = removeNonLettersFromString(targetID.slice(0));
 
       shouldAddDataChord = shouldAddDataChord && ((sourceIdentifier !== targetIdentifier) ||
+        // Case for same chromosome that should be added
+        // (unless no self connections for chromosomes are allowed)
         (sourceIdentifier === targetIdentifier && sourceID === targetID));
     }
 

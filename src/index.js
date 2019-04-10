@@ -1,3 +1,10 @@
+import * as d3 from 'd3';
+
+import React from 'react';
+import ReactDOM from 'react-dom';
+import App from './reactComponents/templates/App';
+import Home from './reactComponents/templates/Home';
+
 import isString from 'lodash/isString';
 
 import generateData from './generateData';
@@ -83,15 +90,22 @@ if (process.env.NODE_ENV === 'production') {
   let collinearity = getQueryString('collinearity');
   let additionalTrack = getQueryString('additionalTrack');
 
-  gff = gff !== null ? gff[0] : 'bnapus';
+  const containerElement = document.getElementById('root');
+  ReactDOM.unmountComponentAtNode(containerElement);
+  if (gff === null || collinearity === null) {
+    ReactDOM.render(<Home />, containerElement);
+    return; // Returning earlier
+  } else {
+    ReactDOM.render(<App />, containerElement);
+  }
+
+  gff = gff[0];
+  collinearity = collinearity[0];
   gffType = gffType !== null ? gffType[0].toLowerCase() : 'gff';
-  collinearity = collinearity !== null ? collinearity[0] : 'bnapus_top_5_hits';
-  additionalTrack = additionalTrack !== null ? additionalTrack : (gff === 'bnapus' ? [
-    'bnapus_gene_count',
-    'bnapus_gene_density',
-    'bnapus_repeat_count',
-    'bnapus_repeat_density'
-  ] : null);
+
+  // Displaying the loader if not homepage (i.e. parameters are not null)
+  d3.select("#loader")
+    .style("display", "block");
 
   const gffFilePath = `files/${gff}.${gffType}`;
   const collinearityFilePath = `files/${collinearity}.collinearity`;

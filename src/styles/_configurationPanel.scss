@@ -7,58 +7,6 @@
   padding: 0;
 }
 
-#page-container #logo-container {
-  position: fixed;
-  right: 15px;
-  top: 10px;
-
-  img {
-    border: 1px solid #3b88fd;
-    border-radius: 20px;
-    padding: 5px;
-  }
-}
-
-#page-container #load-files-container {
-  position: fixed;
-  right: 15px;
-  top: 60px;
-  z-index: 10;
-
-  button {
-    color: #3b88fd;
-    font-size: 12px;
-    text-decoration: none;
-
-    &:hover {
-      color: #0056b3;
-    }
-  }
-}
-
-#page-container #download-svg-container {
-  bottom: 20px;
-  position: fixed;
-  right: 15px;
-  z-index: 10;
-
-  button.btn.download-files {
-    border: none;
-    cursor: pointer;
-    padding: 0;
-
-    &:hover {
-      svg.download-files-svg {
-        @extend %svg-button-hover;
-      }
-    }
-
-    svg.download-files-svg {
-      @extend %svg-button;
-    }
-  }
-}
-
 #form-config {
   // overflow-y: scroll; // To consider later
   // height: 1300px; // To consider later
@@ -169,7 +117,7 @@
     input {
       height: 5px;
       margin-left: 3px;
-      width: 195px;
+      width: 197px;
     }
   }
 
@@ -254,7 +202,6 @@
   }
 
   .chr-boxes {
-    max-width: 50%;
     padding: 0 0 5px;
 
     .chr-box-inner-content {

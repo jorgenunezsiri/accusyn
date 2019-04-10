@@ -355,12 +355,14 @@ function onStartDragging(dataChromosomes) {
     .style("stroke", "#ea4848")
     .style("stroke-width", "1px");
 
-  d3.selectAll('path.chord')
-    .attr("opacity", 0.3);
-
-  d3.selectAll(`path.chord.${currentChromosomeMouseDown}`)
-    .raise()
-    .attr("opacity", 0.9);
+  // Only highlighting chords if they are present for current mouse down chromosome
+  if (!d3.selectAll(`path.chord.${currentChromosomeMouseDown}`).empty()) {
+    d3.selectAll('path.chord')
+      .attr("opacity", 0.3);
+    d3.selectAll(`path.chord.${currentChromosomeMouseDown}`)
+      .raise()
+      .attr("opacity", 0.9);
+  }
 }
 
 /**

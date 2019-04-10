@@ -1493,6 +1493,7 @@ async function randomRestartHillClimbing(dataChromosomes, dataChords) {
 
   const shouldKeepChromosomesTogether = !d3Select("p.keep-chr-together").empty() &&
     d3Select("p.keep-chr-together input").property("checked");
+  const genomesToShuffle = []; // Will include the non-empty genomes to shuffle if shouldKeepChromosomesTogether is true
 
   // If visualizing multiple genomes and the checkbox is checked
   // then I need to divide them, to shuffle the genomes separately
@@ -1515,6 +1516,21 @@ async function randomRestartHillClimbing(dataChromosomes, dataChords) {
     }
 
     savedCurrentSolution = cloneDeep(currentSolution);
+
+    // Checking if there are genomes with no chords at all (no need to shuffle them)
+    for (let i = 0; i < currentSolution.length; i++) {
+      const currentChr = removeNonLettersFromString(currentSolution[i][0].id.slice(0));
+      let foundChords = false;
+      for (let j = 0; j < currentSolution[i].length; j++) {
+        const currentID = currentSolution[i][j].id.slice(0);
+        if (!d3SelectAll(`path.chord.${currentID}`).empty()) {
+          foundChords = true;
+          break;
+        }
+      }
+
+      if (foundChords) genomesToShuffle.push(currentChr);
+    }
   }
 
   let iterations = 1;
@@ -1525,7 +1541,11 @@ async function randomRestartHillClimbing(dataChromosomes, dataChords) {
 
       // Need to shuffle each array inside currentSolution separately
       for (let i = 0; i < currentSolution.length; i++) {
-        shuffleArray(currentSolution[i]);
+        const currentChr = removeNonLettersFromString(currentSolution[i][0].id.slice(0));
+        // Only shuffling non-empty genomes (with available chords)
+        if (genomesToShuffle.includes(currentChr)) {
+          shuffleArray(currentSolution[i]);
+        }
       }
 
       // Going from [[A1,A2],[B1,B2]] to [A1,A2,B1,B2]
@@ -1655,7 +1675,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
     .classed("blur-view", true);
 
   // Initializing the progress bar
-  d3Select(".genome-view-container .progress-bar")
+  d3Select(".genome-view-content .progress-bar")
     .style("width", "0%")
     .text("0%");
 
@@ -1694,7 +1714,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
 
           const progressBarWidth = Math.trunc(progressBarValue);
 
-          d3Select(".genome-view-container .progress-bar")
+          d3Select(".genome-view-content .progress-bar")
             .style("width", `${progressBarWidth}%`)
             .text(`${progressBarWidth}%`);
 
@@ -1827,7 +1847,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
       if (flippingFrequency > 0) {
         if (bestFlippedChromosomesLength === 0) {
           // Finishing in 100%
-          d3Select(".genome-view-container .progress-bar")
+          d3Select(".genome-view-content .progress-bar")
             .style("width", "100%")
             .text("100%");
           afterCheckTime += totalTime;
@@ -1842,7 +1862,7 @@ export async function simulatedAnnealing(dataChromosomes, dataChordsSA) {
 
                 const progressBarWidth = 95 + Math.trunc(progressBarValue);
 
-                d3Select(".genome-view-container .progress-bar")
+                d3Select(".genome-view-content .progress-bar")
                   .style("width", `${progressBarWidth}%`)
                   .text(`${progressBarWidth}%`);
 

@@ -1,6 +1,11 @@
 // _genomeView.scss partial file
 
 div.genome-view-container {
+  max-width: 100%;
+  padding: 0;
+}
+
+div.genome-view-content {
   position: -webkit-sticky;
   position: sticky;
   top: 0;
