@@ -51,7 +51,6 @@ import {
   isInViewport,
   lookForBlocksPositions,
   partitionGffKeys,
-  removeNonLettersFromString,
   renderReactAlert,
   renderSvgButton,
   resetChromosomeCheckboxes,
@@ -197,6 +196,16 @@ export default function generateData(gff, collinearity, additionalTrack) {
   for (let i = 0; i < gffKeysLength; i++) {
     totalChrEnd += gffPositionDictionary[gffKeys[i]].end;
     gffPositionDictionary[gffKeys[i]].color = colors(i);
+  }
+
+  // Partitioning gff keys to get the checkboxes division
+  const { gffPartitionedDictionary, partitionedGffKeys } = partitionGffKeys(gffKeys);
+  const partitionedGffKeysLength = partitionedGffKeys.length;
+  for (let i = 0; i < partitionedGffKeysLength; i++) {
+    for (let j = 0; j < gffPartitionedDictionary[partitionedGffKeys[i]].length; j++) {
+      const current = gffPartitionedDictionary[partitionedGffKeys[i]][j];
+      gffPositionDictionary[current].tag = partitionedGffKeys[i];
+    }
   }
 
   // Setting genome window size using the total bases amount
@@ -453,7 +462,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("type", "checkbox")
     .attr("name", "highlight-flipped-blocks")
     .attr("value", "Highlight flipped blocks")
-    .property("checked", false); // Highligh flipped blocks is not checked by default
+    .property("checked", false); // Highlight flipped blocks is not checked by default
 
   d3.select("#form-config p.highlight-flipped-blocks > label")
     .append("span")
@@ -478,7 +487,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("type", "checkbox")
     .attr("name", "highlight-flipped-chromosomes")
     .attr("value", "Highlight flipped chromosomes")
-    .property("checked", true); // Highligh flipped chromosomes is checked by default
+    .property("checked", true); // Highlight flipped chromosomes is checked by default
 
   d3.select("#form-config p.highlight-flipped-chromosomes > label")
     .append("span")
@@ -552,10 +561,6 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .append("p")
     .text("Genome palette: ");
 
-  // Partitioning gff keys to get the checkboxes division
-  const { gffPartitionedDictionary, partitionedGffKeys } = partitionGffKeys(gffKeys);
-  const partitionedGffKeysLength = partitionedGffKeys.length;
-
   d3.select("div.chromosomes-palette")
     .append("p")
     .append("select")
@@ -582,21 +587,14 @@ export default function generateData(gff, collinearity, additionalTrack) {
           gffKeys: gffKeys
         }));
       } else if(selected.includes('Multiple')) {
-        const uniqueDomain = [...partitionedGffKeys.keys()]; // Unique domain for multiple chromosomes
-        const gffKeysHashDictionary = {}; // Hash dictionary between the identifiers and color domain
-
-        // Assigning the domain and hash for each identifier
         for (let i = 0; i < partitionedGffKeysLength; i++) {
-          gffKeysHashDictionary[partitionedGffKeys[i]] = i;
+          for (let j = 0; j < gffPartitionedDictionary[partitionedGffKeys[i]].length; j++) {
+            const current = gffPartitionedDictionary[partitionedGffKeys[i]][j];
+            gffPositionDictionary[current].color = colors(i);
+          }
         }
 
-        colors.domain(uniqueDomain);
-
-        for (let i = 0; i < gffKeysLength; i++) {
-          // Removing all non-letters from current chr id
-          const currentIdentifier = removeNonLettersFromString(gffKeys[i]);
-          gffPositionDictionary[gffKeys[i]].color = colors(gffKeysHashDictionary[currentIdentifier]);
-        }
+        colors.domain([...partitionedGffKeys.keys()]); // Unique domain for multiple chromosomes
       } else {
         // Setting the color for each chromosome with new color scale
         for (let i = 0; i < gffKeysLength; i++) {
@@ -762,13 +760,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   d3.select(".filter-connections-div select.filter-connections")
     .on("change", function() {
+      // Resetting undo manager
+      resetUndoRedoButtons();
       // Calling genome view for updates with default transition
       generateGenomeView({
         shouldUpdateBlockCollisions: true,
         shouldUpdateLayout: true
       });
-
-      resetUndoRedoButtons();
     });
 
   d3.select(".filter-connections-div .filter-connections-options")
@@ -845,7 +843,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("class", "panel-subtitle")
     .html("<strong>Algorithm parameters</strong>");
 
-  // Keep chromosomes from same genome together checkbox
+  // Keep chromosomes from same genomes together checkbox
   if (partitionedGffKeysLength > 1) {
     d3.select("#form-config .decluttering-panel")
       .append("p")
@@ -855,12 +853,12 @@ export default function generateData(gff, collinearity, additionalTrack) {
       .append("input")
       .attr("type", "checkbox")
       .attr("name", "keep-chr-together")
-      .attr("value", "Keep chromosomes from same genome together")
+      .attr("value", "Keep chromosomes from same genomes together")
       .property("checked", true); // This checkbox is checked by default
 
     d3.select("#form-config .keep-chr-together > label")
       .append("span")
-      .text("Keep chromosomes from same genome together");
+      .text("Keep chromosomes from same genomes together");
   }
 
   d3.select("#form-config .decluttering-panel")
@@ -882,9 +880,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .on("change", function() {
       const currentValue = d3.select(this).property("checked");
       const isDisabled = currentValue ? true : null;
-
-      d3.select("#filter-sa-temperature").attr("disabled", isDisabled);
-      d3.select("#filter-sa-ratio").attr("disabled", isDisabled);
+      d3.selectAll("#filter-sa-temperature,#filter-sa-ratio").attr("disabled", isDisabled);
 
       if (currentValue) calculateDeclutteringETA();
     });
@@ -1057,10 +1053,9 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   d3.select("p.show-all input")
     .on("change", function() {
-      // Calling genome view for updates
-      generateGenomeView({});
-
+      // Resetting undo manager and calling genome view for updates
       resetUndoRedoButtons();
+      generateGenomeView({});
     });
 
   // Show self connections checkbox
@@ -1106,10 +1101,9 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   d3.selectAll("p.show-self-connections input")
     .on("change", function() {
-      // Calling genome view for updates
-      generateGenomeView({});
-
+      // Resetting undo manager and calling genome view for updates
       resetUndoRedoButtons();
+      generateGenomeView({});
     });
 
   // Chromosomes title inside connections panel
@@ -1128,6 +1122,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
       .append("div")
       .attr("class", "chr-box-inner-content")
       .append("label")
+      .attr("class", (chrKey) => `${partitionedGffKeys[i]} ${chrKey}`)
       .append("input")
       .attr("class", (chrKey) => `chr-box ${partitionedGffKeys[i]} ${chrKey}`)
       .attr("type", "checkbox")
@@ -1190,11 +1185,10 @@ export default function generateData(gff, collinearity, additionalTrack) {
       // shoulUpdate = null or undefined is true, meaning true by default
       shouldUpdate = shouldUpdate == null ? true : shouldUpdate;
       if (shouldUpdate) {
-        // Calling genome view for updates
+        // Resetting undo manager and calling genome view for updates
+        resetUndoRedoButtons();
         generateGenomeView({});
       }
-
-      resetUndoRedoButtons();
     });
 
   // Select all button click
@@ -1250,10 +1244,9 @@ export default function generateData(gff, collinearity, additionalTrack) {
         d3.select(".show-all input").property("checked", true);
       }
 
-      // Calling genome view for updates
-      generateGenomeView({});
-
+      // Resetting undo manager and calling genome view for updates
       resetUndoRedoButtons();
+      generateGenomeView({});
     });
 
   // SVG element that will include the Circos plot
@@ -1373,7 +1366,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     });
 
   // Initial flipping frequency and input event
-  updateFlippingFrequency(0);
+  updateFlippingFrequency(0, false);
 
   d3.select("#filter-sa-flipping-frequency")
     .on("input", function() {

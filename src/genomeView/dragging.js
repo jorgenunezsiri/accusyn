@@ -355,6 +355,10 @@ function onStartDragging(dataChromosomes) {
     .style("stroke", "#ea4848")
     .style("stroke-width", "1px");
 
+  // Highlighting chromosome checkbox as well
+  d3.select(`div.chr-boxes div.chr-box-inner-content > label.${currentChromosomeMouseDown}`)
+    .style("border", "1px solid #ea4848");
+
   // Only highlighting chords if they are present for current mouse down chromosome
   if (!d3.selectAll(`path.chord.${currentChromosomeMouseDown}`).empty()) {
     d3.selectAll('path.chord')
@@ -440,6 +444,10 @@ function onEndDragging(dataChromosomes) {
   // Turning off highlighting for current mouse down chromosome
   d3.select(`g.${currentChromosomeMouseDown}`)
     .style("stroke", "none");
+
+  // Turning off highlighting for chromosome checkbox as well
+  d3.select(`div.chr-boxes div.chr-box-inner-content > label.${currentChromosomeMouseDown}`)
+    .style("border", "none");
 
   let collidedChr = "";
   for (let i = 0; i < dataChromosomesLength; i++) {

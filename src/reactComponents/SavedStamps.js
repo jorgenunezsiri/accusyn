@@ -30,6 +30,7 @@ import {
   getSavedSolutions,
   setSavedSolutions
 } from './../variables/savedSolutions';
+import { getCircosObject } from './../variables/myCircos';
 
 import { callSwapPositionsAnimation } from './../genomeView/blockCollisions';
 import {
@@ -124,15 +125,19 @@ class SavedStamps extends React.Component {
     d3Select("#nAngle-genome-view").property("value", item.rotateValue);
     d3Select("#nAngle-genome-view").dispatch('input', { detail: { shouldUpdate: false } });
 
-    // Resetting all the tracks
+    // Resetting all the current tracks
     const additionalTracksNames = getAdditionalTrackNames();
+    const myCircos = getCircosObject();
     forEach(additionalTracksNames, (name) => {
       d3Select(`div.additional-track.${name} .track-type select`).property("value", "None");
       d3Select(`div.additional-track.${name} .track-color select`).property("value", "Blues");
       d3Select(`div.additional-track.${name} .track-placement select`).property("value", "Outside");
+      // Removing track ${name} from view to see a better transition only
+      // when having equalConfiguration.
+      if (equalConfiguration) myCircos.removeTracks(name);
     });
 
-    // Including only available tracks
+    // Including only available (saved) tracks
     forEach(item.availableTracks, ({ name, placement, type, color }) => {
       d3Select(`div.additional-track.${name} .track-type select`).property("value", type);
       d3Select(`div.additional-track.${name} .track-color select`).property("value", color);
@@ -173,8 +178,8 @@ class SavedStamps extends React.Component {
           }
         });
 
+        // Resetting undo manager and calling genome view for updates
         resetUndoRedoButtons();
-
         generateGenomeView({});
       }
 

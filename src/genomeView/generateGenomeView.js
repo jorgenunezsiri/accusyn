@@ -38,7 +38,6 @@ import {
   getSelectedCheckboxes,
   getTransformValuesAdditionalTracks,
   removeBlockView,
-  removeNonLettersFromString,
   resetInputsAndSelectsOnAnimation,
   renderReactAlert,
   roundFloatNumber,
@@ -151,7 +150,7 @@ function getDataChromosomes() {
   }
 
   const gffPositionDictionary = getGffDictionary();
-  let currentChromosomeOrder = getCurrentChromosomeOrder();
+  const currentChromosomeOrder = getCurrentChromosomeOrder();
   const currentChromosomeOrderLength = currentChromosomeOrder.length;
 
   // Using currentChromosomeOrder array to add selected chromosomes to the genome view
@@ -326,6 +325,8 @@ function generateAdditionalTrack(trackName, trackRadius, trackType, trackColor) 
     configurationHidden.opacity = 0;
     // Removing tooltip from line track to only use it in scatter track
     configuration.tooltipContent = null;
+    // Increasing strokeWidth
+    configuration.thickness = 1.5;
     // Rendering hidden scatter track
     myCircos['scatter'](`${trackName}-scatter`, currentTrack, configurationHidden);
   }
@@ -559,7 +560,6 @@ function generatePathGenomeView({
   // Updating the label showing the number of blocks and flipped blocks
   updateBlockNumberHeadline(dataChromosomes, dataChords);
 
-  // TODO: Think more about this condition
   // Updating block collisions should happen if flag is true
   // (when filtering transitions are not happening and flag is true at the end of filtering)
   // It should also happen when transitions are true and flag is not defined
@@ -786,6 +786,7 @@ function generatePathGenomeView({
     const chromosomePalette = d3.select("div.chromosomes-palette select").property("value");
     const flippedColorBlock = d3.select("div.blocks-color select").property("value");
     const shouldChangeColor = (flippedColorBlock === 'Flipped' ||
+      (flippedColorBlock === 'Combined' && chromosomePalette === 'Flipped') ||
       (flippedColorBlock === 'Source' && chromosomePalette === 'Flipped') ||
       (flippedColorBlock === 'Target' && chromosomePalette === 'Flipped'));
 
@@ -811,8 +812,8 @@ function generatePathGenomeView({
       // Check if genome is available in current layout
       let foundGenome = false;
       for (let i = dataChromosomes.length - 1; i >= 0; i--) {
-        const key = dataChromosomes[i].id;
-        if (removeNonLettersFromString(key) === genome) {
+        const key = dataChromosomes[i].id.slice(0);
+        if (getGffDictionary()[key].tag === genome) {
           foundGenome = true;
           break;
         }
@@ -821,7 +822,7 @@ function generatePathGenomeView({
       // If not able to find genome, then show error
       if (!foundGenome) {
         // Showing alert using react
-        renderReactAlert(`There are no chromosomes from genome ${genome} in the current layout.`);
+        renderReactAlert(`There are no chromosomes from genome "${genome}" in the current layout.`);
         return;
       }
 
@@ -958,8 +959,8 @@ export default function generateGenomeView({
     if (showingMultipleChromosomes && !showSelfConnectionsGenome) {
       // If no self connections for genomes are allowed, only add current connection if source
       // and target are chromosomes from different genomes
-      const sourceIdentifier = removeNonLettersFromString(sourceID.slice(0));
-      const targetIdentifier = removeNonLettersFromString(targetID.slice(0));
+      const sourceIdentifier = gffPositionDictionary[sourceID.slice(0)].tag;
+      const targetIdentifier = gffPositionDictionary[targetID.slice(0)].tag;
 
       shouldAddDataChord = shouldAddDataChord && ((sourceIdentifier !== targetIdentifier) ||
         // Case for same chromosome that should be added
@@ -1010,21 +1011,23 @@ export default function generateGenomeView({
       if (blocksColor === 'Combined') {
         // More info: https://www.visualcinnamon.com/2016/06/orientation-gradient-d3-chord-diagram
         // https://bl.ocks.org/nbremer/a23f7f85f30f5cd9e1e8602a5a4e6d75
+        const sourceAngle = chordObject.source.angle.middle - Math.PI/2;
+        const targetAngle = chordObject.target.angle.middle - Math.PI/2;
         const gradient = d3.select("svg#main-container g.all defs")
           .append("linearGradient")
           .attr("id", getGradID(chordObject))
           .attr("gradientUnits", "userSpaceOnUse")
           .attr("x1", function() {
-            return GENOME_INNER_RADIUS * Math.cos(chordObject.source.angle.middle - Math.PI/2);
+            return GENOME_INNER_RADIUS * Math.cos(sourceAngle);
           })
           .attr("y1", function() {
-            return GENOME_INNER_RADIUS * Math.sin(chordObject.source.angle.middle - Math.PI/2);
+            return GENOME_INNER_RADIUS * Math.sin(sourceAngle);
           })
           .attr("x2", function() {
-            return GENOME_INNER_RADIUS * Math.cos(chordObject.target.angle.middle - Math.PI/2);
+            return GENOME_INNER_RADIUS * Math.cos(targetAngle);
           })
           .attr("y2", function() {
-            return GENOME_INNER_RADIUS * Math.sin(chordObject.target.angle.middle - Math.PI/2);
+            return GENOME_INNER_RADIUS * Math.sin(targetAngle);
           });
 
         gradient.append("stop")

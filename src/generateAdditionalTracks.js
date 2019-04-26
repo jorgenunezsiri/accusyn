@@ -62,12 +62,15 @@ export default function generateAdditionalTracks(additionalTracks) {
       let value = roundFloatNumber(parseFloat(currentData[j].value), 6);
       const start = parseInt(currentData[j].start);
       const end = parseInt(currentData[j].end);
+
       const { chromosomeID } = currentData[j];
+      // Only adding additional track data for existing and valid chromosomeID
+      if (!(chromosomeID in gffPositionDictionary)) continue;
 
       // Not adding null values that are above the chromosome size limit
       if (start > gffPositionDictionary[chromosomeID].end &&
-          end > gffPositionDictionary[chromosomeID].end &&
-          value === 0) {
+        end > gffPositionDictionary[chromosomeID].end &&
+        value === 0) {
         continue;
       }
 
@@ -83,6 +86,10 @@ export default function generateAdditionalTracks(additionalTracks) {
     }
 
     const currentWindowSize = additionalTrackDataArray[0].end - additionalTrackDataArray[0].start + 1;
+    console.log('CURRENT WINDOW SIZE: ', currentWindowSize);
+    console.log('recommendedWindowSize: ', recommendedWindowSize);
+    // Comparison with (recommendedWindowSize - currentWindowSize) is done to have
+    // a little bit of extra window size range
     if (currentWindowSize < (recommendedWindowSize - currentWindowSize)) {
       console.log('CALCULATION: ', currentWindowSize, (recommendedWindowSize - currentWindowSize));
       const formattedCurrentWindowSize = convertToMinimumWindowSize(currentWindowSize, 1, true);

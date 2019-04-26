@@ -9,6 +9,7 @@ import AlertWithTimeout from './reactComponents/Alert';
 import UAParser from 'ua-parser-js';
 
 import cloneDeep from 'lodash/cloneDeep';
+import difference from 'lodash/difference';
 import find from 'lodash/find';
 import findIndex from 'lodash/findIndex';
 import sortBy from 'lodash/sortBy';
@@ -683,16 +684,6 @@ export function assignFlippedChromosomeColors({
 };
 
 /**
- * Removes all non-letters from string using regular expression
- *
- * @param  {string} str Current string
- * @return {string}     Modified string
- */
-export function removeNonLettersFromString(str) {
-  return str.replace(/[^a-zA-Z]+/g, '');
-};
-
-/**
  * Returns true if str1 is a subsequence of str2
  * More info: https://www.geeksforgeeks.org/given-two-strings-find-first-string-subsequence-second/
  *
@@ -730,25 +721,50 @@ export function partitionGffKeys(gffKeys) {
   // This means that only strings that differ in base letters compare as unequal.
   // e.g. a ≠ b, a = á, a = A.
   const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
-
-  // Sorted input gffKeys
-  let gffCopy = gffKeys.sort(collator.compare).slice();
+  const sortedGffKeys = gffKeys.slice().sort(collator.compare); // Sorted input gff keys
+  let gffCopy = sortedGffKeys.slice(); // Sorted gff keys copy
 
   // Removing all non-letters from string
   // e.g. from gffCopy = ["at1, at2, at3"]
   // to gffCopy = ["at", "at", "at"]
   gffCopy = gffCopy.map(function(current) {
-    return removeNonLettersFromString(current);
+    return current.replace(/[^a-zA-Z]+/g, '');
   });
 
   // Creating a duplicate-free version of gffCopy array
   // e.g. gffCopy = ["at"]
   gffCopy = uniq(gffCopy);
 
-  // Creating gffPartitionedDictionary to partition the gffKeys with their tags
+  let gffCopyLength = gffCopy.length;
+  // GffCopy keys can't be subSequence of one another
+  // If they are, then delete those ones.
+  // This is to not repeat the keys in multiple clusters (groups)
+  // e.g.: ['hs', 'hsX', 'hsY'] -> ['hs']
+  let removingTags = [];
+  for (let i = 0; i < gffCopyLength; i++) {
+    for (let j = 0; j < gffCopyLength; j++) {
+      if (gffCopy[i] !== gffCopy[j]) {
+        if (!removingTags.includes(gffCopy[j]) && isSubSequence(gffCopy[i], gffCopy[j])) {
+          removingTags.push(gffCopy[j].slice(0));
+        } else if (!removingTags.includes(gffCopy[i]) && isSubSequence(gffCopy[j], gffCopy[i])) {
+          removingTags.push(gffCopy[i].slice(0));
+        }
+      }
+    }
+  }
+
+  console.log('REMOVING TAGS: ', removingTags);
+
+  if (removingTags.length > 0) {
+    gffCopy = difference(gffCopy, removingTags);
+  }
+
+  console.log('GFF COPY: ', cloneDeep(gffCopy));
+
+  // Creating gffPartitionedDictionary to partition the sortedGffKeys with their tags
   const gffPartitionedDictionary = {};
-  const gffCopyLength = gffCopy.length;
-  const gffKeysLength = gffKeys.length;
+  gffCopyLength = gffCopy.length;
+  const gffKeysLength = sortedGffKeys.length;
 
   for (let i = 0; i < gffCopyLength; i++) {
     if (!(gffCopy[i] in gffPartitionedDictionary)) {
@@ -756,12 +772,14 @@ export function partitionGffKeys(gffKeys) {
     }
 
     for (let j = 0; j < gffKeysLength; j++) {
-      if (isSubSequence(gffCopy[i], gffKeys[j])) {
-        // NOTE: gffKeys is already sorted in place above
-        gffPartitionedDictionary[gffCopy[i]].push(gffKeys[j]);
+      if (isSubSequence(gffCopy[i], sortedGffKeys[j])) {
+        // NOTE: Pushing sorted gff keys
+        gffPartitionedDictionary[gffCopy[i]].push(sortedGffKeys[j]);
       }
     }
   }
+
+  console.log('GFF PARTITIONED DICT: ', cloneDeep(gffPartitionedDictionary));
 
   // Sorting gffCopy keys in descending order when having more than 1 key,
   // meaning more than 1 species to visualize
@@ -825,7 +843,7 @@ export function flipOrResetChromosomeOrder({
   for (let i = 0; i < chromosomeOrderLength; i++) {
     // Getting all the positions of the chromosomes from `genome`
     const key = chromosomeOrder[i].slice(0);
-    if (removeNonLettersFromString(key) === genome) {
+    if (getGffDictionary()[key].tag === genome) {
       console.log('FOUND KEY: ', key, i);
       chromosomePositions.push({
         chr: chromosomeOrder[i],
@@ -835,19 +853,19 @@ export function flipOrResetChromosomeOrder({
   }
 
   const chromosomePositionsLength = chromosomePositions.length;
-  if (action === "Flip") {
+  if (action === 'Flip') {
     // Return chromosomeOrder with the chromosomePositions inverted
     let temp = 0;
     for (let i = 0; i < chromosomePositionsLength / 2; i++) {
       [chromosomePositions[i].pos, chromosomePositions[chromosomePositionsLength - i - 1].pos] =
         [chromosomePositions[chromosomePositionsLength - i - 1].pos, chromosomePositions[i].pos];
     }
-  } else if (action === "Reset") {
+  } else if (action === 'Reset') {
     // Return chromosomeOrder with the chromosomePositions in default order
-    // by sorting chromosomePositions in ascending order
+    // by sorting chromosomePositions from current genome in ascending order
 
     // Using localCompare collator to sort alphanumeric strings.
-    // Same as partitionGffKeys function
+    // Same as partitionGffKeys function.
     const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
     chromosomePositions.sort(function compare(a, b) {
       return collator.compare(a.chr, b.chr);
@@ -947,12 +965,29 @@ export function updateRatio(ratio, updateETA = true) {
  * Updates the flipping frequency for the Simulated Annealing algorithm in the genome view
  *
  * @param  {number} frequency Current frequency between 0 and 100
+ * @param  {boolean} updateETA Whether or not the decluttering ETA should be updated
  * @return {undefined}        undefined
  */
-export function updateFlippingFrequency(frequency) {
+export function updateFlippingFrequency(frequency, updateETA = true) {
   // Adjust the text on the flipping frequency range slider
   d3.select("#filter-sa-flipping-frequency-value").text(frequency + '%');
   d3.select("#filter-sa-flipping-frequency").property("value", frequency);
+
+  // Enabling/Disabling SA parameters based on frequency
+  const onlyDoingFlipping = frequency === 100;
+  d3.selectAll("#filter-sa-temperature,#filter-sa-ratio,p.calculate-temperature-ratio input")
+    .attr("disabled", onlyDoingFlipping ? true : null);
+  d3.selectAll("div.filter-sa-temperature-div span,div.filter-sa-ratio-div span,p.calculate-temperature-ratio span,p.calculate-temperature-ratio input")
+    .classed("disabled", onlyDoingFlipping);
+
+  if (!onlyDoingFlipping) {
+    // Checking for checkbox value and disabling the temperature/ratio inputs if true
+    // NOTE: This only happens when frequency !== 100 because the inputs are enabled above automatically
+    const checkboxValue = d3.select("p.calculate-temperature-ratio input").property("checked");
+    if (checkboxValue) d3.selectAll("#filter-sa-temperature,#filter-sa-ratio").attr("disabled", true);
+  }
+
+  if (updateETA) calculateDeclutteringETA();
 };
 
 /**

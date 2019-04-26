@@ -148,6 +148,10 @@ class Files extends React.Component {
           Cs</a> - <em>Camelina sativa</em> (Camelina)
         </p>
         <p>
+          <a href={`${getCurrentHost()}?gff=hs_pt&collinearity=hs_pt&additionalTrack=hs_pt_gene_count`}>
+          Hs vs. Pt</a> - <em>Homo sapiens</em> (Human - hg38) vs. <em>Pan troglodytes</em> (Chimpanzee - panTro3)
+        </p>
+        <p>
           <a href={`${getCurrentHost()}?gff=os_sb&collinearity=os_sb`}>
           Os vs. Sb</a> - <em>Oryza sativa</em> (Asian rice) vs. <em>Sorghum bicolor</em> (Sorghum)
         </p>
