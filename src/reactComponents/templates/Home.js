@@ -53,7 +53,7 @@ const Home = () => {
                 of connections, making the structure difficult to understand. <em>AccuSyn</em> provides a high-level of interactivity
                 and performance, by letting users visualize the syntenic relations in two side-by-side views: the genome and
                 the block view. The genome view uses circular plots to get a complete overview of the genome and to allow
-                exploring all the similar blocks of genes between chromosomes. The block view shows all the pairs of genes
+                exploring all the similar blocks of genes between chromosomes. The block view shows all the pairs of gene
                 locations for each block, by using its own scale for each chromosome.
               </p>
               <p className="lead" align="justify">
@@ -78,8 +78,12 @@ const Home = () => {
                 <a target="_blank" href="https://www.usask.ca">
                   <img alt="USask Logo" src="./images/usask-logo.png" height="30px" width="135px" />
                 </a>
-                <p className="mt-1 small">{'\u00A9'} 2018 – {new Date().getFullYear()}{' '}
-                  <a href="mailto:jorge.nunez@usask.ca?subject=AccuSyn Software">Jorge Nunez Siri</a>. All rights reserved.</p>
+                <p className="mt-1 small">
+                  {'\u00A9'} 2018 – {new Date().getFullYear()} {' '} Jorge Nunez Siri. All Rights Reserved.
+                </p>
+                <p className="small">
+                  <a href="mailto:jorge.nunez@usask.ca?cc=eric.neufeld@usask.ca&subject=AccuSyn Software">Contact Us</a>
+                </p>
               </div>
             </div>
           </div>

@@ -33,7 +33,8 @@ import generateBlockView from './generateBlockView';
 import generateGenomeView from './genomeView/generateGenomeView';
 
 import generateAdditionalTracks, {
-  addAdditionalTracksMenu
+  addAdditionalTracksMenu,
+  showLegendActiveAdditionalTrack
 } from './generateAdditionalTracks';
 
 import {
@@ -308,9 +309,10 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   // Determining the block with maximum number of connections
   // (to be used in the filter input range)
+  // Also, adding all the minimum and maximum positions for each block
+  // e.g. With Brassica napus genome:
   // N13 -> N3 has the max block size with 2295 connections
   // 2306 connections with top 5 BLAST hits
-  // Also, adding all the minimum and maximum positions for each block
   let maxBlockSize = 0;
   try {
     for (let i = 0, blockKeysLength = blockKeys.length; i < blockKeysLength; i++) {
@@ -425,8 +427,9 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .on("change", function() {
       const activeAdditionalTrackTab = d3.select(".tab-link.active");
       if (!activeAdditionalTrackTab.empty()) {
-        // Clicking the active tab to toggle dark mode in the legend
-        activeAdditionalTrackTab.node().click();
+        const activeTrackText = activeAdditionalTrackTab.select("span.text").text();
+        // Adding legend again to toggle dark mode
+        showLegendActiveAdditionalTrack(activeTrackText);
       }
 
       // Calling block view if block is found

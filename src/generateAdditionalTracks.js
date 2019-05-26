@@ -115,7 +115,7 @@ export default function generateAdditionalTracks(additionalTracks) {
  * More info: https://beta.observablehq.com/@tmcw/d3-scalesequential-continuous-color-legend-example
  * @return {undefined} undefined
  */
-function showLegendActiveAdditionalTrack(trackName) {
+export function showLegendActiveAdditionalTrack(trackName) {
   const trackLegend = d3.select("svg#track-legend");
   // Removing everything inside trackLegend
   trackLegend.selectAll("*").remove();
@@ -524,8 +524,8 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
                 `<option value="${CONNECTION_COLORS[current]}">${current}</option>`
               ).join(' ')
             );
-        } else {
-          // Add default color palette
+        } else if (d3.select(`div.additional-track.${trackClass} .track-color p`).text() !== 'Palette: ') {
+          // Add default color palette only if needed (i.e. when coming from line type)
           d3.select(`div.additional-track.${trackClass} .track-color p`)
             .text("Palette: ");
           d3.select(`div.additional-track.${trackClass} .track-color select`)

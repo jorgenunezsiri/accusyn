@@ -156,7 +156,7 @@ class Files extends React.Component {
           Os vs. Sb</a> - <em>Oryza sativa</em> (Asian rice) vs. <em>Sorghum bicolor</em> (Sorghum)
         </p>
         <p>
-          <a href={`${getCurrentHost()}?gff=cs_iwgsc&collinearity=cs_iwgsc&additionalTrack=cs_genes&additionalTrack=cs_PresenceAbsence&additionalTrack=cs_SNPs&additionalTrack=cs_TEs`}>
+          <a href={`${getCurrentHost()}?gff=cs_iwgsc&collinearity=cs_iwgsc&additionalTrack=cs_genes&additionalTrack=cs_SNPs&additionalTrack=cs_PresenceAbsence`}>
           Wheat (IWGSC)</a> - <em>Triticum aestivum</em> (Chinese Spring)
         </p>
         <p>
