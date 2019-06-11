@@ -211,6 +211,16 @@ export function showLegendActiveAdditionalTrack(trackName) {
 };
 
 /**
+ * Generates a list of select options based on the list of sequential color scales
+ * @return {Array<string>} List of select options
+ */
+function getSequentialScaleOptions() {
+  return Object.keys(SEQUENTIAL_COLOR_SCALES).map((current) =>
+    `<option value="${current}">${SEQUENTIAL_COLOR_SCALES[current]}</option>`
+  );
+};
+
+/**
  * Adds the additional tracks to the panel menu
  *
  * @param {Array<Object>} [additionalTracks=[]] Parsed additional tracks
@@ -220,17 +230,6 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
   const currentAdditionalTracks = cloneDeep(additionalTracks);
   const currentAdditionalTracksLength = currentAdditionalTracks.length;
   console.log('currentAdditionalTracks: ', currentAdditionalTracks);
-
-  // Loading colors option tag for select
-  const allColors = Object.keys(SEQUENTIAL_COLOR_SCALES);
-  const allColorsLength = allColors.length;
-  let colorOptions = "";
-  for (let i = 0; i < allColorsLength; i++) {
-    const key = allColors[i];
-    colorOptions += `
-      <option value="${key}">${SEQUENTIAL_COLOR_SCALES[key]}</option>
-      `;
-  }
 
   for (let i = 0; i < currentAdditionalTracksLength; i++) {
     const name = currentAdditionalTracks[i].name;
@@ -278,7 +277,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
       .append("p")
       .append("select")
       .attr("class", "form-control")
-      .html(colorOptions);
+      .html(getSequentialScaleOptions());
 
     // Track placement
     d3.select(`div.additional-track.${name}`)
@@ -529,21 +528,26 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
           d3.select(`div.additional-track.${trackClass} .track-color p`)
             .text("Palette: ");
           d3.select(`div.additional-track.${trackClass} .track-color select`)
-            .html(colorOptions);
+            .html(getSequentialScaleOptions());
         }
       }
 
-      // Adding legend when modifying type or color
-      // NOTE: This is being done after modifying the color palette above
-      if (includesType('track-type') || includesType('track-color')) {
-        showLegendActiveAdditionalTrack(getTrackName());
-      }
+      let shouldUpdate = (d3.event.detail || {}).shouldUpdate;
+      // shoulUpdate = null or undefined is true, meaning true by default
+      shouldUpdate = shouldUpdate == null ? true : shouldUpdate;
+      if (shouldUpdate) {
+        // Adding legend when modifying type or color
+        // NOTE: This is being done after modifying the color palette above
+        if (includesType('track-type') || includesType('track-color')) {
+          showLegendActiveAdditionalTrack(getTrackName());
+        }
 
-      // Calling genome view for updates with no transition
-      generateGenomeView({
-        transition: { shouldDo: false },
-        shouldUpdateBlockCollisions: false,
-        shouldUpdateLayout: true
-      });
+        // Calling genome view for updates with no transition
+        generateGenomeView({
+          transition: { shouldDo: false },
+          shouldUpdateBlockCollisions: false,
+          shouldUpdateLayout: true
+        });
+      }
     });
 };

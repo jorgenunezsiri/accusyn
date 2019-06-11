@@ -132,6 +132,10 @@ class SavedStamps extends React.Component {
       d3Select(`div.additional-track.${name} .track-type select`).property("value", "None");
       d3Select(`div.additional-track.${name} .track-color select`).property("value", "Blues");
       d3Select(`div.additional-track.${name} .track-placement select`).property("value", "Outside");
+      // Resetting track-color select to default palette options (trackType = None)
+      d3Select(`div.additional-track.${name} .track-type select`)
+        .dispatch('change', { detail: { shouldUpdate: false } });
+
       // Removing track ${name} from view to see a better transition only
       // when having equalConfiguration.
       if (equalConfiguration) myCircos.removeTracks(name);
@@ -140,6 +144,11 @@ class SavedStamps extends React.Component {
     // Including only available (saved) tracks
     forEach(item.availableTracks, ({ name, placement, type, color }) => {
       d3Select(`div.additional-track.${name} .track-type select`).property("value", type);
+      if (type === 'line') {
+        // Calling on change to update to line color options
+        d3Select(`div.additional-track.${name} .track-type select`)
+          .dispatch('change', { detail: { shouldUpdate: false } });
+      }
       d3Select(`div.additional-track.${name} .track-color select`).property("value", color);
       d3Select(`div.additional-track.${name} .track-placement select`).property("value", placement);
     });
@@ -147,7 +156,7 @@ class SavedStamps extends React.Component {
     // Dark mode
     d3Select("p.dark-mode input").property("checked", item.darkMode);
     // NOTE: This needs to be called after the available tracks, in order to have
-    // the correct options selected in the tracks dropdown
+    // the correct options selected in the tracks dropdown for the track legend dark mode
     d3Select("p.dark-mode input").dispatch('change', { detail: { shouldUpdate: false } });
 
     // Dismissing modal
