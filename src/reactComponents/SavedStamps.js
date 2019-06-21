@@ -24,7 +24,10 @@ import {
   getDataChromosomes,
   setDataChromosomes
 } from './../variables/dataChromosomes';
-import { toChromosomeOrder } from './../variables/currentChromosomeOrder';
+import {
+  setCurrentChromosomeOrder,
+  toChromosomeOrder
+} from './../variables/currentChromosomeOrder';
 import { setCurrentSelectedBlock } from './../variables/currentSelectedBlock';
 import {
   getSavedSolutions,
@@ -93,6 +96,12 @@ class SavedStamps extends React.Component {
 
     // Data chords
     setDataChords(savedDataChords);
+
+    // Setting new chromosome order with all the chromosomes
+    // NOTE: This is needed when changing to a saved layout with different
+    // number of chromosomes e.g. Wheat genome from having all chrs selected
+    // chrA, chrB, chrD to only chrA, chrB or viceversa
+    setCurrentChromosomeOrder(toChromosomeOrder(savedDataChromosomes, true));
 
     // Show all chromosomes
     d3Select("p.show-all input").property("checked", item.showAllChromosomes);
