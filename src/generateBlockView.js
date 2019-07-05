@@ -172,16 +172,9 @@ export default function generateBlockView(data) {
 
     // If the axes domain is not defined, then do not take it into account
     if (isEmpty(dictionary.y0Domain) || isEmpty(dictionary.y1Domain)) {
-      console.log('RETURNING EARLIER !!!\n');
-      console.log('Y[0]: ', y[0].domain(), dictionary.defaultY0Domain);
-      console.log('Y[1]: ', y[1].domain(), dictionary.defaultY1Domain);
-
       return isDefault && isEqual(y[0].domain(), dictionary.defaultY0Domain) &&
         isEqual(y[1].domain(), dictionary.defaultY1Domain);;
     }
-
-    console.log('Y0 IS DEFAULT: ', dictionary.y0Domain, dictionary.defaultY0Domain);
-    console.log('Y1 IS DEFAULT: ', dictionary.y1Domain, dictionary.defaultY1Domain);
 
     return isDefault && isEqual(dictionary.y0Domain, dictionary.defaultY0Domain) &&
       isEqual(dictionary.y1Domain, dictionary.defaultY1Domain);
@@ -249,7 +242,6 @@ export default function generateBlockView(data) {
       // Activate if SA is not running
       if (d3.select(".best-guess > button").attr("disabled")) return;
 
-      console.log('ZOOMING');
       isZooming = true;
     })
     .on("zoom", function() {
@@ -271,15 +263,12 @@ export default function generateBlockView(data) {
 
       applyStyleToAxes();
 
-      console.log('GLOBAL ZOOM: ', blockStateDictionary[blockID].zoom);
-
       setBlockViewStateDictionary(blockStateDictionary);
     })
     .on("end", function() {
       // Activate if SA is not running
       if (d3.select(".best-guess > button").attr("disabled")) return;
 
-      console.log('NOT ZOOMING');
       isZooming = false;
       showBlockStateHint();
     });
@@ -599,7 +588,6 @@ export default function generateBlockView(data) {
       }
 
       const blockStateDictionary = getBlockViewStateDictionary();
-      console.log('\n\nCURRENT ZOOM STATE: \n\n', blockStateDictionary[blockID]);
 
       // Y scale domains using minimum, maximum and offsetDomain values
       if (!isEmpty(blockStateDictionary[blockID].y0Domain) &&
@@ -817,16 +805,11 @@ export default function generateBlockView(data) {
             draggingDistance = 0;
           }
 
-          console.log('POSITION: ', positionY, offsetYPosition);
-          console.log('DRAGGING DISTANCE: ', draggingDistance);
-          console.log('DRAGGING', currentAxisMouseDown);
-
           const blockStateDictionary = getBlockViewStateDictionary();
 
           let actualDistance = 0;
           // Dividing factor is given by the current zoom scale
           let dividingFactor = blockStateDictionary[blockID].zoom.k * 20;
-          console.log('DIVIDING FACTOR: ', dividingFactor);
 
           if (currentAxisMouseDown === 'axisY0') {
             /**
@@ -836,7 +819,6 @@ export default function generateBlockView(data) {
              * by how much the domain scale needs to change
              */
             const draggingDistanceInverted = (y[0].invert(Math.abs(positionY / dividingFactor)) - y[0].invert(Math.abs(offsetYPosition / dividingFactor))) * (-1);
-            console.log('ACTUAL DISTANCE Y0: ', draggingDistanceInverted);
 
             // Getting current domain
             const currentDomain = y[0].domain();
@@ -921,7 +903,6 @@ export default function generateBlockView(data) {
         .call(zoom.transform, getBlockViewStateDictionary()[blockID].zoom);
     };
 
-    console.log('TOTAL TIME: ', COLOR_CHANGE_TIME + (TRANSITION_NORMAL_TIME * MAX_INDEX_TRANSITION) + TRANSITION_FLIPPING_TIME);
     if (onInputChange) {
       setTimeout(drawPathBlockView,
         (COLOR_CHANGE_TIME + (TRANSITION_NORMAL_TIME * MAX_INDEX_TRANSITION) + TRANSITION_FLIPPING_TIME));

@@ -189,10 +189,8 @@ function getDataChromosomes() {
  */
 export function getCurrentTrack(selectedTrack) {
   const additionalTrackArray = getAdditionalTrackArray();
-  console.log('ADDITIONAL TRACK ARRAY: ', additionalTrackArray);
 
   let selectedTrackPosition = findIndex(additionalTrackArray, ['name', selectedTrack]);
-  console.log('selectedTrackPosition: ', selectedTrackPosition);
   if (selectedTrackPosition === (-1)) selectedTrackPosition = 0;
 
   // Adding current track by only selecting chromosomes from dataChromosomes
@@ -211,10 +209,8 @@ export function getCurrentTrack(selectedTrack) {
   const currentFlippedChromosomes = getCurrentFlippedChromosomes();
   let maxValue = 0, minValue = Number.MAX_SAFE_INTEGER;
 
-  console.log('CURRENT TRACK Dictionary: ', currentTrackDictionary);
   const allKeysInDictionary = Object.keys(currentTrackDictionary);
   const allKeysInDictionaryLength = allKeysInDictionary.length;
-  console.log('OBJECT KEYS DICT: ', allKeysInDictionary);
   const currentTrack = []; // To insert all the tracks for all the chromosomes
   for (let i = 0; i < allKeysInDictionaryLength; i++) {
     const currentKey = allKeysInDictionary[i];
@@ -222,8 +218,6 @@ export function getCurrentTrack(selectedTrack) {
     // Flipping the content of the track if necessary
     if (currentFlippedChromosomes.indexOf(currentKey) > (-1)) {
       currentKeyArray = flipValueAdditionalTrack(currentKeyArray);
-
-      console.log('REVERSED: ', currentKey, currentKeyArray);
     }
 
     const currentKeyArrayLength = currentKeyArray.length;
@@ -236,8 +230,6 @@ export function getCurrentTrack(selectedTrack) {
       maxValue = Math.max(maxValue, value);
     }
   }
-
-  console.log('CURRENT TRACK TOTAL: ', currentTrack);
 
   return {
     currentTrack,
@@ -273,7 +265,7 @@ function generateAdditionalTrack(trackName, trackRadius, trackType, trackColor) 
       // Activate if SA is not running
       if (d3.select(".best-guess > button").attr("disabled")) return;
       // Only show tooltip if the user is not dragging
-      // Note: Still need this, because we don't want to view the tooltip when
+      // NOTE: Still need this, because we don't want to view the tooltip when
       // holding a chromosome
       const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
       if (!isEmpty(currentChromosomeMouseDown)) return;
@@ -300,8 +292,6 @@ function generateAdditionalTrack(trackName, trackRadius, trackType, trackColor) 
     axes.push({ position: roundFloatNumber(middleValue, 2), thickness: 2 });
     axes.push({ position: roundFloatNumber(calculateMiddleValue(middleValue, maxValue), 2), thickness: 2 });
     axes.push({ position: roundFloatNumber(maxValue, 2), thickness: 2 });
-
-    console.log('AXES: ', axes);
 
     configuration.axes = axes;
     // Showing axes tooltip by default
@@ -372,8 +362,6 @@ function generateCircosLayout() {
           currentFlippedChromosomes.push(currentID);
         }
 
-        console.log('CURRENT FLIPPED CHR: ', currentFlippedChromosomes);
-
         setCurrentFlippedChromosomes(currentFlippedChromosomes);
 
         // Call flipping function emphasizing the flipped blocks only
@@ -437,7 +425,7 @@ function generateCircosLayout() {
 
   // Resetting tracks by removing all of them first by not sending
   // any trackID as parameter
-  // Note: Anything except for the layout is a track on Circos, so this
+  // NOTE: Anything except for the layout is a track on Circos, so this
   // also removes the chords track
   // Always calling the function, so when the last track gets deleted, it also
   // gets removed from genome view
@@ -603,7 +591,7 @@ function generatePathGenomeView({
       // Activate if SA is not running
       if (d3.select(".best-guess > button").attr("disabled")) return;
       // Only show tooltip if the user is not dragging
-      // Note: Still need this, because we don't want to view the tooltip when
+      // NOTE: Still need this, because we don't want to view the tooltip when
       // holding a chromosome
       const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
       if (!isEmpty(currentChromosomeMouseDown)) return;
@@ -631,7 +619,7 @@ function generatePathGenomeView({
         if (d3.select(".best-guess > button").attr("disabled")) return;
 
         // Only update block view if the user is not dragging
-        // Note: Still need this, because we don't want to mouseover and highlight
+        // NOTE: Still need this, because we don't want to mouseover and highlight
         // when holding a chromosome
         const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
         if (!isEmpty(currentChromosomeMouseDown)) return;
@@ -675,8 +663,6 @@ function generatePathGenomeView({
         const { id: currentID } = d.source.value;
         const currentPosition = findIndex(dataChords, ['source.value.id', currentID]);
 
-        console.log('REMOVING ID: ', currentID);
-
         if (currentPosition !== (-1)) {
           dataChords.splice(currentPosition, 1);
         }
@@ -717,11 +703,8 @@ function generatePathGenomeView({
             sourceID, targetID, isFlipped
           });
 
-          console.log('BLOCK COLOR: ', blockColor);
-
           // If it is present, then checking if the block color is different from block view line color
           let currentBlockViewLineColor = d3.select("#block-view-container g.clip-block-group .line").attr("fill");
-          console.log('currentBlockViewLineColor: ', currentBlockViewLineColor);
           let currentGenomeViewChordColor = blockColor;
           // If one of the colors is in gradient, then assume they are different and update the block view
           // NOTE: Gradient format is: url(#id)
@@ -842,9 +825,6 @@ function generatePathGenomeView({
       myCircos.layout(localDataChromosomes, CIRCOS_CONF);
       myCircos.layout(updatedDataChromosomes, CIRCOS_CONF);
 
-      console.log('OLD AND CURRENT: ', localDataChromosomes, updatedDataChromosomes);
-      console.log('UPDATED DATA CHR: ', updatedDataChromosomes);
-
       callSwapPositionsAnimation({
         dataChromosomes: localDataChromosomes,
         bestSolution: updatedDataChromosomes,
@@ -891,8 +871,6 @@ export default function generateGenomeView({
   const showSelfConnectionsGenome =  showingMultipleChromosomes &&
     d3.select("p.show-self-connections-genome input").property("checked");
 
-  console.log('SHOW SELF CONECTIONS: ', showSelfConnectionsChr, showSelfConnectionsGenome);
-
   const blockDictionary = getBlockDictionary();
   // Array that includes the keys from the blockDictionary
   const blockKeys = Object.keys(blockDictionary);
@@ -904,6 +882,7 @@ export default function generateGenomeView({
   }
 
   const gffPositionDictionary = getGffDictionary();
+  // Removing and adding empty container for gradients
   if (!d3.select("svg#main-container g.all defs").empty()) {
     d3.select("svg#main-container g.all defs").remove();
   }
@@ -1053,8 +1032,6 @@ export default function generateGenomeView({
     }
   }
 
-  console.log('DATA CHORDS: ', dataChords);
-
   // Sorting the chords according to the drawing order
   const filterDrawOrder = (!d3.select('div.draw-blocks-order select').empty() &&
     d3.select('div.draw-blocks-order select').property("value")) || 'Block ID (↑)';
@@ -1086,7 +1063,6 @@ export default function generateGenomeView({
 
   // Resetting currentSelectedBlock block id back to empty if no block is found
   if (!foundCurrentSelectedBlock && !isEmpty(currentSelectedBlock)) {
-    console.log('HERE RESETTING!!!!');
     setCurrentSelectedBlock("");
   }
 

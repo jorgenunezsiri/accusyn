@@ -30,7 +30,6 @@ import {
   CIRCOS_CONF,
   DEGREES_TO_RADIANS,
   GAP_AMOUNT,
-  GENOME_INNER_RADIUS,
   RADIANS_TO_DEGREES,
   TRANSITION_DRAG_TIME,
   WIDTH,
@@ -186,30 +185,27 @@ function updateChordsWhileDragging({
             if (d.source.id === chromosome) {
 
               if (d.source.id === currentChromosomeMouseDown) {
-                // console.log('-> 1');
                 sourceStartAngle += (extraAngle * DEGREES_TO_RADIANS);
                 sourceEndAngle += (extraAngle * DEGREES_TO_RADIANS);
 
                 // TODO: Refactor this - it can also be hasMovedDragging
+                // (transitionSwapOldToNew function)
 
                 if (selectDrag.indexOf(d.target.id) > -1) {
-                  // console.log('-> 1.1');
                   targetStartAngle += (angleValue * DEGREES_TO_RADIANS);
                   targetEndAngle += (angleValue * DEGREES_TO_RADIANS);
                 }
 
               } else {
-                // console.log('-> 2');
                 sourceStartAngle += (extraAngle * DEGREES_TO_RADIANS);
                 sourceEndAngle += (extraAngle * DEGREES_TO_RADIANS);
 
                 if (selectDrag.indexOf(d.target.id) > -1) {
-                  // console.log('-> 2.1');
                   if (d.target.id === currentChromosomeMouseDown) {
                     targetStartAngle += (angleFromChromosome * DEGREES_TO_RADIANS);
                     targetEndAngle += (angleFromChromosome * DEGREES_TO_RADIANS);
                   } else if (hasMovedDragging[d.target.id]) {
-                    // Can also be extraAngle here ...
+                    // NOTE: Can also use extraAngle here ...
                     targetStartAngle += (angleValue * DEGREES_TO_RADIANS);
                     targetEndAngle += (angleValue * DEGREES_TO_RADIANS);
                   }
@@ -218,35 +214,29 @@ function updateChordsWhileDragging({
             } else if (d.target.id === chromosome) {
 
               if (d.target.id === currentChromosomeMouseDown) {
-                // console.log('-> 3');
                 targetStartAngle += (extraAngle * DEGREES_TO_RADIANS);
                 targetEndAngle += (extraAngle * DEGREES_TO_RADIANS);
 
                 if (selectDrag.indexOf(d.source.id) > -1) {
-                  // console.log('-> 3.1');
                   sourceStartAngle += (angleValue * DEGREES_TO_RADIANS);
                   sourceEndAngle += (angleValue * DEGREES_TO_RADIANS);
                 }
 
               } else {
-                // console.log('-> 4');
                 targetStartAngle += (extraAngle * DEGREES_TO_RADIANS);
                 targetEndAngle += (extraAngle * DEGREES_TO_RADIANS);
 
                 if (selectDrag.indexOf(d.source.id) > -1) {
-                  // console.log('-> 4.1');
                   if (d.source.id === currentChromosomeMouseDown) {
                     sourceStartAngle += (angleFromChromosome * DEGREES_TO_RADIANS);
                     sourceEndAngle += (angleFromChromosome * DEGREES_TO_RADIANS);
                   } else if (hasMovedDragging[d.source.id]) {
-                    // Can also be extraAngle here ...
+                    // NOTE: Can also use extraAngle here ...
                     sourceStartAngle += (angleValue * DEGREES_TO_RADIANS);
                     sourceEndAngle += (angleValue * DEGREES_TO_RADIANS);
                   }
                 }
-
               }
-
             }
           } else {
             // if (d.source.id === d.target.id)
@@ -312,7 +302,6 @@ function getAngleFromCoordinates(calculatingOffset = false) {
  */
 function onStartDragging(dataChromosomes) {
   const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
-  console.log('CURRENT MOUSE DOWN: ', currentChromosomeMouseDown);
 
   if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "" ||
     d3.select(".best-guess > button").attr("disabled")) return;
@@ -377,7 +366,6 @@ function onStartDragging(dataChromosomes) {
  */
 function onDragging(dataChromosomes) {
   const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
-  console.log('CURRENT MOUSE DOWN: ', currentChromosomeMouseDown);
 
   if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "" ||
     d3.select(".best-guess > button").attr("disabled")) return;
@@ -413,8 +401,6 @@ function onDragging(dataChromosomes) {
   // Updating lastAngle with currentAngle to be used in the end drag event
   lastAngle = currentAngle;
   trueLastAngle = currentAngle;
-
-  console.log('LAST ANGLE: ', lastAngle);
 }
 
 /**
@@ -425,7 +411,6 @@ function onDragging(dataChromosomes) {
  */
 function onEndDragging(dataChromosomes) {
   const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
-  console.log('CURRENT MOUSE DOWN: ', currentChromosomeMouseDown);
   const dataChromosomesLength = dataChromosomes.length;
 
   if (dataChromosomesLength <= 1 || currentChromosomeMouseDown === "" ||
@@ -457,15 +442,11 @@ function onEndDragging(dataChromosomes) {
     if (lastChrPosition < 0) lastChrPosition = 360 + lastChrPosition;
     else if (lastChrPosition > 360) lastChrPosition = lastChrPosition - 360;
 
-    // console.log('INSIDE LOOP: ', currentChromosomeMouseDown, key, lastChrPosition, draggingAnglesDictionary[key].startAngle);
-
     if (lastChrPosition >= draggingAnglesDictionary[key].startAngle &&
       lastChrPosition <= draggingAnglesDictionary[key].endAngle) {
       collidedChr = key;
     }
   }
-
-  console.log('COLLIDED CHR: ', collidedChr);
 
   if (collidedChr === currentChromosomeMouseDown || collidedChr === "") {
     // Resetting current mouse down chr
@@ -491,8 +472,6 @@ function onEndDragging(dataChromosomes) {
 
   const oldChrOrder = currentChromosomeOrder.slice();
 
-  console.log('OLD ORDER: ', oldChrOrder);
-
   const currentIndexToDelete = currentChromosomeOrder.indexOf(currentChromosomeMouseDown);
   const currentIndexToInsert = currentChromosomeOrder.indexOf(collidedChr);
 
@@ -507,7 +486,6 @@ function onEndDragging(dataChromosomes) {
 
     for (let i = currentIndexToDelete; currentChromosomeOrder[i] !== currentChromosomeMouseDown; i--) {
       if (i === currentIndexToDelete && oldChrOrder[i + 1] === currentChromosomeOrder[i]) {
-        console.log('HERE FOR LOOP: ', oldChrOrder[i + 1], currentChromosomeOrder[i]);
         if (i - 1 === (-1)) i = currentChromosomeOrder.length;
 
         continue;
@@ -515,7 +493,6 @@ function onEndDragging(dataChromosomes) {
 
       // If chromosome is present in current view, then add it
       if (find(dataChromosomes, ['id', currentChromosomeOrder[i]])) {
-        // console.log('INSERTING CURRENT CHROMOSOME ORDER: ', currentChromosomeOrder[i]);
         selectDrag.push(currentChromosomeOrder[i]);
       }
 
@@ -523,13 +500,12 @@ function onEndDragging(dataChromosomes) {
     }
   }
 
-  console.log('NEW ORDER: ', currentChromosomeOrder);
-
   /**
    * Chromosome MouseDown is not being added when dragging chromosomes
    * in clockwise direction (dragging N1 to N14) when no passing through
    * first added chromosome, and also when dragging in counter clockwise
    * direction (dragging N5 to N16) and passing through first added chromosome.
+   * NOTE: These chromosome references are from Brassica napus genome.
    *
    * Does not happen:
    *  - When dragging in clockwise and passing through first chr
@@ -542,8 +518,6 @@ function onEndDragging(dataChromosomes) {
 
   // Updating lastAngle and pushing chrMouseDown so it can move at the end (and no jump shows)
   if (selectDrag.length === 0 || selectDrag[selectDrag.length - 1] !== collidedChr) {
-    // console.log('PROBLEM HERE!!!');
-
     notAddingChromosomeMouseDown = true;
 
     lastAngle += (draggingAnglesDictionary[collidedChr].endAngle - mouseDownChrLastPosition);
@@ -556,8 +530,6 @@ function onEndDragging(dataChromosomes) {
 
     selectDrag.push(currentChromosomeMouseDown);
   }
-
-  console.log('SELECT DRAG: ', selectDrag);
 
   for (let i = 0; i < selectDrag.length; i++) {
     hasMovedDragging[selectDrag[i]] = false;
@@ -575,8 +547,6 @@ function onEndDragging(dataChromosomes) {
 
   let index = 0;
   angleValue = (draggingAnglesDictionary[currentChromosomeMouseDown].totalAngle + (GAP_AMOUNT * RADIANS_TO_DEGREES));
-
-  console.log('TIME: ', (TRANSITION_DRAG_TIME * selectDrag.length));
 
   while ((transitionDraggingBackTime - TRANSITION_DRAG_TIME) < (TRANSITION_DRAG_TIME * selectDrag.length)) {
     (function(transitionDraggingBackTime, index) {
@@ -635,7 +605,6 @@ function onEndDragging(dataChromosomes) {
     index++;
   }
 
-  console.log('TOTAL TIME: ', TRANSITION_DRAG_TIME * 2 + (TRANSITION_DRAG_TIME * selectDrag.length));
   setTimeout(function() {
     if (notAddingChromosomeMouseDown) {
       draggedAngle += angleValue;

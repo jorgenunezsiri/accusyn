@@ -85,15 +85,13 @@ export function setGenomeWindowSize(windowSize) {
 export function convertToMinimumWindowSize(totalGenomeBases, factor = 2000, shouldFormat = false) {
   /**
    * As a rule of thumb you can’t effectively show more than 2,000 windows (bins) in a single track,
-   * not only that rendering would take a long time - but also human eyes can't appreciate that much details.
+   * not only that rendering would take a long time - but also human eyes cannot appreciate that many details.
    * The minimum window size equals to totalGenomeBases/2,000.
    */
   const minimumWindowSize = (Math.ceil(totalGenomeBases / factor)).toString();
   const firstNumber = parseInt(minimumWindowSize.charAt(0));
   const magnitude = parseInt(Math.pow(10, minimumWindowSize.length - 1));
   const result = (firstNumber * magnitude);
-
-  console.log('MINIMUM WINDOW SIZE: ', minimumWindowSize, result);
 
   if (shouldFormat) {
     return d3Format(",")(result.toString());

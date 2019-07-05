@@ -73,7 +73,6 @@ class SubmitAdditionalTracksForm extends React.Component {
       }, 200);
     } catch (error) {
       d3Select("#loader").style("display", "none");
-      console.log('ERROR: ', error);
 
       // If error is defined and it is a string
       if (error && isString(error)) {

@@ -1,4 +1,4 @@
-import { Circos } from './../vendor/circos';
+import { Circos } from './../vendor/circos.min';
 
 // Contants
 import {

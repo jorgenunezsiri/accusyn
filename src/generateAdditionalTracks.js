@@ -5,7 +5,7 @@ import forEach from 'lodash/forEach';
 import sortBy from 'lodash/sortBy';
 
 // Shopify sortable. Using ES5 bundle to make it work correctly with UglifyJS
-// Note: https://github.com/Shopify/draggable/issues/269
+// NOTE: https://github.com/Shopify/draggable/issues/269
 import { Sortable } from '@shopify/draggable/lib/es5/draggable.bundle';
 
 // React
@@ -86,12 +86,9 @@ export default function generateAdditionalTracks(additionalTracks) {
     }
 
     const currentWindowSize = additionalTrackDataArray[0].end - additionalTrackDataArray[0].start + 1;
-    console.log('CURRENT WINDOW SIZE: ', currentWindowSize);
-    console.log('recommendedWindowSize: ', recommendedWindowSize);
     // Comparison with (recommendedWindowSize - currentWindowSize) is done to have
     // a little bit of extra window size range
     if (currentWindowSize < (recommendedWindowSize - currentWindowSize)) {
-      console.log('CALCULATION: ', currentWindowSize, (recommendedWindowSize - currentWindowSize));
       const formattedCurrentWindowSize = convertToMinimumWindowSize(currentWindowSize, 1, true);
       const formattedRecommendedWindowSize = convertToMinimumWindowSize(recommendedWindowSize, 1, true);
       renderReactAlert(`Warning: The additional track "${name}" is using a window size of ${formattedCurrentWindowSize} bases.
@@ -127,10 +124,6 @@ export function showLegendActiveAdditionalTrack(trackName) {
     d3.select(`div.additional-track.${trackName} .track-color select`).property("value");
   const colorInterpolator = SEQUENTIAL_SCALES_INTERPOLATORS[trackColor];
 
-  console.log('\n\n\nTRACK NAME: ', trackName);
-  console.log('trackType', trackType);
-  console.log('TRACK COLOR: ', trackColor);
-
   // Only show legend if Type !== 'None' and it is not Type 'Line'
   // Also, return if the interpolator is not defined
   // Or if track type or color are not defined (the track has been deleted)
@@ -149,7 +142,6 @@ export function showLegendActiveAdditionalTrack(trackName) {
 
   // Current track min and max values
   const { minValue, maxValue } = getCurrentTrack(trackName);
-  console.log('MIN AND MAX: ', minValue, maxValue);
 
   const colorScale = d3.scaleSequential(colorInterpolator)
     .domain([minValue, maxValue]);
@@ -229,7 +221,6 @@ function getSequentialScaleOptions() {
 export function addAdditionalTracksMenu(additionalTracks = []) {
   const currentAdditionalTracks = cloneDeep(additionalTracks);
   const currentAdditionalTracksLength = currentAdditionalTracks.length;
-  console.log('currentAdditionalTracks: ', currentAdditionalTracks);
 
   for (let i = 0; i < currentAdditionalTracksLength; i++) {
     const name = currentAdditionalTracks[i].name;
@@ -375,8 +366,6 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
         additionalTrackArray[i].order = newOrderHash[additionalTrackArray[i].name];
       }
 
-      console.log('ADDITIONAL TRACKS:::\n', additionalTrackArray);
-
       setAdditionalTrackArray(additionalTrackArray);
 
       // Calling genome view for updates with no transition
@@ -412,7 +401,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
 
       // Return because I cannot delete the track if there is a saved layout using it
       if (foundSavedTrack) {
-        renderReactAlert(`The track "${name}" can't be deleted because it is being used in the saved stamp #${stampIndex}.`);
+        renderReactAlert(`The track "${name}" cannot be deleted because it is being used in the saved stamp #${stampIndex}.`);
         return;
       }
 
@@ -433,8 +422,6 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
       for (let i = 0; i < currentAdditionalTracks.length; i++) {
         currentAdditionalTracks[i].order = i + 1;
       }
-
-      console.log('CURRENT TRACKS AFTER DELETION: ', cloneDeep(currentAdditionalTracks));
 
       // Setting data with new tracks
       setAdditionalTrackArray(currentAdditionalTracks);

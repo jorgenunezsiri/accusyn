@@ -26,11 +26,8 @@ import {
 import { getCurrentHost } from './variables/currentHost';
 
 /*
-// To set things only in production mode:
-
-if (process.env.NODE_ENV === 'production') {
-  console.log('PRODUCTION MODE HERE!!!!');
-}
+// To set things only in production mode
+if (process.env.NODE_ENV === 'production') { }
 */
 
 (async function main() {
@@ -142,7 +139,6 @@ if (process.env.NODE_ENV === 'production') {
 
       generateData(gffData, collinearityData, additionalTrackData);
     } catch (error) {
-      console.log('ERROR: ', error);
       // If error is defined and it is a string
       if (error && isString(error)) {
         // Showing custom alert using react

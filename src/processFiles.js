@@ -10,7 +10,8 @@ import isString from 'lodash/isString';
 import { getAdditionalTrackNames } from './variables/additionalTrack';
 
 // Local variable to store the chromosomes in the GFF file
-// This is used to make sure the user loads compatible collinearity and additional files
+// This is used to make sure the user loads compatible collinearity
+// and additional track files
 let currentChromosomesInsideGFF = [];
 
 /**
@@ -172,7 +173,6 @@ export function processGFF(file, reader = d3Text) {
       // Checking for scaffold data
       if (shouldAddChromosomeID(currentChromosomeID)) {
         if (!currentChromosomesInsideGFF.includes(currentChromosomeID)) {
-          console.log('PUSHING: ', currentChromosomeID);
           currentChromosomesInsideGFF.push(currentChromosomeID);
         }
 
@@ -188,8 +188,6 @@ export function processGFF(file, reader = d3Text) {
           of the chromosomes needs to be a number or an uppercase letter (i.e. chr1, chrA1, chr1A).`)
       );
     }
-
-    console.log('RESULT: ', currentChromosomesInsideGFF);
 
     // Return promise if task is successful
     return new Promise(resolve => resolve(returnData));
@@ -264,8 +262,6 @@ export function processCollinearity(file, reader = d3Text) {
   let isFlipped = 'no';
   let isScaffold = false;
   let haveAtLeastOneGffChromosome = false;
-
-  console.log('currentChromosomesInsideGFF: ', currentChromosomesInsideGFF);
 
   return reader(file).then(function(data) {
     return new Promise((resolve, reject) => {

@@ -47,7 +47,6 @@ import {
 
 import {
   assignFlippedChromosomeColors,
-  calculateMiddleValue,
   getSelectedCheckboxes,
   isInViewport,
   lookForBlocksPositions,
@@ -121,8 +120,6 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   // Resetting all stored variables
   resetAllVariables();
-
-  console.log("DATA LOADED !!!");
 
   const colors = d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES['Light 1']); // Default color scheme
   const geneDictionary = {}; // Dictionary that includes the start and end position data for each gene
@@ -218,8 +215,6 @@ export default function generateData(gff, collinearity, additionalTrack) {
   // Setting the current order (default to ordered array of chromosomes)
   setCurrentChromosomeOrder(gffKeys.slice());
   setDefaultChromosomeOrder(gffKeys.slice());
-
-  console.log('additionalTrack: ', additionalTrack);
 
   if (additionalTrack) {
     setAdditionalTrackArray(generateAdditionalTracks(additionalTrack));
@@ -322,8 +317,6 @@ export default function generateData(gff, collinearity, additionalTrack) {
         lookForBlocksPositions(blockDictionary, geneDictionary, currentBlock);
     }
   } catch (error) {
-    console.log('ERROR: ', error);
-
     // Showing error alert using react if there is an error inside lookForBlocksPositions,
     // which means that geneDictionary (from gff) is not compatible with
     // blockDictionary (from collinearity file).
@@ -432,14 +425,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
         showLegendActiveAdditionalTrack(activeTrackText);
       }
 
-      // Calling block view if block is found
+      // Calling block view if block is found to toggle dark mode
       const currentSelectedBlock = getCurrentSelectedBlock();
       const dataChords = getDataChords();
       if (!isEmpty(currentSelectedBlock)) {
         const currentPosition = findIndex(dataChords, ['source.value.id', currentSelectedBlock]);
         if (currentPosition !== (-1)) {
           const currentChord = dataChords[currentPosition];
-          console.log('CURRENT CHORD: ', currentChord);
           generateBlockView(currentChord);
         }
       }
@@ -720,8 +712,6 @@ export default function generateData(gff, collinearity, additionalTrack) {
       // To introduce start and end properties into dataChromosomes
       myCircos.layout(localDataChromosomes, CIRCOS_CONF);
       myCircos.layout(orderedDataChromosomes, CIRCOS_CONF);
-
-      console.log('OLD AND CURRENT: ', localDataChromosomes, orderedDataChromosomes);
 
       callSwapPositionsAnimation({
         dataChromosomes: localDataChromosomes,
@@ -1451,31 +1441,10 @@ export default function generateData(gff, collinearity, additionalTrack) {
   d3.select("#config")
     .style("display", "block");
 
-  // To alert the user of the old GSB domain
-  // d3.select('html')
-  //   .style('background-color', 'black');
-  // d3.select('body')
-  //   .style('opacity', 0.5);
-
   setTimeout(() => {
     // Clicking informational and connections panel by default
     // after the loader spinner animation is done
     d3.select(".information-panel-title").node().click();
     d3.select(".connections-panel-title").node().click();
-
-    // Alerting the user of the old GSB domain
-    // NOTE: This is being manually added into the old website domain: https://usask-gsb.netlify.com
-    // setTimeout(() => {
-    //   const message = `This website domain is now discontinued. For the latest updates, please go to https://accusyn.usask.ca. Click "OK" to be redirected automatically.`;
-    //   const confirming = confirm(message);
-    //   if (confirming) {
-    //     window.location.href = 'https://accusyn.usask.ca';
-    //   } else {
-    //     d3.select('html')
-    //       .style('background-color', 'white');
-    //     d3.select('body')
-    //       .style('opacity', 1);
-    //   }
-    // }, 500);
   }, 350);
 };

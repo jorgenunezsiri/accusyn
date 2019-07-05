@@ -69,7 +69,6 @@ export function toChromosomeOrder(dataChr, setAll = false) {
       if (!found) notAddedChromosomes.push(allChromosomes[i]);
     }
 
-    console.log('NOT ADDED CHROMOSOMES: ', notAddedChromosomes);
     newChrOrder = newChrOrder.concat(notAddedChromosomes);
   }
 

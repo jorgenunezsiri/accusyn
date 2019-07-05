@@ -2,7 +2,6 @@ import React from 'react';
 
 import chunk from 'lodash/chunk';
 import isEqual from 'lodash/isEqual';
-import findIndex from 'lodash/findIndex';
 import forEach from 'lodash/forEach';
 
 import { resetUndoRedoButtons } from './../vendor/undoManager';
@@ -38,7 +37,6 @@ import { getCircosObject } from './../variables/myCircos';
 import { callSwapPositionsAnimation } from './../genomeView/blockCollisions';
 import {
   renderReactAlert,
-  resetChromosomeCheckboxes,
   sortGffKeys
 } from './../helpers';
 

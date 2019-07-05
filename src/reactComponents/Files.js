@@ -38,7 +38,6 @@ class Files extends React.Component {
 
   handleSubmitMainFilesFormClick() {
     const gffType = d3Select("div.submit-main-files-form-container select").property("value");
-    console.log('GFF TYPE inside submit component: ', gffType);
     const gffProcessFunction = gffType === 'GFF3' ? processGFF3 : processGFF;
 
     // Showing loader
@@ -52,12 +51,10 @@ class Files extends React.Component {
     let gffData, collinearityData;
     gffProcessFunction("gff-file-upload", readFileAsText)
       .then((gff) => {
-        console.log('GFF VALUE: ', gff);
         gffData = cloneDeep(gff);
         return processCollinearity("collinearity-file-upload", readFileAsText);
       })
       .then((collinearity) => {
-        console.log('Collinearity VALUE: ', collinearity);
         collinearityData = cloneDeep(collinearity);
 
         // Hiding the page information until the new one is loaded
@@ -102,7 +99,6 @@ class Files extends React.Component {
       })
       .catch((error) => {
         d3Select("#loader").style("display", "none");
-        console.log('ERROR: ', error);
 
         // If error is defined and it is a string
         if (error && isString(error)) {

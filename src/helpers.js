@@ -323,7 +323,7 @@ export function flipGenesPosition({
 /**
  * Gets the transform values based on how many additional tracks are outside
  *
- * Note: For each outside track the scale will decrease 5%
+ * NOTE: For each outside track the scale will decrease 5%
  *       For each inside track the scale will increase 2% (only with less than 4 tracks inside)
  *
  * @return {Object} Transform values
@@ -346,12 +346,10 @@ export function getTransformValuesAdditionalTracks() {
 
     if (howManyOutside >= 2) {
       scale -= (SCALE_DECREASE * howManyOutside); // Decreasing 5% of scale per track
-      console.log('SCALE AFTER HOW MANY OUTSIDE: ', scale);
     }
 
     if (howManyOutside <= 1 && howManyInside >= 1 && howManyInside <= 3) {
       scale += (SCALE_INCREASE * howManyInside); // Increasing 2% of scale per track
-      console.log('SCALE AFTER HOW MANY INSIDE: ', scale);
     }
   }
 
@@ -512,8 +510,6 @@ export function getQueryString(field, url) {
     matches.push(match[1]); // Pushing the result group (parenthesized substring)
   }
 
-  console.log("MATCHES: ", matches);
-
   return (matches && matches.length > 0) ? matches : null;
 };
 
@@ -593,7 +589,6 @@ export async function isUrlFound(url) {
     });
 
     return response.status === 200; // Status should be OK if valid URL
-
   } catch (error) {
     return false;
   }
@@ -736,7 +731,7 @@ export function partitionGffKeys(gffKeys) {
   gffCopy = uniq(gffCopy);
 
   let gffCopyLength = gffCopy.length;
-  // GffCopy keys can't be subSequence of one another
+  // GffCopy keys cannot be subSequence of one another
   // If they are, then delete those ones.
   // This is to not repeat the keys in multiple clusters (groups)
   // e.g.: ['hs', 'hsX', 'hsY'] -> ['hs']
@@ -753,13 +748,9 @@ export function partitionGffKeys(gffKeys) {
     }
   }
 
-  console.log('REMOVING TAGS: ', removingTags);
-
   if (removingTags.length > 0) {
     gffCopy = difference(gffCopy, removingTags);
   }
-
-  console.log('GFF COPY: ', cloneDeep(gffCopy));
 
   // Creating gffPartitionedDictionary to partition the sortedGffKeys with their tags
   const gffPartitionedDictionary = {};
@@ -778,8 +769,6 @@ export function partitionGffKeys(gffKeys) {
       }
     }
   }
-
-  console.log('GFF PARTITIONED DICT: ', cloneDeep(gffPartitionedDictionary));
 
   // Sorting gffCopy keys in descending order when having more than 1 key,
   // meaning more than 1 species to visualize
@@ -815,8 +804,6 @@ export function sortGffKeys(gffKeys) {
     sortedGffKeys = [...sortedGffKeys, ...gffPartitionedDictionary[partitionedGffKeys[i]]];
   }
 
-  console.log('SORTED GFF KEYS\n\n', sortedGffKeys);
-
   return sortedGffKeys;
 };
 
@@ -836,15 +823,12 @@ export function flipOrResetChromosomeOrder({
   // Need to save each chromosome positions in case the chromosome are
   // not one after the other
   const chromosomePositions = []; // Saved positions for each chromosome
-  console.log('ACTION AND GENOME: ', action, genome);
-  console.log('CHR ORDER INSIDE F OR R: ', chromosomeOrder);
 
   const chromosomeOrderLength = chromosomeOrder.length;
   for (let i = 0; i < chromosomeOrderLength; i++) {
     // Getting all the positions of the chromosomes from `genome`
     const key = chromosomeOrder[i].slice(0);
     if (getGffDictionary()[key].tag === genome) {
-      console.log('FOUND KEY: ', key, i);
       chromosomePositions.push({
         chr: chromosomeOrder[i],
         pos: i
@@ -883,8 +867,6 @@ export function flipOrResetChromosomeOrder({
       return 0;
     });
 
-    console.log('ALL NUMERIC POS: ', allNumericPositions);
-
     // Assigning sorted positions properties to sorted strings
     for (let i = 0; i < chromosomePositionsLength; i++) {
       chromosomePositions[i].pos = allNumericPositions[i];
@@ -895,8 +877,6 @@ export function flipOrResetChromosomeOrder({
   for (let i = 0; i < chromosomePositionsLength; i++) {
     chromosomeOrder[chromosomePositions[i].pos] = chromosomePositions[i].chr.slice(0);
   }
-
-  console.log('CHR ORDER: ', chromosomeOrder);
 
   return chromosomeOrder;
 };
