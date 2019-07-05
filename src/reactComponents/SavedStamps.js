@@ -9,7 +9,7 @@ import { resetUndoRedoButtons } from './../vendor/undoManager';
 import {
   select as d3Select,
   selectAll as d3SelectAll
-} from 'd3';
+} from 'd3-selection';
 
 import generateGenomeView from '../genomeView/generateGenomeView';
 

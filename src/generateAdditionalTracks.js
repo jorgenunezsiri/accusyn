@@ -1,5 +1,18 @@
-import * as d3 from 'd3';
+// D3
+import { axisBottom as d3AxisBottom } from 'd3-axis';
 
+import {
+  scaleLinear as d3ScaleLinear,
+  scaleSequential as d3ScaleSequential
+} from 'd3-scale';
+
+import {
+  event as d3Event,
+  select as d3Select,
+  selectAll as d3SelectAll
+} from 'd3-selection';
+
+// Lodash
 import cloneDeep from 'lodash/cloneDeep';
 import forEach from 'lodash/forEach';
 import sortBy from 'lodash/sortBy';
@@ -14,8 +27,15 @@ import ReactDOM from 'react-dom';
 import Modal from './reactComponents/Modal';
 import SubmitAdditionalTracksForm from './reactComponents/SubmitAdditionalTracksForm';
 
+// Helpers
 import generateGenomeView, { getCurrentTrack } from './genomeView/generateGenomeView';
+import {
+  calculateMiddleValue,
+  renderReactAlert,
+  roundFloatNumber
+} from './helpers';
 
+// Variable getters and setters
 import {
   convertToMinimumWindowSize,
   getAdditionalTrackArray,
@@ -23,14 +43,8 @@ import {
   getGenomeWindowSize,
   setAdditionalTrackArray
 } from './variables/additionalTrack';
-
 import { getGffDictionary } from './variables/gffDictionary';
 import { getSavedSolutions } from './variables/savedSolutions';
-import {
-  calculateMiddleValue,
-  renderReactAlert,
-  roundFloatNumber
-} from './helpers';
 
 // Contants
 import {
@@ -113,15 +127,15 @@ export default function generateAdditionalTracks(additionalTracks) {
  * @return {undefined} undefined
  */
 export function showLegendActiveAdditionalTrack(trackName) {
-  const trackLegend = d3.select("svg#track-legend");
+  const trackLegend = d3Select("svg#track-legend");
   // Removing everything inside trackLegend
   trackLegend.selectAll("*").remove();
   trackLegend.classed("dark-mode", false); // Resetting dark-mode class
 
-  const trackType = !d3.select(`div.additional-track.${trackName} .track-type select`).empty() &&
-    d3.select(`div.additional-track.${trackName} .track-type select`).property("value");
-  const trackColor = !d3.select(`div.additional-track.${trackName} .track-color select`).empty() &&
-    d3.select(`div.additional-track.${trackName} .track-color select`).property("value");
+  const trackType = !d3Select(`div.additional-track.${trackName} .track-type select`).empty() &&
+    d3Select(`div.additional-track.${trackName} .track-type select`).property("value");
+  const trackColor = !d3Select(`div.additional-track.${trackName} .track-color select`).empty() &&
+    d3Select(`div.additional-track.${trackName} .track-color select`).property("value");
   const colorInterpolator = SEQUENTIAL_SCALES_INTERPOLATORS[trackColor];
 
   // Only show legend if Type !== 'None' and it is not Type 'Line'
@@ -143,17 +157,17 @@ export function showLegendActiveAdditionalTrack(trackName) {
   // Current track min and max values
   const { minValue, maxValue } = getCurrentTrack(trackName);
 
-  const colorScale = d3.scaleSequential(colorInterpolator)
+  const colorScale = d3ScaleSequential(colorInterpolator)
     .domain([minValue, maxValue]);
 
-  const axisScale = d3.scaleLinear()
+  const axisScale = d3ScaleLinear()
     .domain(colorScale.domain())
     .range([margin.left, width - margin.right]);
 
   const axisBottom = g => g
     .attr("class", "x-axis")
     .attr("transform", `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(axisScale)
+    .call(d3AxisBottom(axisScale)
       .ticks(width / 70)
       .tickSize(-barHeight));
 
@@ -189,7 +203,7 @@ export function showLegendActiveAdditionalTrack(trackName) {
   trackLegend.selectAll(".x-axis text")
     .attr("font-size", "11");
 
-  const darkMode = d3.select("p.dark-mode input").property("checked");
+  const darkMode = d3Select("p.dark-mode input").property("checked");
   trackLegend.classed("dark-mode", darkMode);
 
   if (darkMode) {
@@ -226,7 +240,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
     const name = currentAdditionalTracks[i].name;
 
     // Additional tracks tabs
-    d3.select("#form-config .additional-tracks-panel-container div.draggable-tabs")
+    d3Select("#form-config .additional-tracks-panel-container div.draggable-tabs")
       .append("button")
       .attr("class", `tab-link is-dragabble ${name}`)
       .html(`
@@ -236,7 +250,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
       `);
 
     // Tab content
-    d3.select("#form-config .additional-tracks-panel-container")
+    d3Select("#form-config .additional-tracks-panel-container")
       .append("div")
       .attr("id", `${name}`)
       .attr("class", `tab-content additional-track ${name}`)
@@ -247,7 +261,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
       .append("p")
       .text("Type: ");
 
-    d3.select(`div.additional-track.${name} .track-type`)
+    d3Select(`div.additional-track.${name} .track-type`)
       .append("p")
       .append("select")
       .attr("class", "form-control")
@@ -258,26 +272,26 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
       );
 
     // Track color scale
-    d3.select(`div.additional-track.${name}`)
+    d3Select(`div.additional-track.${name}`)
       .append("div")
       .attr("class", `track-color additional-track-block ${name}`)
       .append("p")
       .text("Palette: ");
 
-    d3.select(`div.additional-track.${name} .track-color`)
+    d3Select(`div.additional-track.${name} .track-color`)
       .append("p")
       .append("select")
       .attr("class", "form-control")
       .html(getSequentialScaleOptions());
 
     // Track placement
-    d3.select(`div.additional-track.${name}`)
+    d3Select(`div.additional-track.${name}`)
       .append("div")
       .attr("class", "track-placement additional-track-block")
       .append("p")
       .text("Placement: ");
 
-    d3.select(`div.additional-track.${name} .track-placement`)
+    d3Select(`div.additional-track.${name} .track-placement`)
       .append("p")
       .append("select")
       .attr("class", "form-control")
@@ -288,8 +302,8 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
   }
 
   // Only add the add-track button if it has not been added yet (add it only once)
-  if (d3.select("#form-config .additional-tracks-panel-container div.tabs div.add-track").empty()) {
-    d3.select("#form-config .additional-tracks-panel-container div.tabs")
+  if (d3Select("#form-config .additional-tracks-panel-container div.tabs div.add-track").empty()) {
+    d3Select("#form-config .additional-tracks-panel-container div.tabs")
       .append("div")
       .attr("class", "add-track");
 
@@ -307,7 +321,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
         size="sm">
         {<SubmitAdditionalTracksForm />}
       </Modal>,
-      d3.select("#form-config .additional-tracks-panel-container div.tabs div.add-track").node()
+      d3Select("#form-config .additional-tracks-panel-container div.tabs div.add-track").node()
     );
 
     // Adding drag functionality only once to only have one dragging listener
@@ -334,15 +348,15 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
       // Using set to obtain all the tabs to make sure no duplicates are added
       const newOrderSet = new Set();
 
-      d3.selectAll("#form-config .additional-tracks-panel-container div.draggable-tabs button.tab-link span.text")
+      d3SelectAll("#form-config .additional-tracks-panel-container div.draggable-tabs button.tab-link span.text")
         .each(function eachTab() {
-          const parentNode = d3.select(this.parentNode);
+          const parentNode = d3Select(this.parentNode);
           const classList = parentNode.node().classList;
 
           if (classList.contains('draggable--original') ||
             classList.contains('draggable-mirror')) return;
 
-          const node = d3.select(this);
+          const node = d3Select(this);
           newOrderSet.add(node.text());
         });
 
@@ -378,12 +392,12 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
   }
 
   // Tab delete click handler
-  d3.selectAll("#form-config .additional-tracks-panel-container div.draggable-tabs button.tab-link span.delete")
+  d3SelectAll("#form-config .additional-tracks-panel-container div.draggable-tabs button.tab-link span.delete")
     .on("click", function() {
       // Prevent form submission and page refresh
-      d3.event.preventDefault();
+      d3Event.preventDefault();
 
-      const name = d3.select(this.parentNode).select("span.text").text();
+      const name = d3Select(this.parentNode).select("span.text").text();
 
       const savedSolutions = getSavedSolutions();
       let foundSavedTrack = false;
@@ -427,8 +441,8 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
       setAdditionalTrackArray(currentAdditionalTracks);
 
       // Updating the menu by removing the current element and its tab-content only
-      d3.select(this.parentNode).remove();
-      d3.select(`div.tab-content#${name}`).remove();
+      d3Select(this.parentNode).remove();
+      d3Select(`div.tab-content#${name}`).remove();
 
       // Calling genome view for updates with no transition
       generateGenomeView({
@@ -440,10 +454,10 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
 
   // Tab click handler
   // More info here: https://www.w3schools.com/howto/howto_js_tabs.asp
-  d3.selectAll("#form-config .additional-tracks-panel-container div.draggable-tabs button.tab-link")
+  d3SelectAll("#form-config .additional-tracks-panel-container div.draggable-tabs button.tab-link")
     .on("click", function() {
       // Prevent form submission and page refresh
-      d3.event.preventDefault();
+      d3Event.preventDefault();
 
       // Get all elements with class="tabcontent" and hide them
       let tabcontent = document.getElementsByClassName("tab-content");
@@ -458,7 +472,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
       }
 
       // Show the current tab, and add an "active" class to the button that opened the tab
-      const currentNode = d3.select(this);
+      const currentNode = d3Select(this);
       const nodeText = currentNode.select("span.text").text();
       const element = document.getElementById(nodeText);
 
@@ -468,7 +482,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
         currentNode.node().classList.add('active');
       } else {
         // Making the first tab active (if available) when current tab is deleted
-        const firstChildElement = d3.select("#form-config .additional-tracks-panel-container div.draggable-tabs button:first-child");
+        const firstChildElement = d3Select("#form-config .additional-tracks-panel-container div.draggable-tabs button:first-child");
 
         if (!firstChildElement.empty()) {
           const firstElementNode = document.getElementById(firstChildElement.select("span.text").text());
@@ -479,7 +493,7 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
       }
 
       // Update panel scrollHeight
-      const panel = d3.select("#form-config .additional-tracks-panel").node();
+      const panel = d3Select("#form-config .additional-tracks-panel").node();
       panel.style.maxHeight = `${panel.scrollHeight.toString()}px`;
 
       // Adding legend for the active (current) tab
@@ -487,10 +501,10 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
     });
 
   // Select on change for any track block on any track
-  d3.selectAll("div.additional-track-block p select")
+  d3SelectAll("div.additional-track-block p select")
     .on("change", function() {
       // The grandfather node will always be the additional-track-block
-      const grandfatherNode = d3.select(this.parentNode.parentNode);
+      const grandfatherNode = d3Select(this.parentNode.parentNode);
       const includesType = (type) => grandfatherNode.node().classList.contains(type);
       const getTrackName = () => grandfatherNode.attr("class").split(' ')[2];
 
@@ -499,27 +513,27 @@ export function addAdditionalTracksMenu(additionalTracks = []) {
         const trackClass = getTrackName();
 
         // Adding options based on type
-        if (d3.select(this).property("value") === 'line') {
+        if (d3Select(this).property("value") === 'line') {
           // Add line colors
-          d3.select(`div.additional-track.${trackClass} .track-color p`)
+          d3Select(`div.additional-track.${trackClass} .track-color p`)
             .text("Color: ");
-          d3.select(`div.additional-track.${trackClass} .track-color select`)
+          d3Select(`div.additional-track.${trackClass} .track-color select`)
             .html(() =>
               // slice(5) because I only want to use the SOLID colors
               Object.keys(CONNECTION_COLORS).slice(5).map((current) =>
                 `<option value="${CONNECTION_COLORS[current]}">${current}</option>`
               ).join(' ')
             );
-        } else if (d3.select(`div.additional-track.${trackClass} .track-color p`).text() !== 'Palette: ') {
+        } else if (d3Select(`div.additional-track.${trackClass} .track-color p`).text() !== 'Palette: ') {
           // Add default color palette only if needed (i.e. when coming from line type)
-          d3.select(`div.additional-track.${trackClass} .track-color p`)
+          d3Select(`div.additional-track.${trackClass} .track-color p`)
             .text("Palette: ");
-          d3.select(`div.additional-track.${trackClass} .track-color select`)
+          d3Select(`div.additional-track.${trackClass} .track-color select`)
             .html(getSequentialScaleOptions());
         }
       }
 
-      let shouldUpdate = (d3.event.detail || {}).shouldUpdate;
+      let shouldUpdate = (d3Event.detail || {}).shouldUpdate;
       // shoulUpdate = null or undefined is true, meaning true by default
       shouldUpdate = shouldUpdate == null ? true : shouldUpdate;
       if (shouldUpdate) {

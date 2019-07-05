@@ -13,21 +13,48 @@ Function file: generateBlockView.js
 @2018-2019, Jorge Nunez Siri, All rights reserved
 */
 
-import * as d3 from 'd3';
+// D3
+import {
+  axisLeft as d3AxisLeft,
+  axisRight as d3AxisRight,
+} from 'd3-axis';
+
+import { drag as d3Drag } from 'd3-drag';
+import { easeLinear as d3EaseLinear } from 'd3-ease';
+import { format as d3Format } from 'd3-format';
+
+import {
+  scalePoint as d3ScalePoint,
+  scaleLinear as d3ScaleLinear
+} from 'd3-scale';
+
+import {
+  event as d3Event,
+  mouse as d3Mouse,
+  select as d3Select,
+  selectAll as d3SelectAll
+} from 'd3-selection';
+
+import {
+  zoom as d3Zoom,
+  zoomIdentity as d3ZoomIdentity
+} from 'd3-zoom';
+
+// Lodash
 import cloneDeep from 'lodash/cloneDeep';
 import defaultsDeep from 'lodash/defaultsDeep';
 import isEmpty from 'lodash/isEmpty';
 import isEqual from 'lodash/isEqual';
 
+// Helpers
 import { getBlockColor } from './genomeView/generateGenomeView';
-
 import {
   renderSvgButton,
   removeBlockView,
   resetInputsAndSelectsOnAnimation
 } from './helpers';
 
-// Variables getters and setters
+// Variable getters and setters
 import { getBlockDictionary } from './variables/blockDictionary';
 import {
   getBlockViewStateDictionary,
@@ -84,7 +111,7 @@ export default function generateBlockView(data) {
   const geneDictionary = getGeneDictionary();
   const gffPositionDictionary = getGffDictionary();
 
-  const darkMode = d3.select("p.dark-mode input").property("checked");
+  const darkMode = d3Select("p.dark-mode input").property("checked");
 
   const {
     source: { id: sourceChromosomeID, value: { id: blockID, isFlipped } },
@@ -122,8 +149,8 @@ export default function generateBlockView(data) {
   const heightBlock = 600 - margin.top - margin.bottom;
 
   // Set the ranges for x and y
-  const y = [d3.scaleLinear().range([heightBlock, 0]), d3.scaleLinear().range([heightBlock, 0])];
-  const x = d3.scalePoint().rangeRound([0, widthBlock]);
+  const y = [d3ScaleLinear().range([heightBlock, 0]), d3ScaleLinear().range([heightBlock, 0])];
+  const x = d3ScalePoint().rangeRound([0, widthBlock]);
   x.domain([0, 1]);
 
   /**
@@ -152,7 +179,7 @@ export default function generateBlockView(data) {
   };
 
   // Remove block view if it is present
-  if (!d3.select("#block-view-container").empty()) {
+  if (!d3Select("#block-view-container").empty()) {
     removeBlockView();
   }
 
@@ -190,25 +217,25 @@ export default function generateBlockView(data) {
 
     if (!isBlockStateDefault(blockStateDictionary[blockID], DEFAULT_BLOCK_VIEW_STATE)) {
       // If the block state is not default, then show hint (opacity 1)
-      d3.select("#block-view-container .block-state-hint")
+      d3Select("#block-view-container .block-state-hint")
         .style("opacity", function() {
-          if (d3.select(this).style("opacity") == 0) return 0;
+          if (d3Select(this).style("opacity") == 0) return 0;
           return 1; // If hint is already set, don't show transition
         })
         .transition()
         .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
-        .ease(d3.easeLinear)
+        .ease(d3EaseLinear)
         .style("opacity", 1);
     } else {
       // If the block state is default and the hint is showing, then hide it (opacity 0)
-      d3.select("#block-view-container .block-state-hint")
+      d3Select("#block-view-container .block-state-hint")
         .style("opacity", function() {
-          if (d3.select(this).style("opacity") == 1) return 1;
+          if (d3Select(this).style("opacity") == 1) return 1;
           return 0; // If hint is already not set, don't show transition
         })
         .transition()
         .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
-        .ease(d3.easeLinear)
+        .ease(d3EaseLinear)
         .style("opacity", 0);
     }
   };
@@ -220,44 +247,44 @@ export default function generateBlockView(data) {
    * @return {undefined} undefined
    */
   function applyStyleToAxes() {
-    const darkMode = d3.select("p.dark-mode input").property("checked");
+    const darkMode = d3Select("p.dark-mode input").property("checked");
 
-    d3.selectAll("svg.block-view .axisY0 g.tick text,svg.block-view .axisY1 g.tick text")
+    d3SelectAll("svg.block-view .axisY0 g.tick text,svg.block-view .axisY1 g.tick text")
       .attr("fill", darkMode ? "#f3f3f3" : "#000000");
 
-    d3.selectAll("svg.block-view .axisY0 g.tick line,svg.block-view .axisY1 g.tick line")
+    d3SelectAll("svg.block-view .axisY0 g.tick line,svg.block-view .axisY1 g.tick line")
       .attr("stroke", darkMode ? "#f3f3f3" : "#000000");
 
-    d3.selectAll("svg.block-view .axisY0 g.tick line,svg.block-view .axisY1 g.tick line")
+    d3SelectAll("svg.block-view .axisY0 g.tick line,svg.block-view .axisY1 g.tick line")
       .attr("stroke-width", "2px");
 
-    d3.selectAll("svg.block-view g.tick text")
+    d3SelectAll("svg.block-view g.tick text")
       .attr("font-size", "10");
   };
 
   // Zoom behavior
-  const zoom = d3.zoom()
+  const zoom = d3Zoom()
     .scaleExtent([0.01, 10000])
     .on("start", function() {
       // Activate if SA is not running
-      if (d3.select(".best-guess > button").attr("disabled")) return;
+      if (d3Select(".best-guess > button").attr("disabled")) return;
 
       isZooming = true;
     })
     .on("zoom", function() {
       // Activate if SA is not running and both group axis are defined
-      if (d3.select(".best-guess > button").attr("disabled") || !gY0 || !gY1) return;
+      if (d3Select(".best-guess > button").attr("disabled") || !gY0 || !gY1) return;
 
       const blockStateDictionary = getBlockViewStateDictionary();
 
-      blockStateDictionary[blockID].zoom = d3.event.transform;
+      blockStateDictionary[blockID].zoom = d3Event.transform;
 
       // Rescaling axes using current zoom transform
       gY0.call(y0axis.scale(blockStateDictionary[blockID].zoom.rescaleY(y[0])));
       gY1.call(y1axis.scale(blockStateDictionary[blockID].zoom.rescaleY(y[1])));
 
       // Plotting the lines path using the new scales
-      d3.select("svg.block-view g.clip-block-group g")
+      d3Select("svg.block-view g.clip-block-group g")
         .style("transform", `translate(0px,${blockStateDictionary[blockID].zoom.y}px)
           scale(1,${blockStateDictionary[blockID].zoom.k})`);
 
@@ -267,14 +294,14 @@ export default function generateBlockView(data) {
     })
     .on("end", function() {
       // Activate if SA is not running
-      if (d3.select(".best-guess > button").attr("disabled")) return;
+      if (d3Select(".best-guess > button").attr("disabled")) return;
 
       isZooming = false;
       showBlockStateHint();
     });
 
   // Append block view container to the body of the page
-  d3.select("#page-container .row")
+  d3Select("#page-container .row")
     .append("div")
     .attr("id", "block-view-container")
     .attr("class", function() {
@@ -284,14 +311,14 @@ export default function generateBlockView(data) {
     .append("div")
     .attr("class", "block-view-content");
 
-  d3.select("#block-view-container .block-view-content")
+  d3Select("#block-view-container .block-view-content")
     .append("svg")
     .attr("class", "block-view")
     .attr("width", widthBlock + margin.left + margin.right)
     .attr("height", heightBlock + margin.top + margin.bottom);
 
   if (blockColor === 'Combined') {
-    d3.select("#block-view-container .block-view-content svg")
+    d3Select("#block-view-container .block-view-content svg")
       .append("defs")
       .append("linearGradient")
       .attr("id", 'block-view-gradient')
@@ -302,12 +329,12 @@ export default function generateBlockView(data) {
     blockColor = 'url(#block-view-gradient)';
   }
 
-  const svgBlock = d3.select("#block-view-container .block-view-content svg")
+  const svgBlock = d3Select("#block-view-container .block-view-content svg")
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
   // Outer content with reset button
-  d3.select("#block-view-container .block-view-content")
+  d3Select("#block-view-container .block-view-content")
     .append("div")
     .attr("class", "outer-content")
     .append("div")
@@ -318,14 +345,14 @@ export default function generateBlockView(data) {
 
   // Loading reset layout button inside its container
   renderSvgButton({
-    buttonContainer: d3.select("#block-view-container .outer-clickable-content div.reset-button").node(),
+    buttonContainer: d3Select("#block-view-container .outer-clickable-content div.reset-button").node(),
     svgClassName: 'reset-layout-svg',
     svgHref: './images/icons.svg#reset-sprite_si-bootstrap-refresh',
     onClickFunction: function() {
       // Changing block view state and svg scale to default
       resetBlockViewState(blockID);
-      d3.select("svg.block-view g.clip-block-group")
-        .call(zoom.transform, d3.zoomIdentity.scale(1).translate(0, 0));
+      d3Select("svg.block-view g.clip-block-group")
+        .call(zoom.transform, d3ZoomIdentity.scale(1).translate(0, 0));
 
       // Resetting by calling path block view
       generatePathBlockView();
@@ -333,7 +360,7 @@ export default function generateBlockView(data) {
   });
 
   // Flip orientation checkbox
-  d3.select("#block-view-container .outer-clickable-content")
+  d3Select("#block-view-container .outer-clickable-content")
     .append("p")
     .attr("class", "flip-orientation")
     .append("label")
@@ -343,13 +370,13 @@ export default function generateBlockView(data) {
     .attr("value", "flip-orientation")
     .property("checked", false);
 
-  d3.select("#block-view-container")
+  d3Select("#block-view-container")
     .select("p.flip-orientation > label")
     .append("span")
     .text("Flip Orientation");
 
   // Flip hint
-  d3.select("#block-view-container .outer-content")
+  d3Select("#block-view-container .outer-content")
     .append("p")
     .attr("class", "block-state-hint")
     .style("opacity", 0)
@@ -357,15 +384,15 @@ export default function generateBlockView(data) {
       return '<em>Note: The scales in this block were changed before.</em>';
     });
 
-  d3.select("#block-view-container")
+  d3Select("#block-view-container")
     .select("p.flip-orientation input")
     .on("change", function() {
       onInputChange = true;
 
       // Changing block view state and svg scale to default
       resetBlockViewState(blockID);
-      d3.select("svg.block-view g.clip-block-group")
-        .call(zoom.transform, d3.zoomIdentity.scale(1).translate(0, 0));
+      d3Select("svg.block-view g.clip-block-group")
+        .call(zoom.transform, d3ZoomIdentity.scale(1).translate(0, 0));
 
       // Calling path block view for updates
       generatePathBlockView();
@@ -470,7 +497,7 @@ export default function generateBlockView(data) {
       }
 
       // Reset only y0 ticks to default state, because the animation happens on y1
-      y0axis = d3.axisLeft(y[0]).tickSize(12).ticks(10);
+      y0axis = d3AxisLeft(y[0]).tickSize(12).ticks(10);
       gY0.call(y0axis.scale(blockStateDictionary[blockID].zoom.rescaleY(y[0])));
 
       // Saving the axis state in the dictionary
@@ -481,7 +508,7 @@ export default function generateBlockView(data) {
       svgBlock.selectAll("polygon.line")
         .transition()
         .duration(COLOR_CHANGE_TIME)
-        .ease(d3.easeLinear)
+        .ease(d3EaseLinear)
         .attr("fill", "lightblue");
 
       // Flipping transition
@@ -536,11 +563,11 @@ export default function generateBlockView(data) {
             // Creating new scales for y1 to improve the flipping transition
             const minimumRange = offsetTransition + ((heightBlock - offsetTransition) / transitionHeightDivision);
             const maximumRange = offsetTransition;
-            const newY = [y[0], d3.scaleLinear().range([minimumRange, maximumRange])];
+            const newY = [y[0], d3ScaleLinear().range([minimumRange, maximumRange])];
             newY[0].domain(blockStateDictionary[blockID].y0Domain);
             newY[1].domain(blockStateDictionary[blockID].y1Domain);
 
-            y1axis = d3.axisRight(newY[1]).tickSize(12).ticks(10);
+            y1axis = d3AxisRight(newY[1]).tickSize(12).ticks(10);
             gY1.call(y1axis.scale(blockStateDictionary[blockID].zoom.rescaleY(newY[1])));
 
             applyStyleToAxes();
@@ -555,7 +582,7 @@ export default function generateBlockView(data) {
             if (indexTransition === 6) {
               // Assigning flipped state to true if checkbox is selected, otherwise false
               // Updating flipped state to draw updated paths from now on
-              blockStateDictionary[blockID].flipped = d3.select("p.flip-orientation input").property("checked");
+              blockStateDictionary[blockID].flipped = d3Select("p.flip-orientation input").property("checked");
 
               if (blockStateDictionary[blockID].flipped) {
                 newY[1].domain([domainY1.max, domainY1.min]);
@@ -618,7 +645,7 @@ export default function generateBlockView(data) {
 
         // Need to enter if state is flipped, because if the user resets the view
         // The domains won't be saved anymore
-        d3.select("p.flip-orientation input").property("checked", true);
+        d3Select("p.flip-orientation input").property("checked", true);
 
         // Getting domain
         const currentY1Domain = y[1].domain();
@@ -641,7 +668,7 @@ export default function generateBlockView(data) {
         .attr("height", heightBlock);
 
       // For the Circos tooltip
-      const tooltipDiv = d3.select("div.circos-tooltip")
+      const tooltipDiv = d3Select("div.circos-tooltip")
         .style("opacity", 0);
 
       // Add new paths inside the block
@@ -659,7 +686,7 @@ export default function generateBlockView(data) {
           // Only activate if the user is not zooming, axis mouse down is not set,
           // and SA is not running
           if (isZooming || currentAxisMouseDown !== "" ||
-            d3.select(".best-guess > button").attr("disabled")) return;
+            d3Select(".best-guess > button").attr("disabled")) return;
 
           tooltipDiv.transition().style("opacity", 0.9);
 
@@ -671,12 +698,12 @@ export default function generateBlockView(data) {
                     <h6>ID: ${d.connection}</h6>
                     <h6>E-value: ${d.eValue}</h6>`;
             })
-            .style("left", `${(d3.event.pageX)}px`)
-            .style("top", `${(d3.event.pageY - 28)}px`);
+            .style("left", `${(d3Event.pageX)}px`)
+            .style("top", `${(d3Event.pageY - 28)}px`);
 
-          if (d3.selectAll(nodes).attr("opacity") !== 0.3) {
-            d3.selectAll(nodes).attr("opacity", 0.3);
-            d3.select(nodes[i]).attr("opacity", 0.9);
+          if (d3SelectAll(nodes).attr("opacity") !== 0.3) {
+            d3SelectAll(nodes).attr("opacity", 0.3);
+            d3Select(nodes[i]).attr("opacity", 0.9);
           }
         })
         .on("mouseout", function(d, i, nodes) {
@@ -686,11 +713,11 @@ export default function generateBlockView(data) {
 
           tooltipDiv.transition()
             .duration(500)
-            .ease(d3.easeLinear)
+            .ease(d3EaseLinear)
             .style("opacity", 0);
 
-          if (d3.selectAll(nodes).attr("opacity") !== 0.7) {
-            d3.selectAll(nodes).attr("opacity", 0.7);
+          if (d3SelectAll(nodes).attr("opacity") !== 0.7) {
+            d3SelectAll(nodes).attr("opacity", 0.7);
           }
         });
 
@@ -699,14 +726,14 @@ export default function generateBlockView(data) {
           .attr("fill", darkMode ? "#222222" : "#ffffff")
           .transition()
           .duration(DEFAULT_GENOME_TRANSITION_TIME)
-          .ease(d3.easeLinear)
+          .ease(d3EaseLinear)
           .attr("fill", blockColor);
       } else {
         svgBlock.selectAll("polygon.line")
           .attr("fill", "lightblue")
           .transition()
           .duration(COLOR_CHANGE_TIME)
-          .ease(d3.easeLinear)
+          .ease(d3EaseLinear)
           .attr("fill", blockColor);
 
         // Enabling inputs and selects after calling the animation
@@ -714,7 +741,7 @@ export default function generateBlockView(data) {
       }
 
       // Add the Y0 Axis
-      y0axis = d3.axisLeft(y[0]).tickSize(12);
+      y0axis = d3AxisLeft(y[0]).tickSize(12);
 
       // Remove axisY0 if it is present
       if (!svgBlock.selectAll("g.axisY0").empty()) {
@@ -731,7 +758,7 @@ export default function generateBlockView(data) {
         });
 
       // Add the Y1 Axis
-      y1axis = d3.axisRight(y[1]).tickSize(12);
+      y1axis = d3AxisRight(y[1]).tickSize(12);
 
       // Remove axisY1 if it is present
       if (!svgBlock.selectAll("g.axisY1").empty()) {
@@ -766,34 +793,34 @@ export default function generateBlockView(data) {
         .attr("height", heightBlock);
 
       // On mousedown inside the axis rectangles, assign axis ID
-      d3.selectAll("rect.axisY0,rect.axisY1")
+      d3SelectAll("rect.axisY0,rect.axisY1")
         .on("mousedown", function() {
-          currentAxisMouseDown = d3.select(this).attr("class").split(" ")[1];
+          currentAxisMouseDown = d3Select(this).attr("class").split(" ")[1];
         });
 
       // Axis drag handler
-      const dragHandler = d3.drag()
+      const dragHandler = d3Drag()
         .on("start", function() {
           // If axis mouse down is not set, then return because I'm not selecting any axis
           // Activate only if SA is not running
-          if (currentAxisMouseDown === "" || d3.select(".best-guess > button").attr("disabled")) return;
+          if (currentAxisMouseDown === "" || d3Select(".best-guess > button").attr("disabled")) return;
 
           // Getting mouse position
-          const positionY = d3.mouse(d3.select("div#block-view-container svg.block-view").node())[1];
+          const positionY = d3Mouse(d3Select("div#block-view-container svg.block-view").node())[1];
           offsetYPosition = positionY;
 
           // Highlighting current axis
-          d3.select(`g.${currentAxisMouseDown}`)
+          d3Select(`g.${currentAxisMouseDown}`)
             .style("stroke", "#ea4848")
             .style("stroke-width", "1px");
         })
         .on("drag", function() {
           // If axis mouse down is not set, then return because I'm not selecting any axis
           // Activate only if SA is not running
-          if (currentAxisMouseDown === "" || d3.select(".best-guess > button").attr("disabled")) return;
+          if (currentAxisMouseDown === "" || d3Select(".best-guess > button").attr("disabled")) return;
 
           // Getting mouse position
-          const positionY = d3.mouse(d3.select("div#block-view-container svg.block-view").node())[1];
+          const positionY = d3Mouse(d3Select("div#block-view-container svg.block-view").node())[1];
 
           // Dragging distance is the difference between current and starting position
           let draggingDistance = positionY - offsetYPosition;
@@ -825,7 +852,7 @@ export default function generateBlockView(data) {
             // Adding the difference to current domain minimum and maximum values
             y[0] = y[0].domain([currentDomain[0] + draggingDistanceInverted, currentDomain[1] + draggingDistanceInverted]);
             // Re-defining axis with new domain
-            y0axis = d3.axisLeft(y[0]).tickSize(12);
+            y0axis = d3AxisLeft(y[0]).tickSize(12);
             // Scaling the axis in the block view
             gY0.call(y0axis.scale(blockStateDictionary[blockID].zoom.rescaleY(y[0])));
           } else if (currentAxisMouseDown === 'axisY1') {
@@ -833,7 +860,7 @@ export default function generateBlockView(data) {
 
             const currentDomain = y[1].domain();
             y[1] = y[1].domain([currentDomain[0] + draggingDistanceInverted, currentDomain[1] + draggingDistanceInverted]);
-            y1axis = d3.axisRight(y[1]).tickSize(12);
+            y1axis = d3AxisRight(y[1]).tickSize(12);
             gY1.call(y1axis.scale(blockStateDictionary[blockID].zoom.rescaleY(y[1])));
           }
 
@@ -845,9 +872,9 @@ export default function generateBlockView(data) {
 
           setBlockViewStateDictionary(blockStateDictionary);
 
-          d3.selectAll("polygon.line")
+          d3SelectAll("polygon.line")
             .attr('points', function(d) {
-              const currentPoints = d3.select(this).attr('points').split(' ');
+              const currentPoints = d3Select(this).attr('points').split(' ');
               let firstPair = currentPoints[0].split(','),
                 secondPair = currentPoints[1].split(','),
                 thirdPair = currentPoints[2].split(','),
@@ -878,10 +905,10 @@ export default function generateBlockView(data) {
         .on("end", function() {
           // If axis mouse down is not set, then return because I'm not selecting any axis
           // Activate only if SA is not running
-          if (currentAxisMouseDown === "" || d3.select(".best-guess > button").attr("disabled")) return;
+          if (currentAxisMouseDown === "" || d3Select(".best-guess > button").attr("disabled")) return;
 
           // Remove stroke highlight from axis
-          d3.select(`g.${currentAxisMouseDown}`)
+          d3Select(`g.${currentAxisMouseDown}`)
             .style("stroke", "none");
 
           // Resetting current axis mouse down
@@ -891,14 +918,14 @@ export default function generateBlockView(data) {
         });
 
       // Attaching drag handler to block view
-      d3.select("div#block-view-container svg.block-view").call(dragHandler);
+      d3Select("div#block-view-container svg.block-view").call(dragHandler);
 
       // Resetting variable
       onInputChange = false;
 
       // Calling zoom for the block group, so it works for every path
       // Changing zoom to saved state
-      d3.select("svg.block-view g.clip-block-group")
+      d3Select("svg.block-view g.clip-block-group")
         .call(zoom)
         .call(zoom.transform, getBlockViewStateDictionary()[blockID].zoom);
     };
@@ -945,5 +972,5 @@ export default function generateBlockView(data) {
     .attr("fill", darkMode ? "#f3f3f3" : "#000000")
     .attr("font-size", "12")
     .attr("text-anchor", "middle")
-    .text(`${sourceChromosomeID} vs. ${targetChromosomeID} - Block ${d3.format(",")(blockID)}`);
+    .text(`${sourceChromosomeID} vs. ${targetChromosomeID} - Block ${d3Format(",")(blockID)}`);
 }

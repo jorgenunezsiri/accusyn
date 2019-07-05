@@ -1,12 +1,13 @@
-import {
-  text as d3Text,
-  tsvParse as d3TsvParse
-} from 'd3';
+// D3
+import { text as d3Text } from 'd3-fetch';
+import { tsvParse as d3TsvParse } from 'd3-dsv';
 
+// Lodash
 import cloneDeep from 'lodash/cloneDeep';
 import isEmpty from 'lodash/isEmpty';
 import isString from 'lodash/isString';
 
+// Variable getters
 import { getAdditionalTrackNames } from './variables/additionalTrack';
 
 // Local variable to store the chromosomes in the GFF file

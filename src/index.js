@@ -1,12 +1,16 @@
-import * as d3 from 'd3';
+// D3
+import { select as d3Select } from 'd3-selection';
 
+// React
 import React from 'react';
 import ReactDOM from 'react-dom';
 import App from './reactComponents/templates/App';
 import Home from './reactComponents/templates/Home';
 
+// Lodash
 import isString from 'lodash/isString';
 
+// Helpers
 import generateData from './generateData';
 import {
   detectDeviceType,
@@ -22,7 +26,7 @@ import {
   processGFF3
 } from './processFiles';
 
-// Variables
+// Variable getters
 import { getCurrentHost } from './variables/currentHost';
 
 /*
@@ -101,7 +105,7 @@ if (process.env.NODE_ENV === 'production') { }
   gffType = gffType !== null ? gffType[0].toLowerCase() : 'gff';
 
   // Displaying the loader if not homepage (i.e. parameters are not null)
-  d3.select("#loader")
+  d3Select("#loader")
     .style("display", "block");
 
   const gffFilePath = `files/${gff}.${gffType}`;

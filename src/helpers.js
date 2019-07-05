@@ -1,4 +1,11 @@
-import * as d3 from 'd3';
+// D3
+import { easeLinear as d3EaseLinear } from 'd3-ease';
+import { format as d3Format } from 'd3-format';
+
+import {
+  select as d3Select,
+  selectAll as d3SelectAll
+} from 'd3-selection';
 
 // React
 import React from 'react';
@@ -6,8 +13,10 @@ import ReactDOM from 'react-dom';
 import Button from './reactComponents/Button';
 import AlertWithTimeout from './reactComponents/Alert';
 
+// UAParser
 import UAParser from 'ua-parser-js';
 
+// Lodash
 import cloneDeep from 'lodash/cloneDeep';
 import difference from 'lodash/difference';
 import find from 'lodash/find';
@@ -15,9 +24,11 @@ import findIndex from 'lodash/findIndex';
 import sortBy from 'lodash/sortBy';
 import uniq from 'lodash/uniq';
 
+// Helpers
 import generateGenomeView from './genomeView/generateGenomeView';
 import { calculateDeclutteringETA } from './genomeView/blockCollisions';
 
+// Variable getters and setters
 import { getDefaultChromosomeOrder } from './variables/currentChromosomeOrder';
 import { getGffDictionary } from './variables/gffDictionary';
 import {
@@ -52,8 +63,8 @@ export function getSelectedCheckboxes(optionalClass = "") {
   // Array that stores the value of only the selected checkboxes with the parameter class
   const currentClassCheckboxes = [];
 
-  d3.selectAll(".chr-box").each(function() {
-    const cb = d3.select(this);
+  d3SelectAll(".chr-box").each(function() {
+    const cb = d3Select(this);
 
     if (cb.property("checked")) {
       selectedCheckboxes.push(cb.property("value"));
@@ -103,8 +114,8 @@ export function showChromosomeConnectionInformation(connectionDictionary, select
     }
   }
 
-  d3.selectAll(".chr-box").each(function(d) {
-    d3.select(this.parentNode.parentNode).select("span.chr-box-extra").html(function() {
+  d3SelectAll(".chr-box").each(function(d) {
+    d3Select(this.parentNode.parentNode).select("span.chr-box-extra").html(function() {
       // Finding the index of the connection in the dictionary
       const indexConnection = findIndex(connectionDictionary[selectedChromosomes[0]], ['connection', d]);
       let connectionAmount = 0; // Number of block connections
@@ -127,14 +138,14 @@ export function showChromosomeConnectionInformation(connectionDictionary, select
 
     // d is the current chromosome id (e.g. N1, N2, N10)
     if (visitedChr[d]) {
-      d3.select(this).attr("disabled", null);
-      d3.select(this).classed("disabled", false);
-      d3.select(this.parentNode).classed("disabled", false);
+      d3Select(this).attr("disabled", null);
+      d3Select(this).classed("disabled", false);
+      d3Select(this.parentNode).classed("disabled", false);
     } else {
       // Only disable not visited chromosomes
-      d3.select(this).attr("disabled", true);
-      d3.select(this).classed("disabled", true);
-      d3.select(this.parentNode).classed("disabled", true);
+      d3Select(this).attr("disabled", true);
+      d3Select(this).classed("disabled", true);
+      d3Select(this.parentNode).classed("disabled", true);
     }
   });
 };
@@ -146,12 +157,12 @@ export function showChromosomeConnectionInformation(connectionDictionary, select
  * @return {undefined} undefined
  */
 export function resetChromosomeCheckboxes() {
-  d3.selectAll(".chr-box").each(function(d) {
-    d3.select(this.parentNode).classed("disabled", false);
-    d3.select(this.parentNode).select("span.chr-box-text").text(d);
-    d3.select(this.parentNode.parentNode).select("span.chr-box-extra").text("");
-    d3.select(this).classed("disabled", false);
-    d3.select(this).attr("disabled", null);
+  d3SelectAll(".chr-box").each(function(d) {
+    d3Select(this.parentNode).classed("disabled", false);
+    d3Select(this.parentNode).select("span.chr-box-text").text(d);
+    d3Select(this.parentNode.parentNode).select("span.chr-box-extra").text("");
+    d3Select(this).classed("disabled", false);
+    d3Select(this).attr("disabled", null);
   });
 };
 
@@ -161,15 +172,15 @@ export function resetChromosomeCheckboxes() {
  * @param {boolean} [value=null] Disabling value
  */
 export function resetInputsAndSelectsOnAnimation(value = null) {
-  d3.selectAll("input:not(.disabled),button")
+  d3SelectAll("input:not(.disabled),button")
     .attr("disabled", value);
 
-  d3.selectAll("select")
+  d3SelectAll("select")
     .attr("disabled", value);
 
-  if (d3.select("p.calculate-temperature-ratio input").property("checked")) {
-    d3.select("#filter-sa-temperature").attr("disabled", true);
-    d3.select("#filter-sa-ratio").attr("disabled", true);
+  if (d3Select("p.calculate-temperature-ratio input").property("checked")) {
+    d3Select("#filter-sa-temperature").attr("disabled", true);
+    d3Select("#filter-sa-ratio").attr("disabled", true);
   }
 };
 
@@ -376,18 +387,18 @@ export function getInnerAndOuterRadiusAdditionalTracks() {
   for (let i = 0; i < additionalTrackArrayLength; i++) {
     const key = additionalTrackArray[i].name;
     // Resetting the text for the tab-link
-    d3.select(`#form-config .additional-tracks-panel div.tabs button.tab-link.${key} span.text`).html(`${key}`);
+    d3Select(`#form-config .additional-tracks-panel div.tabs button.tab-link.${key} span.text`).html(`${key}`);
 
-    const trackColor = !d3.select(`div.additional-track.${key} .track-color select`).empty() &&
-      d3.select(`div.additional-track.${key} .track-color select`).property("value");
-    const trackType = !d3.select(`div.additional-track.${key} .track-type select`).empty() &&
-      d3.select(`div.additional-track.${key} .track-type select`).property("value");
-    const trackPlacement = !d3.select(`div.additional-track.${key} .track-placement select`).empty() &&
-      d3.select(`div.additional-track.${key} .track-placement select`).property("value");
+    const trackColor = !d3Select(`div.additional-track.${key} .track-color select`).empty() &&
+      d3Select(`div.additional-track.${key} .track-color select`).property("value");
+    const trackType = !d3Select(`div.additional-track.${key} .track-type select`).empty() &&
+      d3Select(`div.additional-track.${key} .track-type select`).property("value");
+    const trackPlacement = !d3Select(`div.additional-track.${key} .track-placement select`).empty() &&
+      d3Select(`div.additional-track.${key} .track-placement select`).property("value");
 
     if (trackColor && trackPlacement && trackType && trackType !== 'None') {
       // Making the tab-link text bold for the visible tracks
-      d3.select(`#form-config .additional-tracks-panel div.tabs button.tab-link.${key} span.text`)
+      d3Select(`#form-config .additional-tracks-panel div.tabs button.tab-link.${key} span.text`)
         .html(`<strong>${key}</strong>`);
 
       // All available tracks by returning the ones that are currently selected
@@ -642,15 +653,15 @@ export function lookForBlocksPositions(blockDictionary, geneDictionary, block) {
  */
 export function removeBlockView(transitionTime = 0) {
   if (transitionTime > 0) {
-    d3.select("#block-view-container")
+    d3Select("#block-view-container")
       .style("opacity", 1)
       .transition()
       .duration(transitionTime)
-      .ease(d3.easeLinear)
+      .ease(d3EaseLinear)
       .style("opacity", 0)
       .remove();
   } else {
-    d3.select("#block-view-container").remove();
+    d3Select("#block-view-container").remove();
   }
 };
 
@@ -892,8 +903,8 @@ export function flipOrResetChromosomeOrder({
  */
 export function updateAngle(nAngle = 0, nDragging = 0, shouldUpdateLayout = true) {
   // Adjust the text on the rotating range slider
-  d3.select("#nAngle-genome-view-value").text(nAngle + String.fromCharCode(176));
-  d3.select("#nAngle-genome-view").property("value", nAngle);
+  d3Select("#nAngle-genome-view-value").text(nAngle + String.fromCharCode(176));
+  d3Select("#nAngle-genome-view").property("value", nAngle);
 
   const { scale: currentScale, translate: currentTranslate } =
     getTransformValuesAdditionalTracks();
@@ -903,7 +914,7 @@ export function updateAngle(nAngle = 0, nDragging = 0, shouldUpdateLayout = true
 
   if (shouldUpdateLayout) {
     // Rotate the genome view with current transforms
-    d3.select("g.all")
+    d3Select("g.all")
       .attr("transform", `translate(${currentTranslate.width},${currentTranslate.height})
       scale(${currentScale})
       rotate(${rotateValue})`);
@@ -919,8 +930,8 @@ export function updateAngle(nAngle = 0, nDragging = 0, shouldUpdateLayout = true
  */
 export function updateTemperature(temperature, updateETA = true) {
   // Adjust the text on the temperature range slider
-  d3.select("#filter-sa-temperature-value").text(d3.format(",")(temperature));
-  d3.select("#filter-sa-temperature").property("value", temperature);
+  d3Select("#filter-sa-temperature-value").text(d3Format(",")(temperature));
+  d3Select("#filter-sa-temperature").property("value", temperature);
 
   if (updateETA) calculateDeclutteringETA();
 };
@@ -935,8 +946,8 @@ export function updateTemperature(temperature, updateETA = true) {
 export function updateRatio(ratio, updateETA = true) {
   // Adjust the text on the ratio range slider
   // Need maximum one decimal place e.g. in case of 99.5
-  d3.select("#filter-sa-ratio-value").text(`${roundFloatNumber((ratio * 100), 1)}%`);
-  d3.select("#filter-sa-ratio").property("value", ratio);
+  d3Select("#filter-sa-ratio-value").text(`${roundFloatNumber((ratio * 100), 1)}%`);
+  d3Select("#filter-sa-ratio").property("value", ratio);
 
   if (updateETA) calculateDeclutteringETA();
 };
@@ -950,21 +961,21 @@ export function updateRatio(ratio, updateETA = true) {
  */
 export function updateFlippingFrequency(frequency, updateETA = true) {
   // Adjust the text on the flipping frequency range slider
-  d3.select("#filter-sa-flipping-frequency-value").text(frequency + '%');
-  d3.select("#filter-sa-flipping-frequency").property("value", frequency);
+  d3Select("#filter-sa-flipping-frequency-value").text(frequency + '%');
+  d3Select("#filter-sa-flipping-frequency").property("value", frequency);
 
   // Enabling/Disabling SA parameters based on frequency
   const onlyDoingFlipping = frequency === 100;
-  d3.selectAll("#filter-sa-temperature,#filter-sa-ratio,p.calculate-temperature-ratio input")
+  d3SelectAll("#filter-sa-temperature,#filter-sa-ratio,p.calculate-temperature-ratio input")
     .attr("disabled", onlyDoingFlipping ? true : null);
-  d3.selectAll("div.filter-sa-temperature-div span,div.filter-sa-ratio-div span,p.calculate-temperature-ratio span,p.calculate-temperature-ratio input")
+  d3SelectAll("div.filter-sa-temperature-div span,div.filter-sa-ratio-div span,p.calculate-temperature-ratio span,p.calculate-temperature-ratio input")
     .classed("disabled", onlyDoingFlipping);
 
   if (!onlyDoingFlipping) {
     // Checking for checkbox value and disabling the temperature/ratio inputs if true
     // NOTE: This only happens when frequency !== 100 because the inputs are enabled above automatically
-    const checkboxValue = d3.select("p.calculate-temperature-ratio input").property("checked");
-    if (checkboxValue) d3.selectAll("#filter-sa-temperature,#filter-sa-ratio").attr("disabled", true);
+    const checkboxValue = d3Select("p.calculate-temperature-ratio input").property("checked");
+    if (checkboxValue) d3SelectAll("#filter-sa-temperature,#filter-sa-ratio").attr("disabled", true);
   }
 
   if (updateETA) calculateDeclutteringETA();
@@ -979,10 +990,10 @@ export function updateFlippingFrequency(frequency, updateETA = true) {
  */
 export function updateBlockNumberHeadline(dataChromosomes, dataChords) {
   // Update chromosome-number-headline with current chromosome length amount
-  d3.select(".chromosome-number-headline")
+  d3Select(".chromosome-number-headline")
     .text(function() {
       const chromosomeSize = (dataChromosomes.length || 0).toString();
-      const chromosomeSizeString = d3.format(",")(chromosomeSize);
+      const chromosomeSizeString = d3Format(",")(chromosomeSize);
       let textToShow = "";
       textToShow += chromosomeSize === "1" ? `${chromosomeSizeString} chromosome` :
         `${chromosomeSizeString} chromosomes`;
@@ -990,10 +1001,10 @@ export function updateBlockNumberHeadline(dataChromosomes, dataChords) {
     });
 
   // Update block-number-headline with current block size
-  d3.select(".block-number-headline")
+  d3Select(".block-number-headline")
     .text(function() {
       const blockSize = dataChords.length.toString();
-      const blockSizeString = d3.format(",")(blockSize);
+      const blockSizeString = d3Format(",")(blockSize);
       let textToShow = "";
       textToShow += blockSize === "1" ? `${blockSizeString} block` :
         `${blockSizeString} blocks`;
@@ -1007,10 +1018,10 @@ export function updateBlockNumberHeadline(dataChromosomes, dataChords) {
     return total;
   }, 0);
 
-  d3.select(".flipped-blocks-headline")
+  d3Select(".flipped-blocks-headline")
     .text(function() {
       const blockSize = flippedBlockSize.toString();
-      const blockSizeString = d3.format(",")(blockSize);
+      const blockSizeString = d3Format(",")(blockSize);
       let textToShow = "";
       textToShow += blockSize === "1" ? `${blockSizeString} flipped block` :
         `${blockSizeString} flipped blocks`;
@@ -1034,9 +1045,9 @@ export function updateFilter({
   value = 1
 }) {
   // Adjust the text on the filter range slider
-  const valueString = d3.format(",")(value);
-  d3.select("#filter-block-size-value").text(value === 1 ? `${valueString} connection` : `${valueString} connections`);
-  d3.select("#filter-block-size").property("value", value);
+  const valueString = d3Format(",")(value);
+  d3Select("#filter-block-size-value").text(value === 1 ? `${valueString} connection` : `${valueString} connections`);
+  d3Select("#filter-block-size").property("value", value);
 
   if (shouldUpdatePath) {
     generateGenomeView({

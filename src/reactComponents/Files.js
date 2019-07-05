@@ -10,7 +10,7 @@ import generateData from './../generateData';
 import {
   select as d3Select,
   selectAll as d3SelectAll
-} from 'd3';
+} from 'd3-selection';
 
 import { getCurrentHost } from '../variables/currentHost';
 import { renderReactAlert } from './../helpers';

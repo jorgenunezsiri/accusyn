@@ -1,8 +1,22 @@
-import * as d3 from 'd3';
+// D3
+import { ribbon as d3Ribbon } from 'd3-chord';
+import { drag as d3Drag } from 'd3-drag';
+import { easeLinear as d3EaseLinear } from 'd3-ease';
+
+import {
+  event as d3Event,
+  mouse as d3Mouse,
+  select as d3Select,
+  selectAll as d3SelectAll
+} from 'd3-selection';
+
+// Lodash
 import find from 'lodash/find';
 
+// UndoManager
 import undoManager, { updateUndoRedoButtons } from './../vendor/undoManager';
 
+// Helpers
 import generateGenomeView  from './generateGenomeView';
 import {
   getChordsRadius,
@@ -13,6 +27,8 @@ import {
   callSwapPositionsAnimation,
   updateWaitingBlockCollisionHeadline
 } from './blockCollisions';
+
+// Variable getters and setters
 import {
   getCurrentChromosomeMouseDown,
   setCurrentChromosomeMouseDown
@@ -87,15 +103,15 @@ export function updateAdditionalTracksWhileDragging({
   dataChromosomes,
   transitionDuration
 }) {
-  if (!d3.selectAll(`g.all g.block.${chromosome}`).empty()) {
+  if (!d3SelectAll(`g.all g.block.${chromosome}`).empty()) {
     const currentObject = find(dataChromosomes, ['id', chromosome]);
     const rotatingAngle = angleValue + (currentObject.start * RADIANS_TO_DEGREES);
 
-    d3.selectAll(`g.all g.block.${chromosome}`)
+    d3SelectAll(`g.all g.block.${chromosome}`)
       .raise()
       .transition()
       .duration(transitionDuration)
-      .ease(d3.easeLinear)
+      .ease(d3EaseLinear)
       .attr("transform", `rotate(${rotatingAngle})`);
   }
 };
@@ -127,21 +143,21 @@ function updateChordsWhileDragging({
 }) {
   // Only update if chromosome (parameter) has chords
   // meaning that selection should not be empty
-  if (!d3.selectAll(`path.chord.${chromosome}`).empty()) {
-    const ribbon = d3.ribbon().radius(getChordsRadius());
+  if (!d3SelectAll(`path.chord.${chromosome}`).empty()) {
+    const ribbon = d3Ribbon().radius(getChordsRadius());
     const isChrMouseDown = transitionDuration === 0 &&
       chromosome === currentChromosomeMouseDown;
 
     if (isChrMouseDown) {
-      d3.selectAll('path.chord')
+      d3SelectAll('path.chord')
         .attr("opacity", 0.3);
     }
 
-    d3.selectAll(`path.chord.${chromosome}`)
+    d3SelectAll(`path.chord.${chromosome}`)
       .raise()
       .transition()
       .duration(transitionDuration)
-      .ease(d3.easeLinear)
+      .ease(d3EaseLinear)
       .attr("opacity", 0.9)
       .attr("d", function(d) {
 
@@ -274,14 +290,14 @@ function updateChordsWhileDragging({
  * @return {number} Angle in degrees from current coordinates
  */
 function getAngleFromCoordinates(calculatingOffset = false) {
-  const containerNode = d3.select("svg#main-container").node();
+  const containerNode = d3Select("svg#main-container").node();
 
   // Points are equal to current mouse coordinate minus 550
   // Assuming the following: width / 2 = 550 and height / 2 = 550
   // but svg object inside is 850,850
   // which means that center is in coordinate 425,425
-  const x = d3.mouse(containerNode)[0] - (WIDTH / 2);
-  let y = d3.mouse(containerNode)[1] - (HEIGHT / 2);
+  const x = d3Mouse(containerNode)[0] - (WIDTH / 2);
+  let y = d3Mouse(containerNode)[1] - (HEIGHT / 2);
 
   // Decreasing scrollY from y if not calculating offset angle
   // NOTE: This is to avoid jumping on Google Chrome
@@ -304,20 +320,20 @@ function onStartDragging(dataChromosomes) {
   const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
 
   if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "" ||
-    d3.select(".best-guess > button").attr("disabled")) return;
+    d3Select(".best-guess > button").attr("disabled")) return;
 
   // Removing clones if they exists
-  d3.selectAll(`g.${currentChromosomeMouseDown}-clone`).remove();
+  d3SelectAll(`g.${currentChromosomeMouseDown}-clone`).remove();
   // Creating clone of mouse down chr using selection.clone(deep = true)
-  const copyChr = d3.select(`g.${currentChromosomeMouseDown}`).clone(true);
+  const copyChr = d3Select(`g.${currentChromosomeMouseDown}`).clone(true);
   copyChr.lower()
     .attr("class", `${currentChromosomeMouseDown}-clone`)
     .attr("opacity", 0.5)
     .style("pointer-events", "none"); // No events should point to it
 
-  if (!d3.selectAll(`g.all g.block.${currentChromosomeMouseDown}`).empty()) {
+  if (!d3SelectAll(`g.all g.block.${currentChromosomeMouseDown}`).empty()) {
     // Creating clone of additional tracks using selection.clone(deep = true)
-    const copyTracks = d3.selectAll(`g.all g.block.${currentChromosomeMouseDown}`).clone(true);
+    const copyTracks = d3SelectAll(`g.all g.block.${currentChromosomeMouseDown}`).clone(true);
     copyTracks.lower()
       .attr("class", `${currentChromosomeMouseDown}-clone`)
       .attr("opacity", 0.5)
@@ -331,28 +347,28 @@ function onStartDragging(dataChromosomes) {
   lastAngle = 0;
   trueLastAngle = 0;
 
-  const darkMode = d3.select("p.dark-mode input").property("checked");
+  const darkMode = d3Select("p.dark-mode input").property("checked");
 
   // Changing fill to black if in dark mode, so red highlight can be seen
   if (darkMode) {
-    d3.select(`g.${currentChromosomeMouseDown} textPath`)
+    d3Select(`g.${currentChromosomeMouseDown} textPath`)
       .style("fill", "#000000");
   }
 
   // Highlighting current mouse down chromosome and its chords
-  d3.select(`g.${currentChromosomeMouseDown}`)
+  d3Select(`g.${currentChromosomeMouseDown}`)
     .style("stroke", "#ea4848")
     .style("stroke-width", "1px");
 
   // Highlighting chromosome checkbox as well
-  d3.select(`div.chr-boxes div.chr-box-inner-content > label.${currentChromosomeMouseDown}`)
+  d3Select(`div.chr-boxes div.chr-box-inner-content > label.${currentChromosomeMouseDown}`)
     .style("border", "1px solid #ea4848");
 
   // Only highlighting chords if they are present for current mouse down chromosome
-  if (!d3.selectAll(`path.chord.${currentChromosomeMouseDown}`).empty()) {
-    d3.selectAll('path.chord')
+  if (!d3SelectAll(`path.chord.${currentChromosomeMouseDown}`).empty()) {
+    d3SelectAll('path.chord')
       .attr("opacity", 0.3);
-    d3.selectAll(`path.chord.${currentChromosomeMouseDown}`)
+    d3SelectAll(`path.chord.${currentChromosomeMouseDown}`)
       .raise()
       .attr("opacity", 0.9);
   }
@@ -368,12 +384,12 @@ function onDragging(dataChromosomes) {
   const currentChromosomeMouseDown = getCurrentChromosomeMouseDown();
 
   if (dataChromosomes.length <= 1 || currentChromosomeMouseDown === "" ||
-    d3.select(".best-guess > button").attr("disabled")) return;
+    d3Select(".best-guess > button").attr("disabled")) return;
 
   updateWaitingBlockCollisionHeadline();
 
   // Selecting current mouse down chromosome
-  const current = d3.select(`g.${currentChromosomeMouseDown}`);
+  const current = d3Select(`g.${currentChromosomeMouseDown}`);
   const currentAngle = (getAngleFromCoordinates() - offsetAngle);
 
   current
@@ -414,24 +430,24 @@ function onEndDragging(dataChromosomes) {
   const dataChromosomesLength = dataChromosomes.length;
 
   if (dataChromosomesLength <= 1 || currentChromosomeMouseDown === "" ||
-    d3.select(".best-guess > button").attr("disabled")) return;
+    d3Select(".best-guess > button").attr("disabled")) return;
 
   let currentChromosomeOrder = getCurrentChromosomeOrder().slice();
 
-  const darkMode = d3.select("p.dark-mode input").property("checked");
+  const darkMode = d3Select("p.dark-mode input").property("checked");
 
   // Changing fill back to white-ish if in dark mode, because highlight is being turned off
   if (darkMode) {
-    d3.select(`g.${currentChromosomeMouseDown} textPath`)
+    d3Select(`g.${currentChromosomeMouseDown} textPath`)
       .style("fill", "#f3f3f3");
   }
 
   // Turning off highlighting for current mouse down chromosome
-  d3.select(`g.${currentChromosomeMouseDown}`)
+  d3Select(`g.${currentChromosomeMouseDown}`)
     .style("stroke", "none");
 
   // Turning off highlighting for chromosome checkbox as well
-  d3.select(`div.chr-boxes div.chr-box-inner-content > label.${currentChromosomeMouseDown}`)
+  d3Select(`div.chr-boxes div.chr-box-inner-content > label.${currentChromosomeMouseDown}`)
     .style("border", "none");
 
   let collidedChr = "";
@@ -453,7 +469,7 @@ function onEndDragging(dataChromosomes) {
     setCurrentChromosomeMouseDown("");
 
     // Removing cloned chromosome without transition
-    d3.select(`g.${currentChromosomeMouseDown}-clone`)
+    d3Select(`g.${currentChromosomeMouseDown}-clone`)
       .attr("opacity", 0)
       .remove();
 
@@ -538,10 +554,10 @@ function onEndDragging(dataChromosomes) {
   let transitionDraggingBackTime = TRANSITION_DRAG_TIME;
 
   // Transitioning the remaining chromosomes, by removing the clones first
-  d3.selectAll(`g.${currentChromosomeMouseDown}-clone`)
+  d3SelectAll(`g.${currentChromosomeMouseDown}-clone`)
     .transition()
     .duration(TRANSITION_DRAG_TIME)
-    .ease(d3.easeLinear)
+    .ease(d3EaseLinear)
     .attr("opacity", 0)
     .remove();
 
@@ -552,14 +568,14 @@ function onEndDragging(dataChromosomes) {
     (function(transitionDraggingBackTime, index) {
 
       setTimeout(function() {
-        const selection = d3.select(`.cs-layout g.${selectDrag[index]}`);
+        const selection = d3Select(`.cs-layout g.${selectDrag[index]}`);
         let rotatingAngle = angleValue;
 
         if (selectDrag[index] === collidedChr) {
           selection
             .transition()
             .duration(TRANSITION_DRAG_TIME)
-            .ease(d3.easeLinear)
+            .ease(d3EaseLinear)
             .attr("transform", `rotate(${rotatingAngle})`);
         } else if (selectDrag[index] === currentChromosomeMouseDown) {
           rotatingAngle = (angleValue + lastAngle);
@@ -567,14 +583,14 @@ function onEndDragging(dataChromosomes) {
           selection
             .transition()
             .duration(TRANSITION_DRAG_TIME)
-            .ease(d3.easeLinear)
+            .ease(d3EaseLinear)
             .attr("transform", `rotate(${rotatingAngle})`);
         } else {
           selection
             .raise()
             .transition()
             .duration(TRANSITION_DRAG_TIME)
-            .ease(d3.easeLinear)
+            .ease(d3EaseLinear)
             .attr("transform", `rotate(${rotatingAngle})`);
         }
 
@@ -611,7 +627,7 @@ function onEndDragging(dataChromosomes) {
       if ((360 - draggedAngle) < 0) draggedAngle = draggedAngle - 360;
 
       // Current rotating angle for the genome view (default to 0)
-      const chromosomeRotateAngle = d3.select("#nAngle-genome-view").property("value");
+      const chromosomeRotateAngle = d3Select("#nAngle-genome-view").property("value");
       updateAngle(+chromosomeRotateAngle, 360 - draggedAngle);
     }
 
@@ -663,19 +679,19 @@ function onEndDragging(dataChromosomes) {
  */
 export function addSvgDragHandler(dataChromosomes) {
   // Updating genome view rotating angle on input
-  d3.select("#nAngle-genome-view")
+  d3Select("#nAngle-genome-view")
     .on("input", function() {
-      let shouldUpdate = (d3.event.detail || {}).shouldUpdate;
+      let shouldUpdate = (d3Event.detail || {}).shouldUpdate;
       // shoulUpdate = null or undefined is true, meaning true by default
       shouldUpdate = shouldUpdate == null ? true : shouldUpdate;
 
       updateAngle(+this.value, draggedAngle > 0 ? 360 - draggedAngle : 0, shouldUpdate);
     });
 
-  const dragHandler = d3.drag()
+  const dragHandler = d3Drag()
     .on("start", () => onStartDragging(dataChromosomes))
     .on("drag", () => onDragging(dataChromosomes))
     .on("end", () => onEndDragging(dataChromosomes));
 
-  d3.select("svg#main-container").call(dragHandler);
+  d3Select("svg#main-container").call(dragHandler);
 };

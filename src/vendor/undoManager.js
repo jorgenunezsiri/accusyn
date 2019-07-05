@@ -1,6 +1,4 @@
-import {
-  select as d3Select
-} from 'd3';
+import { select as d3Select } from 'd3-selection';
 
 const UndoManager = require('undo-manager'); // requires the lib from node_modules
 

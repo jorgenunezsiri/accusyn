@@ -1,4 +1,4 @@
-import { zoomIdentity as d3ZoomIdentity } from 'd3';
+import { zoomIdentity as d3ZoomIdentity } from 'd3-zoom';
 import {
   interpolateBlues,
   interpolateGreens,

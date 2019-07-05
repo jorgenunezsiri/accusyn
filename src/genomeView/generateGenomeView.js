@@ -13,7 +13,16 @@ Function file: generateGenomeView.js
 @2018-2019, Jorge Nunez Siri, All rights reserved
 */
 
-import * as d3 from 'd3';
+// D3
+import { color as d3Color } from 'd3-color';
+import { easeLinear as d3EaseLinear } from 'd3-ease';
+import { format as d3Format } from 'd3-format';
+import { scaleOrdinal as d3ScaleOrdinal } from 'd3-scale';
+
+import {
+  select as d3Select,
+  selectAll as d3SelectAll
+} from 'd3-selection';
 
 // Lodash
 import cloneDeep from 'lodash/cloneDeep';
@@ -23,10 +32,11 @@ import isEmpty from 'lodash/isEmpty';
 import forEach from 'lodash/forEach';
 import findIndex from 'lodash/findIndex';
 
+// UndoManager
 import { addActionToUndoManager, updateUndoRedoButtons } from './../vendor/undoManager';
 
+// Helpers
 import generateBlockView from './../generateBlockView';
-
 import {
   assignFlippedChromosomeColors,
   calculateMiddleValue,
@@ -136,14 +146,14 @@ function getDataChromosomes() {
   const { selectedCheckboxes } = getSelectedCheckboxes();
 
   // To keep track of the Show All input state
-  const showAllChromosomes = d3.select("p.show-all input").property("checked");
+  const showAllChromosomes = d3Select("p.show-all input").property("checked");
 
   const dataChromosomes = []; // Local data chromosomes array
 
-  if (d3.select("div.chromosomes-palette select").property("value") === 'Flipped') {
+  if (d3Select("div.chromosomes-palette select").property("value") === 'Flipped') {
     // Coloring flipped chromosomes
     setGffDictionary(assignFlippedChromosomeColors({
-      colorScale: d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES['Flipped']).domain([0, 1]),
+      colorScale: d3ScaleOrdinal(CATEGORICAL_COLOR_SCALES['Flipped']).domain([0, 1]),
       currentFlippedChromosomes: getCurrentFlippedChromosomes().slice(),
       gffKeys: getDefaultChromosomeOrder().slice()
     }));
@@ -263,7 +273,7 @@ function generateAdditionalTrack(trackName, trackRadius, trackType, trackColor) 
     color: trackColor,
     tooltipContent: function(d) {
       // Activate if SA is not running
-      if (d3.select(".best-guess > button").attr("disabled")) return;
+      if (d3Select(".best-guess > button").attr("disabled")) return;
       // Only show tooltip if the user is not dragging
       // NOTE: Still need this, because we don't want to view the tooltip when
       // holding a chromosome
@@ -275,9 +285,9 @@ function generateAdditionalTrack(trackName, trackRadius, trackType, trackColor) 
 
       return `<h6><u>Bin information</u></h6>
         <h6>Chromosome: ${block_id}</h6>
-        <h6>Start: ${d3.format(",")(startPosition)}</h6>
-        <h6>End: ${d3.format(",")(endPosition)}</h6>
-        <h6>Value: ${d3.format(",")(value)}</h6>`;
+        <h6>Start: ${d3Format(",")(startPosition)}</h6>
+        <h6>End: ${d3Format(",")(endPosition)}</h6>
+        <h6>Value: ${d3Format(",")(value)}</h6>`;
     }
   };
 
@@ -342,13 +352,13 @@ function generateCircosLayout() {
         event.preventDefault();
 
         // Activate if SA is not running
-        if (d3.select(".best-guess > button").attr("disabled")) return;
+        if (d3Select(".best-guess > button").attr("disabled")) return;
 
         // Disabling inputs and selects before calling the animation
         resetInputsAndSelectsOnAnimation(true);
 
         // Before flipping, set all chords with the same opacity
-        d3.selectAll("path.chord").attr("opacity", 0.7);
+        d3SelectAll("path.chord").attr("opacity", 0.7);
 
         let currentFlippedChromosomes = getCurrentFlippedChromosomes().slice();
 
@@ -373,7 +383,7 @@ function generateCircosLayout() {
 
         let shouldUpdateLayout = false;
         if (isAdditionalTrackAdded() ||
-          d3.select("div.chromosomes-palette select").property("value") === 'Flipped') {
+          d3Select("div.chromosomes-palette select").property("value") === 'Flipped') {
           // To update the chromosome colors or flip the additional tracks
           shouldUpdateLayout = true;
         }
@@ -397,22 +407,22 @@ function generateCircosLayout() {
       },
       'mousedown.chr': function(d) {
         // Activate if SA is not running
-        if (d3.select(".best-guess > button").attr("disabled")) return;
+        if (d3Select(".best-guess > button").attr("disabled")) return;
 
         setCurrentChromosomeMouseDown(d.id);
       }
     }
   };
 
-  const darkMode = d3.select("p.dark-mode input").property("checked");
-  d3.select("svg#genome-view")
+  const darkMode = d3Select("p.dark-mode input").property("checked");
+  d3Select("svg#genome-view")
     .classed("border border-light rounded-circle dark-mode", darkMode);
 
-  if (!d3.select("#block-view-container").empty()) {
-    d3.select("#block-view-container").classed("dark-mode", darkMode);
+  if (!d3Select("#block-view-container").empty()) {
+    d3Select("#block-view-container").classed("dark-mode", darkMode);
   }
 
-  d3.select(".circos-tooltip").classed("dark-mode", darkMode);
+  d3Select(".circos-tooltip").classed("dark-mode", darkMode);
 
   if (darkMode) {
     extraLayoutConfiguration.labels = {
@@ -453,17 +463,17 @@ function generateCircosLayout() {
  */
 function unhighlightCurrentSelectedBlock() {
   // Hide tooltip
-  d3.select('.circos-tooltip')
+  d3Select('.circos-tooltip')
     .transition()
     .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
-    .ease(d3.easeLinear)
+    .ease(d3EaseLinear)
     .style("opacity", 0);
 
   // Setting opacity 0.7 to all chords
-  d3.selectAll('path.chord')
+  d3SelectAll('path.chord')
     .transition()
     .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
-    .ease(d3.easeLinear)
+    .ease(d3EaseLinear)
     .attr("opacity", 0.7);
 
   // Removing block view
@@ -496,7 +506,7 @@ export function getBlockColor({
   isFlipped
 }) {
   // To keep track of the value of the selected block color
-  const blocksColor = d3.select("div.blocks-color select").property("value");
+  const blocksColor = d3Select("div.blocks-color select").property("value");
   const gffPositionDictionary = getGffDictionary();
 
   let colorValue = CONNECTION_COLORS[blocksColor];
@@ -525,14 +535,14 @@ function generatePathGenomeView({
   transitionRemove
 }) {
   // To keep track of the value of the selected block color
-  const blocksColor = d3.select("div.blocks-color select").property("value");
+  const blocksColor = d3Select("div.blocks-color select").property("value");
 
   // To keep track of the value of highlight flipped blocks checkbox
-  const highlightFlippedBlocks = d3.select("p.highlight-flipped-blocks input").property("checked");
+  const highlightFlippedBlocks = d3Select("p.highlight-flipped-blocks input").property("checked");
 
   const myCircos = getCircosObject();
 
-  const darkMode = d3.select("p.dark-mode input").property("checked");
+  const darkMode = d3Select("p.dark-mode input").property("checked");
 
   // Setting transition to default object if not defined at this point
   // NOTE: Default object is used each time that the genome view is rendered
@@ -568,7 +578,7 @@ function generatePathGenomeView({
     opacity: function(d) {
       if (foundCurrentSelectedBlock) {
         if (isEqual(d.source.value.id, currentSelectedBlock)) {
-          d3.select(this).raise();
+          d3Select(this).raise();
           return 0.9;
         } else {
           return 0.3;
@@ -589,7 +599,7 @@ function generatePathGenomeView({
     },
     tooltipContent: function(d) {
       // Activate if SA is not running
-      if (d3.select(".best-guess > button").attr("disabled")) return;
+      if (d3Select(".best-guess > button").attr("disabled")) return;
       // Only show tooltip if the user is not dragging
       // NOTE: Still need this, because we don't want to view the tooltip when
       // holding a chromosome
@@ -601,22 +611,22 @@ function generatePathGenomeView({
       const { id: blockID, score, eValue, length, isFlipped } = d.source.value;
       return `<h6>${sourceID} ➤ ${targetID}</h6>
         <h6><u>Block information</u></h6>
-        <h6>ID: ${d3.format(",")(blockID)}</h6>
-        <h6>Score: ${d3.format(",")(score)}</h6>
+        <h6>ID: ${d3Format(",")(blockID)}</h6>
+        <h6>Score: ${d3Format(",")(score)}</h6>
         <h6>E-value: ${eValue}</h6>
-        <h6>Size: ${d3.format(",")(length)}</h6>
+        <h6>Size: ${d3Format(",")(length)}</h6>
         <h6>Flipped: ${(isFlipped ? "Yes" : "No")}</h6>`;
     },
     events: {
       'click.block': function() {
         // Activate if SA is not running
-        if (d3.select(".best-guess > button").attr("disabled")) return;
+        if (d3Select(".best-guess > button").attr("disabled")) return;
 
         unhighlightCurrentSelectedBlock();
       },
       'mouseover.block': function(d, i, nodes) {
         // Activate if SA is not running
-        if (d3.select(".best-guess > button").attr("disabled")) return;
+        if (d3Select(".best-guess > button").attr("disabled")) return;
 
         // Only update block view if the user is not dragging
         // NOTE: Still need this, because we don't want to mouseover and highlight
@@ -626,11 +636,11 @@ function generatePathGenomeView({
 
         setCurrentSelectedBlock(d.source.value.id);
 
-        d3.selectAll(nodes).attr("opacity", 0.7);
+        d3SelectAll(nodes).attr("opacity", 0.7);
 
-        if (d3.selectAll(nodes).attr("opacity") != 0.3) {
-          d3.selectAll(nodes).attr("opacity", 0.3);
-          d3.select(nodes[i]).raise().attr("opacity", 0.9);
+        if (d3SelectAll(nodes).attr("opacity") != 0.3) {
+          d3SelectAll(nodes).attr("opacity", 0.3);
+          d3Select(nodes[i]).raise().attr("opacity", 0.9);
         }
 
         // Showing block view for current block
@@ -641,7 +651,7 @@ function generatePathGenomeView({
         event.preventDefault();
 
         // Activate if SA is not running
-        if (d3.select(".best-guess > button").attr("disabled")) return;
+        if (d3Select(".best-guess > button").attr("disabled")) return;
 
         const blockToDelete = d.source.value.id;
 
@@ -652,11 +662,11 @@ function generatePathGenomeView({
         unhighlightCurrentSelectedBlock();
 
         // Hiding and removing node when right clicking block
-        d3.select(nodes[i])
+        d3Select(nodes[i])
           .raise()
           .transition()
           .duration(REMOVE_BLOCK_VIEW_TRANSITION_TIME)
-          .ease(d3.easeLinear)
+          .ease(d3EaseLinear)
           .style("opacity", 0)
           .remove();
 
@@ -692,7 +702,7 @@ function generatePathGenomeView({
         // Checking if block view is empty (not present)
         // To avoid updating the block view when not necessary
         // i.e. when changing to multi-chr view and the currentSelectedBlock is still there
-        let shouldUpdateBlockView = d3.select("#block-view-container").empty();
+        let shouldUpdateBlockView = d3Select("#block-view-container").empty();
         if (!shouldUpdateBlockView) {
           const {
             source: { id: sourceID, value: { isFlipped } },
@@ -704,25 +714,25 @@ function generatePathGenomeView({
           });
 
           // If it is present, then checking if the block color is different from block view line color
-          let currentBlockViewLineColor = d3.select("#block-view-container g.clip-block-group .line").attr("fill");
+          let currentBlockViewLineColor = d3Select("#block-view-container g.clip-block-group .line").attr("fill");
           let currentGenomeViewChordColor = blockColor;
           // If one of the colors is in gradient, then assume they are different and update the block view
           // NOTE: Gradient format is: url(#id)
           if (!currentBlockViewLineColor.startsWith('url') && currentGenomeViewChordColor !== 'Combined') {
-            currentBlockViewLineColor = d3.color(currentBlockViewLineColor).hex();
-            currentGenomeViewChordColor = d3.color(currentGenomeViewChordColor).hex();
+            currentBlockViewLineColor = d3Color(currentBlockViewLineColor).hex();
+            currentGenomeViewChordColor = d3Color(currentGenomeViewChordColor).hex();
           }
 
           // Checking if axis color are different from chromosomes color
           const currentAxisSourceColor =
-            d3.color(d3.select("#block-view-container g.axisY0 path.domain").attr("fill")).hex();
+            d3Color(d3Select("#block-view-container g.axisY0 path.domain").attr("fill")).hex();
           const currentAxisTargetColor =
-            d3.color(d3.select("#block-view-container g.axisY1 path.domain").attr("fill")).hex();
+            d3Color(d3Select("#block-view-container g.axisY1 path.domain").attr("fill")).hex();
 
           shouldUpdateBlockView = shouldUpdateBlockView ||
             currentBlockViewLineColor !== currentGenomeViewChordColor ||
-            d3.color(gffPositionDictionary[sourceID].color).hex() !== currentAxisSourceColor ||
-            d3.color(gffPositionDictionary[targetID].color).hex() !== currentAxisTargetColor;
+            d3Color(gffPositionDictionary[sourceID].color).hex() !== currentAxisSourceColor ||
+            d3Color(gffPositionDictionary[targetID].color).hex() !== currentAxisTargetColor;
         }
 
         if (shouldUpdateBlockView) generateBlockView(currentChord);
@@ -736,9 +746,9 @@ function generatePathGenomeView({
 
     if (transitionRemove) {
       // Removing the nodes inside genome view main-container if the view is being removed
-      d3.select("#genome-view g.all").remove();
+      d3Select("#genome-view g.all").remove();
       // Turning off dark mode classes for the genome view
-      d3.select("svg#genome-view")
+      d3Select("svg#genome-view")
         .classed("border border-light rounded-circle dark-mode", false);
     }
   } else {
@@ -749,25 +759,25 @@ function generatePathGenomeView({
   const { rotate: currentRotate, scale: currentScale, translate: currentTranslate } =
     getTransformValuesAdditionalTracks();
 
-  d3.select("svg#main-container g.all")
+  d3Select("svg#main-container g.all")
     .transition()
     .duration(200)
-    .ease(d3.easeLinear)
+    .ease(d3EaseLinear)
     .attr("transform", `translate(${currentTranslate.width},${currentTranslate.height})
       scale(${currentScale})
       rotate(${currentRotate})`);
 
   // Making the last axis darker for each additional track block
-  d3.selectAll('g.block').each(function() {
+  d3SelectAll('g.block').each(function() {
     // Choosing the path.axis inside each block
-    const lastElement = d3.select(this).selectAll('path.axis').filter((d, i) => i === 4);
+    const lastElement = d3Select(this).selectAll('path.axis').filter((d, i) => i === 4);
     if (lastElement) lastElement.attr("stroke", "#8c8c8c");
   });
 
   // Highlighting flipped blocks if checkbox is selected
   if (highlightFlippedBlocks) {
-    const chromosomePalette = d3.select("div.chromosomes-palette select").property("value");
-    const flippedColorBlock = d3.select("div.blocks-color select").property("value");
+    const chromosomePalette = d3Select("div.chromosomes-palette select").property("value");
+    const flippedColorBlock = d3Select("div.blocks-color select").property("value");
     const shouldChangeColor = (flippedColorBlock === 'Flipped' ||
       (flippedColorBlock === 'Combined' && chromosomePalette === 'Flipped') ||
       (flippedColorBlock === 'Source' && chromosomePalette === 'Flipped') ||
@@ -775,7 +785,7 @@ function generatePathGenomeView({
 
     const stroke = shouldChangeColor ? 'gold' : '#ea4848';
 
-    d3.selectAll("path.chord.isFlipped")
+    d3SelectAll("path.chord.isFlipped")
       .attr("stroke", stroke)
       .attr("stroke-width", "2px");
   }
@@ -787,10 +797,10 @@ function generatePathGenomeView({
   }
 
   // Change chromosome order
-  d3.select("div.change-chromosome-positions p.apply-button > input")
+  d3Select("div.change-chromosome-positions p.apply-button > input")
     .on("click", function() {
-      const action = d3.select('.change-chromosome-positions select.flip-reset').property("value");
-      const genome = d3.select('.change-chromosome-positions select.all-genomes').property("value");
+      const action = d3Select('.change-chromosome-positions select.flip-reset').property("value");
+      const genome = d3Select('.change-chromosome-positions select.all-genomes').property("value");
 
       // Check if genome is available in current layout
       let foundGenome = false;
@@ -850,26 +860,26 @@ export default function generateGenomeView({
   transition
 }) {
   // Default filtering select for block size
-  const filterSelect = (!d3.select('.filter-connections-div select').empty() &&
-    d3.select('.filter-connections-div select').property("value")) || 'At Least';
+  const filterSelect = (!d3Select('.filter-connections-div select').empty() &&
+    d3Select('.filter-connections-div select').property("value")) || 'At Least';
 
   // Default filtering value for block size
-  const filterValue = Number(!d3.select('.filter-connections-div #filter-block-size').empty() &&
-    d3.select('.filter-connections-div #filter-block-size').property("value")) || 1;
+  const filterValue = Number(!d3Select('.filter-connections-div #filter-block-size').empty() &&
+    d3Select('.filter-connections-div #filter-block-size').property("value")) || 1;
 
   // To keep track of the value of the selected block color
-  const blocksColor = d3.select("div.blocks-color select").property("value");
+  const blocksColor = d3Select("div.blocks-color select").property("value");
 
   // To keep track of the Show all input state
-  const showAllChromosomes = d3.select("p.show-all input").property("checked");
+  const showAllChromosomes = d3Select("p.show-all input").property("checked");
 
   // To keep track of the Show self connections input state for chromosomes
-  const showSelfConnectionsChr = d3.select("p.show-self-connections-chr input").property("checked");
+  const showSelfConnectionsChr = d3Select("p.show-self-connections-chr input").property("checked");
 
   // To keep track of the Show self connections input state for genomes
-  const showingMultipleChromosomes = !d3.select("p.show-self-connections-genome input").empty();
+  const showingMultipleChromosomes = !d3Select("p.show-self-connections-genome input").empty();
   const showSelfConnectionsGenome =  showingMultipleChromosomes &&
-    d3.select("p.show-self-connections-genome input").property("checked");
+    d3Select("p.show-self-connections-genome input").property("checked");
 
   const blockDictionary = getBlockDictionary();
   // Array that includes the keys from the blockDictionary
@@ -883,11 +893,11 @@ export default function generateGenomeView({
 
   const gffPositionDictionary = getGffDictionary();
   // Removing and adding empty container for gradients
-  if (!d3.select("svg#main-container g.all defs").empty()) {
-    d3.select("svg#main-container g.all defs").remove();
+  if (!d3Select("svg#main-container g.all defs").empty()) {
+    d3Select("svg#main-container g.all defs").remove();
   }
 
-  d3.select("svg#main-container g.all").append("defs");
+  d3Select("svg#main-container g.all").append("defs");
 
   dataChords = []; // Emptying data chords array
 
@@ -992,7 +1002,7 @@ export default function generateGenomeView({
         // https://bl.ocks.org/nbremer/a23f7f85f30f5cd9e1e8602a5a4e6d75
         const sourceAngle = chordObject.source.angle.middle - Math.PI/2;
         const targetAngle = chordObject.target.angle.middle - Math.PI/2;
-        const gradient = d3.select("svg#main-container g.all defs")
+        const gradient = d3Select("svg#main-container g.all defs")
           .append("linearGradient")
           .attr("id", getGradID(chordObject))
           .attr("gradientUnits", "userSpaceOnUse")
@@ -1033,8 +1043,8 @@ export default function generateGenomeView({
   }
 
   // Sorting the chords according to the drawing order
-  const filterDrawOrder = (!d3.select('div.draw-blocks-order select').empty() &&
-    d3.select('div.draw-blocks-order select').property("value")) || 'Block ID (↑)';
+  const filterDrawOrder = (!d3Select('div.draw-blocks-order select').empty() &&
+    d3Select('div.draw-blocks-order select').property("value")) || 'Block ID (↑)';
 
   dataChords.sort(function compare(a, b) {
     let countA, countB;
@@ -1072,7 +1082,7 @@ export default function generateGenomeView({
   // NOTE: When filtering there is NO transition
   const condition = ((transition && !transition.shouldDo && !foundCurrentSelectedBlock) ||
       !foundCurrentSelectedBlock) &&
-    !d3.select("#block-view-container").empty();
+    !d3Select("#block-view-container").empty();
 
   const transitionRemove = (selectedCheckboxes.length === 0 && !showAllChromosomes);
 

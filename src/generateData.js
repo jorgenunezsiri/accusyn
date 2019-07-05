@@ -13,7 +13,16 @@ Function file: generateData.js
 @2018-2019, Jorge Nunez Siri, All rights reserved
 */
 
-import * as d3 from 'd3';
+// D3
+import { scaleOrdinal as d3ScaleOrdinal } from 'd3-scale';
+
+import {
+  event as d3Event,
+  select as d3Select,
+  selectAll as d3SelectAll
+} from 'd3-selection';
+
+// Lodash
 import cloneDeep from 'lodash/cloneDeep';
 import find from 'lodash/find';
 import findIndex from 'lodash/findIndex';
@@ -27,8 +36,10 @@ import Files from './reactComponents/Files';
 import Modal from './reactComponents/Modal';
 import SavedStamps from './reactComponents/SavedStamps';
 
+// UndoManager
 import undoManager, { resetUndoRedoButtons, updateUndoRedoButtons } from './vendor/undoManager';
 
+// Helpers
 import generateBlockView from './generateBlockView';
 import generateGenomeView from './genomeView/generateGenomeView';
 
@@ -64,7 +75,7 @@ import {
   updateTemperature
 } from './helpers';
 
-// Variables getters and setters
+// Variable getters and setters
 import { setBlockDictionary } from './variables/blockDictionary';
 import {
   getCollisionCount,
@@ -121,7 +132,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
   // Resetting all stored variables
   resetAllVariables();
 
-  const colors = d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES['Light 1']); // Default color scheme
+  const colors = d3ScaleOrdinal(CATEGORICAL_COLOR_SCALES['Light 1']); // Default color scheme
   const geneDictionary = {}; // Dictionary that includes the start and end position data for each gene
   let gffKeys = []; // Array that includes the sorted keys from the gff dictionary
   const gffPositionDictionary = {}; // Dictionary that includes the colors, start and end position data for each chromosome
@@ -333,75 +344,75 @@ export default function generateData(gff, collinearity, additionalTrack) {
   setBlockDictionary(blockDictionary);
 
   // Information title
-  d3.select("#form-config")
+  d3Select("#form-config")
     .append("h5")
     .attr("class", "panel-title information-panel-title")
     .text("Information");
 
-  d3.select("#form-config")
+  d3Select("#form-config")
     .append("div")
     .attr("class", "panel information-panel")
     .append("h6")
     .attr("class", "chromosome-number-headline");
 
     // Block number headline
-  d3.select("#form-config .information-panel")
+  d3Select("#form-config .information-panel")
     .append("h6")
     .attr("class", "block-number-headline");
 
   // Flipped blocks headline
-  d3.select("#form-config .information-panel")
+  d3Select("#form-config .information-panel")
     .append("h6")
     .attr("class", "flipped-blocks-headline");
 
   // Block collisions headline
-  d3.select("#form-config .information-panel")
+  d3Select("#form-config .information-panel")
     .append("h6")
     .attr("class", "block-collisions-headline");
 
   // Superimposed block collisions headline
-  d3.select("#form-config .information-panel")
+  d3Select("#form-config .information-panel")
     .append("h6")
     .attr("class", "superimposed-block-collisions-headline");
 
   // Decluttering ETA
-  d3.select("#form-config .information-panel")
+  d3Select("#form-config .information-panel")
     .append("h6")
     .attr("class", "filter-sa-hint-title");
 
-  d3.select("#form-config .information-panel")
+  d3Select("#form-config .information-panel")
     .append("h6")
     .attr("class", "filter-sa-hint");
 
   // Connections title
-  d3.select("#form-config")
+  d3Select("#form-config")
     .append("h5")
     .attr("class", "panel-title connections-panel-title")
     .text("Connections");
 
-  d3.select("#form-config")
+  d3Select("#form-config")
     .append("div")
     .attr("class", "panel connections-panel");
 
   // Chromosome checkboxes
-  d3.select("#form-config .connections-panel")
+  d3Select("#form-config .connections-panel")
     .append("div")
     .attr("class", "container")
     .append("div")
     .attr("class", "row for-chr-boxes");
 
   // Layout title
-  d3.select("#form-config")
+  d3Select("#form-config")
     .append("h5")
     .attr("class", "panel-title layout-panel-title")
     .text("Layout");
 
-  d3.select("#form-config")
+  d3Select("#form-config")
     .append("div")
     .attr("class", "panel layout-panel");
 
   // Dark mode checkbox
-  d3.select("#form-config .layout-panel")
+  d3Select("#form-config .layout-panel")
     .append("p")
     .attr("class", "dark-mode")
     .attr("title", "If selected, both views will have black background.")
@@ -412,13 +423,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("value", "Dark mode")
     .property("checked", false); // Dark mode is not checked by default
 
-  d3.select("#form-config p.dark-mode > label")
+  d3Select("#form-config p.dark-mode > label")
     .append("span")
     .text("Dark mode");
 
-  d3.select("p.dark-mode input")
+  d3Select("p.dark-mode input")
     .on("change", function() {
-      const activeAdditionalTrackTab = d3.select(".tab-link.active");
+      const activeAdditionalTrackTab = d3Select(".tab-link.active");
       if (!activeAdditionalTrackTab.empty()) {
         const activeTrackText = activeAdditionalTrackTab.select("span.text").text();
         // Adding legend again to toggle dark mode
@@ -436,7 +447,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
         }
       }
 
-      let shouldUpdate = (d3.event.detail || {}).shouldUpdate;
+      let shouldUpdate = (d3Event.detail || {}).shouldUpdate;
       // shoulUpdate = null or undefined is true, meaning true by default
       shouldUpdate = shouldUpdate == null ? true : shouldUpdate;
       if (shouldUpdate) {
@@ -448,7 +459,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     });
 
   // Highlight flipped blocks checkbox
-  d3.select("#form-config .layout-panel")
+  d3Select("#form-config .layout-panel")
     .append("p")
     .attr("class", "highlight-flipped-blocks")
     .attr("title", "If selected, all connections with flipped blocks will be highlighted.")
@@ -459,11 +470,11 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("value", "Highlight flipped blocks")
     .property("checked", false); // Highlight flipped blocks is not checked by default
 
-  d3.select("#form-config p.highlight-flipped-blocks > label")
+  d3Select("#form-config p.highlight-flipped-blocks > label")
     .append("span")
     .text("Highlight flipped blocks");
 
-  d3.select("p.highlight-flipped-blocks input")
+  d3Select("p.highlight-flipped-blocks input")
     .on("change", function() {
       // Calling genome view for updates
       generateGenomeView({
@@ -473,7 +484,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     });
 
   // Highlight flipped chromosomes checkbox
-  d3.select("#form-config .layout-panel")
+  d3Select("#form-config .layout-panel")
     .append("p")
     .attr("class", "highlight-flipped-chromosomes")
     .attr("title", "If selected, all flipped chromosomes will be highlighted.")
@@ -484,11 +495,11 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("value", "Highlight flipped chromosomes")
     .property("checked", true); // Highlight flipped chromosomes is checked by default
 
-  d3.select("#form-config p.highlight-flipped-chromosomes > label")
+  d3Select("#form-config p.highlight-flipped-chromosomes > label")
     .append("span")
     .text("Highlight flipped chromosomes");
 
-  d3.select("p.highlight-flipped-chromosomes input")
+  d3Select("p.highlight-flipped-chromosomes input")
     .on("change", function() {
       // Calling genome view for updates
       generateGenomeView({
@@ -499,7 +510,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     });
 
   // Show tooltip inside checkbox
-  d3.select("#form-config .layout-panel")
+  d3Select("#form-config .layout-panel")
     .append("p")
     .attr("class", "show-tooltip-inside")
     .attr("title", "If selected, the tooltip will be shown next to the cursor.")
@@ -510,26 +521,26 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("value", "Show tooltip inside")
     .property("checked", true); // Show tooltip inside is checked by default
 
-  d3.select("#form-config .show-tooltip-inside > label")
+  d3Select("#form-config .show-tooltip-inside > label")
     .append("span")
     .text("Show tooltip inside");
 
-  d3.select("p.show-tooltip-inside input")
+  d3Select("p.show-tooltip-inside input")
     .on("change", function() {
-      const showTooltipOutside = !d3.select(this).property("checked");
+      const showTooltipOutside = !d3Select(this).property("checked");
 
-      d3.select(".circos-tooltip")
+      d3Select(".circos-tooltip")
         .classed("outside", showTooltipOutside);
     });
 
   // Blocks color dropdown select
-  d3.select("#form-config .layout-panel")
+  d3Select("#form-config .layout-panel")
     .append("div")
     .attr("class", "blocks-color")
     .append("p")
     .text("Blocks color: ");
 
-  d3.select("div.blocks-color")
+  d3Select("div.blocks-color")
     .append("p")
     .append("select")
     .attr("class", "form-control")
@@ -540,7 +551,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
       }).join(' ')
     );
 
-  d3.select("div.blocks-color select")
+  d3Select("div.blocks-color select")
     .on("change", function() {
       // Calling genome view for updates with default transition and no layout udpate
       generateGenomeView({
@@ -550,13 +561,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
     });
 
   // Genome palette
-  d3.select("#form-config .layout-panel")
+  d3Select("#form-config .layout-panel")
     .append("div")
     .attr("class", "chromosomes-palette")
     .append("p")
     .text("Genome palette: ");
 
-  d3.select("div.chromosomes-palette")
+  d3Select("div.chromosomes-palette")
     .append("p")
     .append("select")
     .attr("class", "form-control")
@@ -569,10 +580,10 @@ export default function generateData(gff, collinearity, additionalTrack) {
       }).join(' ')
     );
 
-  d3.select("div.chromosomes-palette select")
+  d3Select("div.chromosomes-palette select")
     .on("change", function() {
-      const selected = d3.select(this).property("value");
-      const colors = d3.scaleOrdinal(CATEGORICAL_COLOR_SCALES[selected]);
+      const selected = d3Select(this).property("value");
+      const colors = d3ScaleOrdinal(CATEGORICAL_COLOR_SCALES[selected]);
       colors.domain(defaultColorDomain);
 
       if (selected === 'Flipped') {
@@ -600,7 +611,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
       // For 'Flipped' case the dictionary is already being set
       if (selected !== 'Flipped') setGffDictionary(gffPositionDictionary);
 
-      let shouldUpdate = (d3.event.detail || {}).shouldUpdate;
+      let shouldUpdate = (d3Event.detail || {}).shouldUpdate;
       // shoulUpdate = null or undefined is true, meaning true by default
       shouldUpdate = shouldUpdate == null ? true : shouldUpdate;
       if (shouldUpdate) {
@@ -612,13 +623,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
     });
 
   // Draw blocks ordered by: Block ID or Block length (ascending or descending)
-  d3.select("#form-config .layout-panel")
+  d3Select("#form-config .layout-panel")
     .append("div")
     .attr("class", "draw-blocks-order")
     .append("p")
     .text("Drawing order: ");
 
-  d3.select("div.draw-blocks-order")
+  d3Select("div.draw-blocks-order")
     .append("p")
     .append("select")
     .attr("class", "form-control")
@@ -629,7 +640,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
       <option value="Block length (↓)">Block length (↓)</option>
     `);
 
-  d3.select("div.draw-blocks-order select")
+  d3Select("div.draw-blocks-order select")
     .on("change", function() {
       // Calling genome view for updates with default transition
       generateGenomeView({
@@ -639,7 +650,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     });
 
   // Save layout button
-  d3.select("#form-config .layout-panel")
+  d3Select("#form-config .layout-panel")
     .append("div")
     .attr("class", "layout-panel-buttons")
     .append("div")
@@ -648,7 +659,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   // Loading save layout button inside its container
   renderSvgButton({
-    buttonContainer: d3.select("#form-config .layout-panel .layout-panel-buttons div.save-layout").node(),
+    buttonContainer: d3Select("#form-config .layout-panel .layout-panel-buttons div.save-layout").node(),
     svgClassName: 'save-layout-svg',
     svgHref: './images/icons.svg#save-sprite_si-ant-save',
     onClickFunction: function() {
@@ -667,7 +678,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
   });
 
   // Stamps layout button
-  d3.select("#form-config .layout-panel .layout-panel-buttons")
+  d3Select("#form-config .layout-panel .layout-panel-buttons")
     .append("div")
     .attr("class", "stamps-layout")
     .attr("title", "Show saved stamps");
@@ -686,18 +697,18 @@ export default function generateData(gff, collinearity, additionalTrack) {
       modalHeader="Saved stamps">
       {<SavedStamps />}
     </Modal>,
-    d3.select("#form-config .layout-panel .layout-panel-buttons div.stamps-layout").node()
+    d3Select("#form-config .layout-panel .layout-panel-buttons div.stamps-layout").node()
   );
 
   // Reset layout button
-  d3.select("#form-config .layout-panel .layout-panel-buttons")
+  d3Select("#form-config .layout-panel .layout-panel-buttons")
     .append("div")
     .attr("class", "reset-layout")
     .attr("title", "Reset layout connections");
 
   // Loading reset layout button inside its container
   renderSvgButton({
-    buttonContainer: d3.select("#form-config .layout-panel .layout-panel-buttons div.reset-layout").node(),
+    buttonContainer: d3Select("#form-config .layout-panel .layout-panel-buttons div.reset-layout").node(),
     svgClassName: 'reset-layout-svg',
     svgHref: './images/icons.svg#reset-sprite_si-bootstrap-refresh',
     onClickFunction: function() {
@@ -722,17 +733,17 @@ export default function generateData(gff, collinearity, additionalTrack) {
   });
 
   // Decluttering title
-  d3.select("#form-config")
+  d3Select("#form-config")
     .append("h5")
     .attr("class", "panel-title decluttering-panel-title")
     .text("Decluttering");
 
-  d3.select("#form-config")
+  d3Select("#form-config")
     .append("div")
     .attr("class", "panel decluttering-panel");
 
   // Filter connections input range
-  d3.select("#form-config .decluttering-panel")
+  d3Select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-connections-div")
     .append("div")
@@ -741,7 +752,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("class", "filter-connections")
     .text("Filter:");
 
-  d3.select(".filter-connections-div .filter-connections-options")
+  d3Select(".filter-connections-div .filter-connections-options")
     .append("p")
     .attr("class", "filter-connections")
     .append("select")
@@ -751,7 +762,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
       <option value="At Most">At Most</option>
     `);
 
-  d3.select(".filter-connections-div select.filter-connections")
+  d3Select(".filter-connections-div select.filter-connections")
     .on("change", function() {
       // Resetting undo manager
       resetUndoRedoButtons();
@@ -762,7 +773,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
       });
     });
 
-  d3.select(".filter-connections-div .filter-connections-options")
+  d3Select(".filter-connections-div .filter-connections-options")
     .append("p")
     .attr("class", "filter-connections")
     .html(`
@@ -771,13 +782,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
       </label>
     `);
 
-  d3.select(".filter-connections-div")
+  d3Select(".filter-connections-div")
     .append("p")
     .attr("class", "filter-connections-input")
     .html(`<input type="range" min="1" max=${maxBlockSize.toString()} id="filter-block-size">`);
 
   // Filter angle input range
-  d3.select("#form-config .decluttering-panel")
+  d3Select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-angle-div")
     .html(`
@@ -791,13 +802,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
     `);
 
   // Flip/Reset chromosome order (positions)
-  d3.select("#form-config .decluttering-panel ")
+  d3Select("#form-config .decluttering-panel ")
     .append("div")
     .attr("class", "change-chromosome-positions")
     .append("p")
     .text("Order:");
 
-  d3.select("#form-config .decluttering-panel .change-chromosome-positions")
+  d3Select("#form-config .decluttering-panel .change-chromosome-positions")
     .append("p")
     .append("select")
     .attr("class", "flip-reset form-control")
@@ -806,7 +817,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
       <option value="Reset">Reset</option>
     `);
 
-  d3.select("#form-config .decluttering-panel .change-chromosome-positions")
+  d3Select("#form-config .decluttering-panel .change-chromosome-positions")
     .append("p")
     .append("select")
     .attr("class", "all-genomes form-control")
@@ -816,7 +827,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
       ).join(' ')
     );
 
-  d3.select("#form-config .decluttering-panel .change-chromosome-positions")
+  d3Select("#form-config .decluttering-panel .change-chromosome-positions")
     .append("p")
     .attr("class", "apply-button")
     .append("input")
@@ -825,20 +836,20 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("value", "Apply")
     .attr("title", "Flips or resets the chromosome order of the selected genome.");
 
-  d3.select("#form-config .decluttering-panel")
+  d3Select("#form-config .decluttering-panel")
     .append("p")
     .attr("class","separator disabled")
     .html("────────────────────");
 
   // Parameters title inside decluttering panel
-  d3.select("#form-config .decluttering-panel")
+  d3Select("#form-config .decluttering-panel")
     .append("p")
     .attr("class", "panel-subtitle")
     .html("<strong>Algorithm parameters</strong>");
 
   // Keep chromosomes from same genomes together checkbox
   if (partitionedGffKeysLength > 1) {
-    d3.select("#form-config .decluttering-panel")
+    d3Select("#form-config .decluttering-panel")
       .append("p")
       .attr("class", "keep-chr-together")
       .attr("title", "If selected, chromosomes from the same genome will be kept together when running the decluttering algorithm.")
@@ -849,12 +860,12 @@ export default function generateData(gff, collinearity, additionalTrack) {
       .attr("value", "Keep chromosomes from same genomes together")
       .property("checked", true); // This checkbox is checked by default
 
-    d3.select("#form-config .keep-chr-together > label")
+    d3Select("#form-config .keep-chr-together > label")
       .append("span")
       .text("Keep chromosomes from same genomes together");
   }
 
-  d3.select("#form-config .decluttering-panel")
+  d3Select("#form-config .decluttering-panel")
     .append("p")
     .attr("class", "calculate-temperature-ratio")
     .attr("title", "If selected, temperature and ratio will be calculated based on the number of block collisions.")
@@ -865,21 +876,21 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("value", "Calculate temperature and ratio based on block collisions")
     .property("checked", true); // This checkbox is checked by default
 
-  d3.select("#form-config .calculate-temperature-ratio > label")
+  d3Select("#form-config .calculate-temperature-ratio > label")
     .append("span")
     .text("Calculate temperature and ratio based on block collisions");
 
-  d3.select("p.calculate-temperature-ratio input")
+  d3Select("p.calculate-temperature-ratio input")
     .on("change", function() {
-      const currentValue = d3.select(this).property("checked");
+      const currentValue = d3Select(this).property("checked");
       const isDisabled = currentValue ? true : null;
-      d3.selectAll("#filter-sa-temperature,#filter-sa-ratio").attr("disabled", isDisabled);
+      d3SelectAll("#filter-sa-temperature,#filter-sa-ratio").attr("disabled", isDisabled);
 
       if (currentValue) calculateDeclutteringETA();
     });
 
   // Filter Simulated Annealing temperature
-  d3.select("#form-config .decluttering-panel")
+  d3Select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-sa-temperature-div")
     .html(`
@@ -893,7 +904,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     `);
 
   // Filter Simulated Annealing ratio
-  d3.select("#form-config .decluttering-panel")
+  d3Select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-sa-ratio-div")
     .html(`
@@ -907,7 +918,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     `);
 
   // Filter Simulated Annealing Flipping frequency
-  d3.select("#form-config .decluttering-panel")
+  d3Select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "filter-sa-flipping-frequency-div")
     .html(`
@@ -921,7 +932,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     `);
 
   // Minimize collisions button
-  d3.select("#form-config .decluttering-panel")
+  d3Select("#form-config .decluttering-panel")
     .append("div")
     .attr("class", "layout-panel-buttons")
     .append("div")
@@ -930,7 +941,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   // Loading minimize collisions button inside its container
   renderSvgButton({
-    buttonContainer: d3.select("#form-config .decluttering-panel .layout-panel-buttons div.best-guess").node(),
+    buttonContainer: d3Select("#form-config .decluttering-panel .layout-panel-buttons div.best-guess").node(),
     svgClassName: 'best-guess-svg',
     svgHref: './images/icons.svg#magic-sprite_si-elusive-magic',
     onClickFunction: function() {
@@ -943,13 +954,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
       let confirming = true;
       // Taking the calculated time string from the hint
-      const timeString = d3.select(".filter-sa-hint").text().split("-")[0].trim();
+      const timeString = d3Select(".filter-sa-hint").text().split("-")[0].trim();
       if (finalTime >= 120) {
         confirming = confirm(`Are you willing to wait at least "${timeString}" for the calculation to finish?`);
       }
 
       if (confirming) {
-        d3.select("#form-config .decluttering-panel .layout-panel-buttons div.best-guess button")
+        d3Select("#form-config .decluttering-panel .layout-panel-buttons div.best-guess button")
           .attr("disabled", true);
         simulatedAnnealing(dataChromosomes, dataChords);
       }
@@ -957,14 +968,14 @@ export default function generateData(gff, collinearity, additionalTrack) {
   });
 
   // Undo layout button
-  d3.select("#form-config .decluttering-panel .layout-panel-buttons")
+  d3Select("#form-config .decluttering-panel .layout-panel-buttons")
     .append("div")
     .attr("class", "undo-layout")
     .attr("title", "Undo layout interactions");
 
   // Loading undo layout button inside its container
   renderSvgButton({
-    buttonContainer: d3.select("#form-config .decluttering-panel .layout-panel-buttons div.undo-layout").node(),
+    buttonContainer: d3Select("#form-config .decluttering-panel .layout-panel-buttons div.undo-layout").node(),
     svgClassName: 'undo-layout-svg',
     svgHref: './images/icons.svg#undo-sprite_si-open-action-undo',
     onClickFunction: function() {
@@ -980,14 +991,14 @@ export default function generateData(gff, collinearity, additionalTrack) {
   });
 
   // Redo layout button
-  d3.select("#form-config .decluttering-panel .layout-panel-buttons")
+  d3Select("#form-config .decluttering-panel .layout-panel-buttons")
     .append("div")
     .attr("class", "redo-layout")
     .attr("title", "Redo layout interactions");
 
   // Loading redo layout button inside its container
   renderSvgButton({
-    buttonContainer: d3.select("#form-config .decluttering-panel .layout-panel-buttons div.redo-layout").node(),
+    buttonContainer: d3Select("#form-config .decluttering-panel .layout-panel-buttons div.redo-layout").node(),
     svgClassName: 'redo-layout-svg',
     svgHref: './images/icons.svg#redo-sprite_si-open-action-redo',
     onClickFunction: function() {
@@ -1003,14 +1014,14 @@ export default function generateData(gff, collinearity, additionalTrack) {
   });
 
   // Additional tracks
-  d3.select("#form-config")
+  d3Select("#form-config")
   // Additional tracks panel title
     .append("h5")
     .attr("class", "panel-title additional-tracks-panel-title")
     .text("Additional tracks");
 
   // Additional tracks container
-  d3.select("#form-config")
+  d3Select("#form-config")
     .append("div")
     .attr("class", "panel additional-tracks-panel")
     .append("div")
@@ -1024,12 +1035,12 @@ export default function generateData(gff, collinearity, additionalTrack) {
   addAdditionalTracksMenu(getAdditionalTrackArray());
 
   // Chromosome checkboxes
-  d3.select("div.for-chr-boxes")
+  d3Select("div.for-chr-boxes")
     .append("div")
     .attr("class", "chr-options col-lg-12");
 
   // Show all checkbox
-  d3.select("#form-config div.chr-options")
+  d3Select("#form-config div.chr-options")
     .append("p")
     .attr("class", "show-all")
     .attr("title", "If selected, all chromosomes will show.")
@@ -1040,11 +1051,11 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("value", "Show all")
     .property("checked", true); // Show all is checked by default
 
-  d3.select("#form-config p.show-all > label")
+  d3Select("#form-config p.show-all > label")
     .append("span")
     .text("Show all chromosomes");
 
-  d3.select("p.show-all input")
+  d3Select("p.show-all input")
     .on("change", function() {
       // Resetting undo manager and calling genome view for updates
       resetUndoRedoButtons();
@@ -1053,13 +1064,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
 
   // Show self connections checkbox
   if (partitionedGffKeysLength > 1) {
-    d3.select("#form-config div.chr-options")
+    d3Select("#form-config div.chr-options")
       .append("p")
       .attr("class", "panel-subtitle")
       .html("Show self connections within:");
   }
 
-  d3.select("#form-config div.chr-options")
+  d3Select("#form-config div.chr-options")
     .append("p")
     .attr("class", "show-self-connections show-self-connections-chr")
     .attr("title", "If selected, chromosomes will show connections with themselves.")
@@ -1070,13 +1081,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("value", "Show self connections")
     .property("checked", true); // Show self connections is checked by default
 
-  d3.select("#form-config p.show-self-connections-chr > label")
+  d3Select("#form-config p.show-self-connections-chr > label")
     .append("span")
     .text(partitionedGffKeysLength > 1 ? "Chromosomes" :
       "Show self connections");
 
   if (partitionedGffKeysLength > 1) {
-    d3.select("#form-config div.chr-options")
+    d3Select("#form-config div.chr-options")
       .append("p")
       .attr("class", "show-self-connections show-self-connections-genome")
       .attr("title", "If selected, genomes will show connections with themselves.")
@@ -1087,12 +1098,12 @@ export default function generateData(gff, collinearity, additionalTrack) {
       .attr("value", "Show self connections")
       .property("checked", true); // Show self connections is checked by default
 
-    d3.select("#form-config p.show-self-connections-genome > label")
+    d3Select("#form-config p.show-self-connections-genome > label")
       .append("span")
       .text("Genomes");
   }
 
-  d3.selectAll("p.show-self-connections input")
+  d3SelectAll("p.show-self-connections input")
     .on("change", function() {
       // Resetting undo manager and calling genome view for updates
       resetUndoRedoButtons();
@@ -1100,14 +1111,14 @@ export default function generateData(gff, collinearity, additionalTrack) {
     });
 
   // Chromosomes title inside connections panel
-  d3.select("#form-config div.chr-options")
+  d3Select("#form-config div.chr-options")
     .append("p")
     .attr("class","separator disabled")
     .html("────────────────────");
 
   // Adding the checkbox by using the partitionedGffKeys
   for (let i = 0; i < partitionedGffKeysLength; i++) {
-    d3.select("div.for-chr-boxes")
+    d3Select("div.for-chr-boxes")
       .append("div")
       .attr("class", `chr-boxes ${partitionedGffKeys[i]} col-lg-6`)
       .selectAll("div.chr-box-inner-content")
@@ -1123,7 +1134,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
       .attr("value", (chrKey) => chrKey);
 
     // Select all button
-    d3.select(`div.chr-boxes.${partitionedGffKeys[i]}`)
+    d3Select(`div.chr-boxes.${partitionedGffKeys[i]}`)
       .append("p")
       .attr("class", `select-all ${partitionedGffKeys[i]}`)
       .attr("title", "Selects all the connections.")
@@ -1133,19 +1144,19 @@ export default function generateData(gff, collinearity, additionalTrack) {
       .attr("value", "Select all");
   }
 
-  d3.select("#form-config")
+  d3Select("#form-config")
     .selectAll("div.chr-box-inner-content > label")
     .append("span")
     .attr("class", "chr-box-text")
     .text((chrKey) => chrKey);
 
-  d3.select("#form-config")
+  d3Select("#form-config")
     .selectAll("div.chr-box-inner-content")
     .append("span")
     .attr("class", "chr-box-extra");
 
   // Checkboxes on change event
-  d3.select("#form-config").selectAll(".chr-box")
+  d3Select("#form-config").selectAll(".chr-box")
     .on("change", function() {
       // All checkboxes are returned to their original state
       resetChromosomeCheckboxes();
@@ -1153,7 +1164,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
       // The second class is the identifier in the chr-box input
       // `chr-box ${partitionedGffKeys[i]} ${chrKey}`
       const identifierClass =
-        d3.select(this).attr("class").split(' ')[1];
+        d3Select(this).attr("class").split(' ')[1];
 
       const {
         currentClassCheckboxes,
@@ -1163,18 +1174,18 @@ export default function generateData(gff, collinearity, additionalTrack) {
       // Changing Select/Deselect All button depending on the amount of
       // selected chromosomes with the current class
       if (currentClassCheckboxes.length === 0) {
-        d3.selectAll(`.select-all.${identifierClass} > input`).property("value", "Select all");
-        d3.selectAll(`p.select-all.${identifierClass}`).attr("title", "Selects all the connections.");
+        d3SelectAll(`.select-all.${identifierClass} > input`).property("value", "Select all");
+        d3SelectAll(`p.select-all.${identifierClass}`).attr("title", "Selects all the connections.");
       } else {
-        d3.select(`.select-all.${identifierClass} > input`).property("value", "Deselect all");
-        d3.select(`p.select-all.${identifierClass}`).attr("title", "Deselects all the connections.");
+        d3Select(`.select-all.${identifierClass} > input`).property("value", "Deselect all");
+        d3Select(`p.select-all.${identifierClass}`).attr("title", "Deselects all the connections.");
       }
 
       if (selectedCheckboxes.length === 1) {
         showChromosomeConnectionInformation(connectionDictionary, selectedCheckboxes);
       }
 
-      let shouldUpdate = (d3.event.detail || {}).shouldUpdate;
+      let shouldUpdate = (d3Event.detail || {}).shouldUpdate;
       // shoulUpdate = null or undefined is true, meaning true by default
       shouldUpdate = shouldUpdate == null ? true : shouldUpdate;
       if (shouldUpdate) {
@@ -1185,34 +1196,34 @@ export default function generateData(gff, collinearity, additionalTrack) {
     });
 
   // Select all button click
-  d3.select("#form-config").selectAll(".select-all > input")
+  d3Select("#form-config").selectAll(".select-all > input")
     .on("click", function() {
       // The second class is the identifier in the select-all input
       // `select-all ${partitionedGffKeys[i]}`
       const identifierClass =
-        d3.select(this.parentNode).attr("class").split(" ")[1];
+        d3Select(this.parentNode).attr("class").split(" ")[1];
 
-      if (d3.select(this).property("value") === "Select all") {
+      if (d3Select(this).property("value") === "Select all") {
         // Changing the value and title to Deselect all
-        d3.select(this).property("value", "Deselect all");
-        d3.select(this.parentNode).attr("title", "Deselects all the connections.");
+        d3Select(this).property("value", "Deselect all");
+        d3Select(this.parentNode).attr("title", "Deselects all the connections.");
 
         // Selecting all checkboxes
-        d3.selectAll(`.chr-box.${identifierClass}`).each(function() {
-          if (!d3.select(this).property("checked") &&
-            !d3.select(this).attr("disabled")) {
-            d3.select(this).property("checked", true);
+        d3SelectAll(`.chr-box.${identifierClass}`).each(function() {
+          if (!d3Select(this).property("checked") &&
+            !d3Select(this).attr("disabled")) {
+            d3Select(this).property("checked", true);
           }
         });
       } else {
         // Changing the value and title to Select all
-        d3.select(this).property("value", "Select all");
-        d3.select(this.parentNode).attr("title", "Selects all the connections.");
+        d3Select(this).property("value", "Select all");
+        d3Select(this.parentNode).attr("title", "Selects all the connections.");
 
         // Only the identified checkboxes are unchecked
-        d3.selectAll(`.chr-box.${identifierClass}`).each(function(d) {
-          if (d3.select(this).property("checked")) {
-            d3.select(this).property("checked", false);
+        d3SelectAll(`.chr-box.${identifierClass}`).each(function(d) {
+          if (d3Select(this).property("checked")) {
+            d3Select(this).property("checked", false);
           }
         });
       }
@@ -1232,9 +1243,9 @@ export default function generateData(gff, collinearity, additionalTrack) {
        * -> When no checkboxes at all are selected, so that the user does not
        * have to select 'Show all chromosomes' again.
        */
-      if (d3.selectAll(".chr-box").size() === selectedCheckboxes.length ||
+      if (d3SelectAll(".chr-box").size() === selectedCheckboxes.length ||
         selectedCheckboxes.length === 0) {
-        d3.select(".show-all input").property("checked", true);
+        d3Select(".show-all input").property("checked", true);
       }
 
       // Resetting undo manager and calling genome view for updates
@@ -1243,7 +1254,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     });
 
   // SVG element that will include the Circos plot
-  const svg = d3.select("#page-container .row")
+  const svg = d3Select("#page-container .row")
     .append("div")
     .attr("class", "genome-view-container col-lg-6 text-center")
     .append("div")
@@ -1254,7 +1265,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
     .attr("height", HEIGHT);
 
   // Genome view progress bar
-  d3.select("div.genome-view-content")
+  d3Select("div.genome-view-content")
     .append("div")
     .attr("class", "progress")
     .html(function() {
@@ -1269,20 +1280,20 @@ export default function generateData(gff, collinearity, additionalTrack) {
     });
 
   // Additional track legend
-  d3.select("div.genome-view-content")
+  d3Select("div.genome-view-content")
     .append("svg")
     .attr("id", "track-legend")
     .attr("width", WIDTH * 0.75)
     .attr("height", 50);
 
+  // Starting point to implement zoom in the genome view:
   // svg
-  //   .call(d3.zoom().on("zoom", function() {
-  //     svg.attr("transform", d3.event.transform)
+  //   .call(d3Zoom().on("zoom", function() {
+  //     svg.attr("transform", d3Event.transform)
   //   }));
 
   // Defining a clip-path so that the genome view always stay inside
   // its container when zooming in
-
   // svg.append("defs").append("svg:clipPath")
   //   .attr("id", "clip-svg")
   //   .append("svg:rect")
@@ -1291,14 +1302,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
   //   .attr("y", "0")
   //   .attr("width", width)
   //   .attr("height", height);
-  //
   // svg.select(".all").append("g").attr("clip-path", "url(#clip-block)");
 
 
   // More info about collapse: https://www.w3schools.com/howto/howto_js_accordion.asp
-  d3.selectAll(".panel-title")
+  d3SelectAll(".panel-title")
     .on("click", function() {
-      const currentNode = d3.select(this).node();
+      const currentNode = d3Select(this).node();
       // Toggle between adding and removing the "active" class,
       // to highlight the title that controls the panel
       currentNode.classList.toggle('active');
@@ -1315,7 +1325,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
         setTimeout(() => {
           if (!isInViewport(panel)) {
             // More info: https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView
-            d3.select("#page-container").node().scrollIntoView({
+            d3Select("#page-container").node().scrollIntoView({
               behavior: 'smooth',
               block: 'end',
               inline: 'nearest'
@@ -1323,7 +1333,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
           }
         }, 200);
 
-        const panelText = d3.select(this).text();
+        const panelText = d3Select(this).text();
 
         // If opening the decluttering panel, update the state of undo/redo buttons
         if (panelText.includes('Decluttering')) {
@@ -1333,9 +1343,9 @@ export default function generateData(gff, collinearity, additionalTrack) {
         // If opening the tracks panel, then click the first tab by default when
         // tabs are available but no tabs are clicked
         if (panelText.includes('Additional tracks') &&
-          !d3.select("#form-config .additional-tracks-panel div.tabs button.tab-link").empty() &&
-          d3.select("#form-config .additional-tracks-panel div.tabs button.tab-link.active").empty()) {
-          d3.select("#form-config .additional-tracks-panel div.tabs button.tab-link").node().click();
+          !d3Select("#form-config .additional-tracks-panel div.tabs button.tab-link").empty() &&
+          d3Select("#form-config .additional-tracks-panel div.tabs button.tab-link.active").empty()) {
+          d3Select("#form-config .additional-tracks-panel div.tabs button.tab-link").node().click();
         }
       }
     });
@@ -1347,13 +1357,13 @@ export default function generateData(gff, collinearity, additionalTrack) {
   updateAngle(0, 0);
 
   // Temperature input event
-  d3.select("#filter-sa-temperature")
+  d3Select("#filter-sa-temperature")
     .on("input", function() {
       updateTemperature(+this.value);
     });
 
   // Ratio input event
-  d3.select("#filter-sa-ratio")
+  d3Select("#filter-sa-ratio")
     .on("input", function() {
       updateRatio(+this.value);
     });
@@ -1361,7 +1371,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
   // Initial flipping frequency and input event
   updateFlippingFrequency(0, false);
 
-  d3.select("#filter-sa-flipping-frequency")
+  d3Select("#filter-sa-flipping-frequency")
     .on("input", function() {
       updateFlippingFrequency(+this.value);
     });
@@ -1379,7 +1389,7 @@ export default function generateData(gff, collinearity, additionalTrack) {
   });
 
   // Updating filter on input
-  d3.select("#filter-block-size")
+  d3Select("#filter-block-size")
     .on("input", function() {
       resetUndoRedoButtons();
 
@@ -1427,24 +1437,24 @@ export default function generateData(gff, collinearity, additionalTrack) {
       size="sm">
       {<DownloadFilesForm />}
     </Modal>,
-    d3.select("#download-svg-container").node()
+    d3Select("#download-svg-container").node()
   );
 
   // Displaying all the content after everything is loaded
-  d3.select("#loader")
+  d3Select("#loader")
     .style("display", "none");
 
-  d3.select("#page-container")
+  d3Select("#page-container")
     .style("display", "block");
 
   // Updating the style of the configuration panel
-  d3.select("#config")
+  d3Select("#config")
     .style("display", "block");
 
   setTimeout(() => {
     // Clicking informational and connections panel by default
     // after the loader spinner animation is done
-    d3.select(".information-panel-title").node().click();
-    d3.select(".connections-panel-title").node().click();
+    d3Select(".information-panel-title").node().click();
+    d3Select(".connections-panel-title").node().click();
   }, 350);
 };

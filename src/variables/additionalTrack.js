@@ -1,6 +1,4 @@
-import {
-  format as d3Format
-} from 'd3';
+import { format as d3Format } from 'd3-format';
 
 import cloneDeep from 'lodash/cloneDeep';
 

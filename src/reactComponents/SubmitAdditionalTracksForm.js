@@ -2,7 +2,7 @@ import React from 'react';
 
 import isString from 'lodash/isString';
 
-import { select as d3Select } from 'd3';
+import { select as d3Select } from 'd3-selection';
 
 import { pushAdditionalTrack } from './../variables/additionalTrack';
 

@@ -1,16 +1,20 @@
+// D3
+import { ribbon as d3Ribbon } from 'd3-chord';
+import { easeLinear as d3EaseLinear } from 'd3-ease';
+import { format as d3Format } from 'd3-format';
+
 import {
-  easeLinear as d3EaseLinear,
-  format as d3Format,
-  ribbon as d3Ribbon,
   select as d3Select,
   selectAll as d3SelectAll
-} from 'd3';
+} from 'd3-selection';
 
 // ParallelJS
 import Parallel from 'paralleljs';
 
+// UndoManager
 import undoManager, { updateUndoRedoButtons } from '../vendor/undoManager';
 
+// Save-svg-as-png
 import { svgAsPngUri } from 'save-svg-as-png';
 
 // Lodash
@@ -22,6 +26,7 @@ import isEmpty from 'lodash/isEmpty';
 import isEqual from 'lodash/isEqual';
 import union from 'lodash/union';
 
+// Helpers
 import generateGenomeView from './generateGenomeView';
 import { updateAdditionalTracksWhileDragging } from './dragging';
 import {
@@ -37,6 +42,8 @@ import {
   updateRatio,
   updateTemperature
 } from './../helpers';
+
+// Variable getters and setters
 import { getCircosObject } from './../variables/myCircos';
 import { getBlockDictionary } from './../variables/blockDictionary';
 import {

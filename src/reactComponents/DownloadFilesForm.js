@@ -7,7 +7,7 @@ import isEmpty from 'lodash/isEmpty';
 import {
   select as d3Select,
   selectAll as d3SelectAll
-} from 'd3';
+} from 'd3-selection';
 
 import { getCurrentSelectedBlock } from './../variables/currentSelectedBlock';
 import { renderReactAlert } from './../helpers';
