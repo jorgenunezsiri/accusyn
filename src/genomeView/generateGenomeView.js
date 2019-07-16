@@ -1,18 +1,3 @@
-/*
-University of Saskatchewan
-Course: CMPT994 - Research
-
-AccuSyn: An Accurate Web-based Genome Synteny Browser
-https://accusyn.usask.ca/
-
-Name: Jorge Nunez Siri
-E-mail: jorge.nunez@usask.ca
-
-Function file: generateGenomeView.js
-
-@2018-2019, Jorge Nunez Siri, All rights reserved
-*/
-
 // D3
 import { color as d3Color } from 'd3-color';
 import { easeLinear as d3EaseLinear } from 'd3-ease';

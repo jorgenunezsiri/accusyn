@@ -1,7 +1,7 @@
 {
-  "name": "synteny-browser",
+  "name": "accusyn",
   "version": "1.0.0",
-  "description": "University of Saskatchewan - AccuSyn: An Accurate Web-based Genome Synteny Browser",
+  "description": "AccuSyn: An Accurate Web-based Genome Synteny Browser",
   "main": "src/index.js",
   "scripts": {
     "start": "webpack-dev-server --config webpack.config.js --watch-poll",
@@ -9,12 +9,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://bitbucket.org/jorgenunezsiri/synteny-browser.git"
+    "url": "https://github.com/jorgenunezsiri/accusyn.git"
   },
-  "author": "jorgenunezsiri",
-  "license": "UNLICENSED",
-  "private": true,
-  "homepage": "https://bitbucket.org/jorgenunezsiri/synteny-browser/",
+  "author": "Jorge Nunez Siri",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jorgenunezsiri/accusyn/issues"
+  },
+  "homepage": "https://accusyn.usask.ca",
   "devDependencies": {
     "@shopify/draggable": "1.0.0-beta.8",
     "babel-core": "6.26.3",
@@ -25,7 +27,7 @@
     "babel-preset-react": "6.24.1",
     "css-loader": "0.26.2",
     "extract-text-webpack-plugin": "3.0.2",
-    "lodash": "4.17.10",
+    "lodash": "4.17.14",
     "node-sass": "4.9.2",
     "paralleljs": "0.2.1",
     "prop-types": "15.6.2",
@@ -41,8 +43,8 @@
   "dependencies": {
     "bootstrap": "4.1.2",
     "d3": "5.8.0",
-    "react": "16.4.1",
-    "react-dom": "16.4.1",
+    "react": "16.4.2",
+    "react-dom": "16.4.2",
     "reactstrap": "6.3.0"
   }
 }

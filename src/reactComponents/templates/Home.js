@@ -79,7 +79,7 @@ const Home = () => {
                   <img alt="USask Logo" src="./images/usask-logo.png" height="30px" width="135px" />
                 </a>
                 <p className="mt-1 small">
-                  {'\u00A9'} 2018 – {new Date().getFullYear()} {' '} Jorge Nunez Siri. All Rights Reserved.
+                  Copyright {'\u00A9'} 2018 – {new Date().getFullYear()} {' '} Jorge Nunez Siri. All rights reserved.
                 </p>
                 <p className="small">
                   <a href="mailto:jorge.nunez@usask.ca?cc=eric.neufeld@usask.ca&subject=AccuSyn Software">Contact Us</a>

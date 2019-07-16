@@ -4,6 +4,15 @@ const ExtractTextPlugin = require('extract-text-webpack-plugin');
 const SpriteLoaderPlugin = require('svg-sprite-loader/plugin');
 const webpack = require('webpack');
 
+const PACKAGE = require('./package.json');
+// Copyright banner
+const banner = 'AccuSyn v' + PACKAGE.version + ' | ' +
+  'Copyright (c) 2018 – ' + new Date().getFullYear() + '  ' + PACKAGE.author +
+  '. All rights reserved. | ' +
+  PACKAGE.license + ' License | ' +
+  PACKAGE.homepage + ' | ' +
+  PACKAGE.repository.url;
+
 module.exports = {
   entry: [
     'babel-polyfill',
@@ -72,6 +81,7 @@ module.exports = {
       'process.env': {
         NODE_ENV: JSON.stringify('production')
       }
-    })
+    }),
+    new webpack.BannerPlugin(banner)
   ]
 };
