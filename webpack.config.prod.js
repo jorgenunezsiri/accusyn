@@ -7,7 +7,7 @@ const webpack = require('webpack');
 const PACKAGE = require('./package.json');
 // Copyright banner
 const banner = 'AccuSyn v' + PACKAGE.version + ' | ' +
-  'Copyright (c) 2018 – ' + new Date().getFullYear() + '  ' + PACKAGE.author +
+  'Copyright (c) 2018 - ' + new Date().getFullYear() + '  ' + PACKAGE.author +
   '. All rights reserved. | ' +
   PACKAGE.license + ' License | ' +
   PACKAGE.homepage + ' | ' +
