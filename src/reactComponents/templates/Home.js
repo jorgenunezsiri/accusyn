@@ -3,6 +3,7 @@ import React from 'react';
 import Files from './../Files';
 import Logo from './../Logo';
 import Modal from './../Modal';
+import YouTube from 'react-youtube';
 
 /**
  * Home component
@@ -74,7 +75,10 @@ const Home = () => {
                 <li><em>BedGraph</em> file: Uses four columns (chrID, chrStart, chrEnd, dataValue) to display additional genomic track data
                 as heatmaps, histograms, lines, and scatter plots.</li>
               </ul>
-              <div className="text-center mt-5">
+              <div className="home-video mt-2">
+                <YouTube videoId="37XC30eLBzo" />
+              </div>
+              <div className="text-center mt-3">
                 <a target="_blank" href="https://www.usask.ca">
                   <img alt="USask Logo" src="./images/usask-logo.png" height="30px" width="135px" />
                 </a>
