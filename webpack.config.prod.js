@@ -82,6 +82,12 @@ module.exports = {
         NODE_ENV: JSON.stringify('production')
       }
     }),
-    new webpack.BannerPlugin(banner)
+    new webpack.BannerPlugin({
+      banner,
+      test: [
+        'bundle.js',
+        'bundle.css'
+      ]
+    })
   ]
 };
