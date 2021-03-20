@@ -32,10 +32,16 @@ To build a production-ready minified JavaScript file, run:
 
 **Note:** AccuSyn has been created using `node v6.11.3 (LTS)` and `npm v3.10.10`.
 
+## Research Publication
+
+To know more about AccuSyn or if you are considering citing our work, you can follow the following research publication:
+
+> Nunez Siri, J., Neufeld, E., Parkin, I., and Sharpe, A., May 2020. Using Simulated Annealing to Declutter Genome Visualizations. The Thirty-Third International Florida Artificial Intelligence Research Society Conference (FLAIRS-33). Available at: www.aaai.org/ocs/index.php/FLAIRS/FLAIRS20/paper/view/18433/17546.
+
 ## Contact
 
 Jorge Nunez Siri - jorge.nunez@usask.ca
 
 AccuSyn has been created as part of the research being done by [P<sup>2</sup>IRC](https://p2irc.usask.ca) at the [University of Saskatchewan](https://www.usask.ca).
 
-> Copyright &copy; 2018 - 2019 Jorge Nunez Siri. All rights reserved.
+> Copyright &copy; 2018 - 2021 Jorge Nunez Siri. All rights reserved.
